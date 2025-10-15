@@ -69,38 +69,56 @@ Deno.serve(async (req: Request) => {
 
     let relatedProducts = [];
     if (requestData.internal_linking) {
-      let query = supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .not('image_url', 'is', null)
-        .limit(50);
+      let data = null;
 
+      // Essai 1: Recherche par titre contenant le mot-clé
       if (topicData.category) {
-        query = query.or(`category.ilike.%${topicData.category}%,title.ilike.%${topicData.category}%`);
+        const { data: titleData } = await supabase
+          .from('shopify_products')
+          .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
+          .not('image_url', 'is', null)
+          .ilike('title', `%${topicData.category}%`)
+          .limit(50);
+
+        if (titleData && titleData.length > 0) {
+          data = titleData;
+        }
       }
 
-      const { data, error } = await query;
+      // Essai 2: Recherche par catégorie si la recherche par titre n'a rien donné
+      if ((!data || data.length === 0) && topicData.category) {
+        const { data: categoryData } = await supabase
+          .from('shopify_products')
+          .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
+          .not('image_url', 'is', null)
+          .ilike('category', `%${topicData.category}%`)
+          .limit(50);
 
-      if (error) {
-        console.error('Product query error:', error);
+        if (categoryData && categoryData.length > 0) {
+          data = categoryData;
+        }
       }
 
+      // Essai 3: Fallback - prendre n'importe quels produits avec images
       if (!data || data.length === 0) {
+        console.log(`No products found for category "${topicData.category}", using fallback`);
         const { data: fallbackData } = await supabase
           .from('shopify_products')
           .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
           .not('image_url', 'is', null)
-          .limit(requestData.max_internal_links * 2);
+          .limit(50);
 
-        relatedProducts = fallbackData?.slice(0, requestData.max_internal_links) || [];
-      } else {
-        relatedProducts = data.slice(0, requestData.max_internal_links);
+        data = fallbackData;
       }
+
+      relatedProducts = data?.slice(0, requestData.max_internal_links) || [];
     }
 
     if (relatedProducts.length === 0) {
-      throw new Error(`Aucun produit trouvé pour la catégorie "${topicData.category}". Impossible de générer un article sans produits.`);
+      throw new Error(`Aucun produit trouvé dans votre catalogue. Veuillez d'abord importer des produits depuis Shopify avec des images.`);
     }
+
+    console.log(`Found ${relatedProducts.length} products for article generation`);
 
     const { data: storeData } = await supabase
       .from('shopify_stores')
