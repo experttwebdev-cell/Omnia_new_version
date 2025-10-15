@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
+import { useLanguage } from '../App';
 import {
   Search,
   Filter,
@@ -25,6 +26,7 @@ type Product = Database['public']['Tables']['shopify_products']['Row'];
 type QuickFilterTab = 'all' | 'not-enriched' | 'enriched' | 'pending-sync' | 'synced';
 
 export function SeoOptimization() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -336,11 +338,11 @@ export function SeoOptimization() {
   const enrichedCount = quickStats?.optimized_count || products.filter(p => p.enrichment_status === 'enriched').length;
 
   const tabs = [
-    { id: 'all' as QuickFilterTab, label: 'Tous', count: products.length },
-    { id: 'not-enriched' as QuickFilterTab, label: 'Produits non enrichis', count: notEnrichedCount },
-    { id: 'enriched' as QuickFilterTab, label: 'Produits enrichis', count: enrichedCount },
-    { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.pending_sync_count || 0 },
-    { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.synced_count || 0 }
+    { id: 'all' as QuickFilterTab, label: t.products.all, count: products.length },
+    { id: 'not-enriched' as QuickFilterTab, label: t.seo.notEnriched, count: notEnrichedCount },
+    { id: 'enriched' as QuickFilterTab, label: t.products.enriched, count: enrichedCount },
+    { id: 'pending-sync' as QuickFilterTab, label: t.seo.toSync, count: quickStats?.pending_sync_count || 0 },
+    { id: 'synced' as QuickFilterTab, label: t.seo.synced, count: quickStats?.synced_count || 0 }
   ];
 
   return (
@@ -378,30 +380,30 @@ export function SeoOptimization() {
              onClick={() => setFilters({ ...filters, enrichmentStatus: 'all', syncStatus: 'all' })}>
           <div className="flex items-center gap-3 mb-2">
             <Package className="w-6 h-6 text-gray-600" />
-            <h3 className="font-semibold text-gray-700">Total Products</h3>
+            <h3 className="font-semibold text-gray-700">{t.seo.totalProducts}</h3>
           </div>
           <p className="text-4xl font-bold text-gray-900">{totalProducts}</p>
-          <p className="text-sm text-gray-500 mt-1">All products in catalog</p>
+          <p className="text-sm text-gray-500 mt-1">{t.seo.allCatalog}</p>
         </div>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 hover:shadow-md transition cursor-pointer"
              onClick={() => setFilters({ ...filters, enrichmentStatus: 'enriched', syncStatus: 'all' })}>
           <div className="flex items-center gap-3 mb-2">
             <CheckCircle className="w-6 h-6 text-green-600" />
-            <h3 className="font-semibold text-green-900">Optimized</h3>
+            <h3 className="font-semibold text-green-900">{t.seo.optimizedProducts}</h3>
           </div>
           <p className="text-4xl font-bold text-green-900">{optimizedProducts}/{totalProducts}</p>
-          <p className="text-sm text-green-700 mt-1">SEO optimized products</p>
+          <p className="text-sm text-green-700 mt-1">{t.products.enrichedProducts}</p>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 hover:shadow-md transition cursor-pointer"
              onClick={() => setFilters({ ...filters, enrichmentStatus: 'enriched', syncStatus: 'pending' })}>
           <div className="flex items-center gap-3 mb-2">
             <Clock className="w-6 h-6 text-blue-600" />
-            <h3 className="font-semibold text-blue-900">Pending Sync</h3>
+            <h3 className="font-semibold text-blue-900">{t.products.pendingSync}</h3>
           </div>
           <p className="text-4xl font-bold text-blue-900">{pendingSyncProducts}</p>
-          <p className="text-sm text-blue-700 mt-1">Not synced to Shopify</p>
+          <p className="text-sm text-blue-700 mt-1">{t.dashboard.pendingSync}</p>
         </div>
       </div>
 

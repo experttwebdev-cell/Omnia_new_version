@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
+import { useLanguage } from '../App';
 import {
   Search,
   RefreshCw,
@@ -21,6 +22,7 @@ type Product = Database['public']['Tables']['shopify_products']['Row'];
 type TagTab = 'all' | 'not-enriched' | 'enriched' | 'to-sync';
 
 export function SeoTag() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -334,10 +336,10 @@ export function SeoTag() {
   const productsNeedingSync = quickStats?.tags_pending_sync || products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
 
   const tabs = [
-    { id: 'all' as TagTab, label: 'Tous les produits', count: products.length },
-    { id: 'not-enriched' as TagTab, label: 'Tags non enrichis', count: productsNotEnriched },
-    { id: 'enriched' as TagTab, label: 'Tags enrichis', count: productsEnriched },
-    { id: 'to-sync' as TagTab, label: 'À synchroniser', count: productsNeedingSync }
+    { id: 'all' as TagTab, label: t.seo.allProducts, count: products.length },
+    { id: 'not-enriched' as TagTab, label: t.seo.tagsNotEnriched, count: productsNotEnriched },
+    { id: 'enriched' as TagTab, label: t.seo.tagsEnriched, count: productsEnriched },
+    { id: 'to-sync' as TagTab, label: t.seo.toSync, count: productsNeedingSync }
   ];
 
   return (
@@ -474,7 +476,7 @@ export function SeoTag() {
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <TagIcon className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">Total Products</h3>
+            <h3 className="font-semibold text-gray-900">{t.seo.totalProducts}</h3>
           </div>
           <p className="text-2xl font-bold text-gray-900">{products.length}</p>
         </div>
@@ -482,7 +484,7 @@ export function SeoTag() {
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <AlertCircle className="w-5 h-5 text-orange-600" />
-            <h3 className="font-semibold text-orange-900">Tags non enrichis</h3>
+            <h3 className="font-semibold text-orange-900">{t.seo.tagsNotEnriched}</h3>
           </div>
           <p className="text-2xl font-bold text-orange-900">{productsNotEnriched}</p>
         </div>
@@ -490,7 +492,7 @@ export function SeoTag() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <Clock className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-blue-900">Pending Sync</h3>
+            <h3 className="font-semibold text-blue-900">{t.products.pendingSync}</h3>
           </div>
           <p className="text-2xl font-bold text-blue-900">{productsNeedingSync}</p>
         </div>

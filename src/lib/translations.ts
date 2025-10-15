@@ -72,6 +72,11 @@ export interface Translations {
     vendor: string;
     category: string;
     noProducts: string;
+    totalProducts: string;
+    enrichedProducts: string;
+    syncedToShopify: string;
+    pendingSync: string;
+    ofTotal: string;
   };
   settings: {
     title: string;
@@ -118,6 +123,16 @@ export interface Translations {
     easy: string;
     medium: string;
     hard: string;
+    allProducts: string;
+    notEnriched: string;
+    toSync: string;
+    synced: string;
+    totalProducts: string;
+    optimizedProducts: string;
+    allCatalog: string;
+    tags: string;
+    tagsNotEnriched: string;
+    tagsEnriched: string;
   };
   blog: {
     autoBlogWriter: string;
@@ -287,7 +302,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Statut',
       vendor: 'Vendeur',
       category: 'Catégorie',
-      noProducts: 'Aucun produit trouvé'
+      noProducts: 'Aucun produit trouvé',
+      totalProducts: 'Total Produits',
+      enrichedProducts: 'Produits enrichis',
+      syncedToShopify: 'Synchronisés avec Shopify',
+      pendingSync: 'En attente de synchro',
+      ofTotal: 'du total'
     },
     settings: {
       title: 'Paramètres',
@@ -333,7 +353,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Difficulté',
       easy: 'Facile',
       medium: 'Moyen',
-      hard: 'Difficile'
+      hard: 'Difficile',
+      allProducts: 'Tous les produits',
+      notEnriched: 'Produits non enrichis',
+      toSync: 'À synchroniser',
+      synced: 'Synchronisés',
+      totalProducts: 'Total Produits',
+      optimizedProducts: 'Produits optimisés',
+      allCatalog: 'Tout le catalogue',
+      tags: 'Tags',
+      tagsNotEnriched: 'Tags non enrichis',
+      tagsEnriched: 'Tags enrichis'
     },
     blog: {
       autoBlogWriter: 'Rédacteur automatique',
@@ -501,7 +531,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Status',
       vendor: 'Vendor',
       category: 'Category',
-      noProducts: 'No products found'
+      noProducts: 'No products found',
+      totalProducts: 'Total Products',
+      enrichedProducts: 'Enriched Products',
+      syncedToShopify: 'Synced to Shopify',
+      pendingSync: 'Pending Sync',
+      ofTotal: 'of total'
     },
     settings: {
       title: 'Settings',
@@ -547,7 +582,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Difficulty',
       easy: 'Easy',
       medium: 'Medium',
-      hard: 'Hard'
+      hard: 'Hard',
+      allProducts: 'All Products',
+      notEnriched: 'Not Enriched',
+      toSync: 'To Sync',
+      synced: 'Synced',
+      totalProducts: 'Total Products',
+      optimizedProducts: 'Optimized Products',
+      allCatalog: 'All products in catalog',
+      tags: 'Tags',
+      tagsNotEnriched: 'Tags Not Enriched',
+      tagsEnriched: 'Tags Enriched'
     },
     blog: {
       autoBlogWriter: 'Auto Blog Writer',
@@ -715,7 +760,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Estado',
       vendor: 'Vendedor',
       category: 'Categoría',
-      noProducts: 'No se encontraron productos'
+      noProducts: 'No se encontraron productos',
+      totalProducts: 'Total Productos',
+      enrichedProducts: 'Productos enriquecidos',
+      syncedToShopify: 'Sincronizados con Shopify',
+      pendingSync: 'Pendiente de sincronización',
+      ofTotal: 'del total'
     },
     settings: {
       title: 'Configuración',
@@ -761,7 +811,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Dificultad',
       easy: 'Fácil',
       medium: 'Medio',
-      hard: 'Difícil'
+      hard: 'Difícil',
+      allProducts: 'Todos los productos',
+      notEnriched: 'No enriquecidos',
+      toSync: 'A sincronizar',
+      synced: 'Sincronizados',
+      totalProducts: 'Total Productos',
+      optimizedProducts: 'Productos optimizados',
+      allCatalog: 'Todo el catálogo',
+      tags: 'Etiquetas',
+      tagsNotEnriched: 'Etiquetas no enriquecidas',
+      tagsEnriched: 'Etiquetas enriquecidas'
     },
     blog: {
       autoBlogWriter: 'Escritor automático',

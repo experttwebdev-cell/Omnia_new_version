@@ -7,6 +7,7 @@ import { ProgressModal } from './ProgressModal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 import { getConnectionErrorMessage, testSupabaseConnection } from '../lib/connectionTest';
+import { useLanguage } from '../App';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -25,6 +26,7 @@ interface EnhancedProductListProps {
 }
 
 export function EnhancedProductList({ onProductSelect }: EnhancedProductListProps) {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -404,7 +406,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
         <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Total Products</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">{t.products.totalProducts}</p>
               <p className="text-3xl font-bold text-gray-900">{products.length}</p>
             </div>
             <Package className="w-10 h-10 text-blue-600 opacity-20" />
@@ -414,12 +416,12 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
         <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Produits enrichis</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">{t.products.enrichedProducts}</p>
               <p className="text-3xl font-bold text-gray-900">
                 {products.filter(p => p.enrichment_status === 'enriched').length}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {products.length > 0 ? Math.round((products.filter(p => p.enrichment_status === 'enriched').length / products.length) * 100) : 0}% of total
+                {products.length > 0 ? Math.round((products.filter(p => p.enrichment_status === 'enriched').length / products.length) * 100) : 0}% {t.products.ofTotal}
               </p>
             </div>
             <Sparkles className="w-10 h-10 text-green-600 opacity-20" />
@@ -429,7 +431,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
         <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Synced to Shopify</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">{t.products.syncedToShopify}</p>
               <p className="text-3xl font-bold text-gray-900">
                 {products.filter(p => p.seo_synced_to_shopify).length}
               </p>
@@ -441,7 +443,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
         <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Pending Sync</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">{t.products.pendingSync}</p>
               <p className="text-3xl font-bold text-gray-900">
                 {products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length}
               </p>

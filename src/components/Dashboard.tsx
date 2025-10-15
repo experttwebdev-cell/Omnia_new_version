@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../App';
 import {
   Package,
   TrendingUp,
@@ -40,6 +41,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onProductSelect }: DashboardProps) {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,25 +166,25 @@ export function Dashboard({ onProductSelect }: DashboardProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Products"
+          title={t.dashboard.totalProducts}
           value={stats.totalProducts.toLocaleString()}
           icon={Package}
           color="blue"
         />
         <StatCard
-          title="AI Enriched"
+          title={t.dashboard.aiEnriched}
           value={stats.enrichedProducts.toLocaleString()}
           icon={Sparkles}
           color="purple"
         />
         <StatCard
-          title="Synced to Shopify"
+          title={t.dashboard.syncedToShopify}
           value={stats.syncedProducts.toLocaleString()}
           icon={CheckCircle}
           color="green"
         />
         <StatCard
-          title="Pending Sync"
+          title={t.dashboard.pendingSync}
           value={stats.pendingSyncProducts.toLocaleString()}
           icon={Clock}
           color="orange"
@@ -332,12 +334,12 @@ export function Dashboard({ onProductSelect }: DashboardProps) {
                             {product.seo_synced_to_shopify ? (
                               <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                                 <CheckCircle className="w-3 h-3" />
-                                Synced
+                                {t.common.success}
                               </span>
                             ) : (
                               <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                                 <Clock className="w-3 h-3" />
-                                Pending Sync
+                                {t.dashboard.pendingSync}
                               </span>
                             )}
                             {product.ai_confidence_score > 0 && (
