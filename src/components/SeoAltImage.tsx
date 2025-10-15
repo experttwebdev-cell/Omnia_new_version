@@ -307,6 +307,7 @@ export function SeoAltImage() {
     <>
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
 
+      <div className="animate-fadeIn">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -559,6 +560,7 @@ export function SeoAltImage() {
             </p>
           </div>
         )}
+      </div>
       </div>
     </>
   );

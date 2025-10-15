@@ -265,7 +265,7 @@ export function SeoOptimization() {
   const pendingSyncProducts = products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition cursor-pointer"
              onClick={() => setFilters({ ...filters, enrichmentStatus: 'all', syncStatus: 'all' })}>

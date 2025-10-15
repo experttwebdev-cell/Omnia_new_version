@@ -9,6 +9,7 @@ import { SeoTag } from './components/SeoTag';
 import { SeoOpportunities } from './components/SeoOpportunities';
 import { BlogArticles } from './components/BlogArticles';
 import { AiBlogWriter } from './components/AiBlogWriter';
+import { GoogleShopping } from './components/GoogleShopping';
 import { Settings as SettingsComponent } from './components/Settings';
 import { CacheProvider } from './lib/cache';
 import { Language, getTranslation, type Translations } from './lib/translations';
@@ -32,7 +33,7 @@ import {
   Settings
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -112,6 +113,7 @@ function App() {
     { id: 'dashboard' as ViewType, name: t.nav.dashboard, icon: LayoutDashboard },
     { id: 'products' as ViewType, name: t.nav.products, icon: Package },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
+    { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
   ];
 
   const seoSubItems = [
@@ -275,6 +277,7 @@ function App() {
             <EnhancedProductList key={refreshKey} onProductSelect={handleProductSelect} />
           )}
           {activeView === 'stores' && <StoreManager onImportStart={handleImportComplete} />}
+          {activeView === 'google-shopping' && <GoogleShopping />}
           {activeView === 'seo-optimization' && <SeoOptimization />}
           {activeView === 'seo-alt-image' && <SeoAltImage />}
           {activeView === 'seo-tags' && <SeoTag />}

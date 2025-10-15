@@ -381,6 +381,7 @@ export function SeoTag() {
         </div>
       </div>
 
+      <div className="animate-fadeIn">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
@@ -553,6 +554,7 @@ export function SeoTag() {
             <p className="text-gray-600">No products match your search</p>
           </div>
         )}
+      </div>
       </div>
     </>
   );
