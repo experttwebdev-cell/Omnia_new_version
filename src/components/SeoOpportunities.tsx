@@ -72,7 +72,8 @@ export function SeoOpportunities() {
 
       const { data: productsData, error: productsError } = await supabase
         .from('shopify_products')
-        .select('*');
+        .select('*')
+        .limit(1000);
 
       if (productsError) throw productsError;
 
@@ -81,7 +82,7 @@ export function SeoOpportunities() {
       const { data: dbOpportunities, error: oppsError } = await supabase
         .from('blog_opportunities')
         .select('*')
-        .order('seo_opportunity_score', { ascending: false });
+        .order('score', { ascending: false });
 
       if (oppsError) {
         console.error('Error fetching opportunities:', oppsError);
@@ -91,15 +92,15 @@ export function SeoOpportunities() {
         const formattedOpps: Opportunity[] = dbOpportunities.map((opp: any) => ({
           id: opp.id,
           type: opp.type || 'category-guide',
-          title: opp.article_title,
-          description: opp.intro_excerpt || opp.meta_description,
-          targetKeywords: [...(opp.primary_keywords || []), ...(opp.secondary_keywords || [])],
-          productCount: opp.product_count || 0,
-          relatedProducts: opp.product_ids ? (productsData || []).filter(p => opp.product_ids.includes(p.id)).map(p => p.title) : [],
-          score: opp.seo_opportunity_score || 50,
+          title: opp.title,
+          description: opp.description || '',
+          targetKeywords: Array.isArray(opp.target_keywords) ? opp.target_keywords : [],
+          productCount: Array.isArray(opp.related_product_ids) ? opp.related_product_ids.length : 0,
+          relatedProducts: opp.related_product_ids ? (productsData || []).filter(p => opp.related_product_ids.includes(p.id)).map(p => p.title) : [],
+          score: opp.score || 50,
           estimatedWordCount: opp.estimated_word_count || 2000,
           difficulty: opp.difficulty || 'medium',
-          suggestedStructure: opp.structure?.h2_sections || []
+          suggestedStructure: []
         }));
         setOpportunities(formattedOpps);
       } else if ((productsData || []).length > 0) {
@@ -173,7 +174,7 @@ export function SeoOpportunities() {
           targetKeywords: [...(opp.primary_keywords || []), ...(opp.secondary_keywords || [])],
           productCount: opp.product_count || 0,
           relatedProducts: opp.product_ids ? products.filter(p => opp.product_ids.includes(p.id)).map(p => p.title) : [],
-          score: opp.seo_opportunity_score || 50,
+          score: opp.score || 50,
           estimatedWordCount: opp.estimated_word_count || 2000,
           difficulty: opp.difficulty || 'medium',
           suggestedStructure: opp.structure?.h2_sections || []
