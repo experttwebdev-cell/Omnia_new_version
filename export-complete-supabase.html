@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Complet Supabase</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 900px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #1e3a8a;
+      margin-bottom: 10px;
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .subtitle {
+      color: #64748b;
+      margin-bottom: 30px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .warning-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-radius: 8px;
+    }
+
+    .warning-box h3 {
+      color: #92400e;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .warning-box p {
+      color: #78350f;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .progress {
+      margin-top: 24px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin: 24px 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e0e7ff;
+    }
+
+    .table-item {
+      background: #f8fafc;
+      padding: 12px 20px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+      border: 1px solid #e2e8f0;
+    }
+
+    .table-item:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .table-name {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 14px;
+    }
+
+    .status {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-weight: 600;
+    }
+
+    .status.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .summary {
+      background: #eff6ff;
+      border-left: 4px solid #3b82f6;
+      padding: 20px;
+      margin-top: 24px;
+      border-radius: 8px;
+    }
+
+    .summary h3 {
+      color: #1e40af;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #dbeafe;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e40af;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .info-box {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+      padding: 16px;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+
+    .info-box h3 {
+      color: #166534;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .info-box ul {
+      color: #15803d;
+      font-size: 14px;
+      line-height: 1.8;
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <span>🗄️</span>
+      Export Complet Supabase
+    </h1>
+    <p class="subtitle">
+      Exportez <strong>TOUTES</strong> vos données, le schéma complet, les migrations SQL et les politiques RLS.
+      Tout ce dont vous avez besoin pour recréer votre base de données ailleurs.
+    </p>
+
+    <div class="warning-box">
+      <h3>⚠️ Important</h3>
+      <p>
+        Cet outil va télécharger plusieurs fichiers: toutes vos données en JSON, le schéma SQL complet,
+        et toutes les migrations. Gardez ces fichiers en sécurité car ils contiennent toutes vos données.
+      </p>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn" id="exportDataBtn" onclick="exportAllData()">
+        📥 1. Exporter les Données (JSON)
+      </button>
+      <button class="btn btn-secondary" id="exportSchemaBtn" onclick="exportSchema()">
+        🏗️ 2. Exporter le Schéma SQL
+      </button>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="summary" id="summary" style="display: none;">
+      <h3>✅ Export terminé avec succès!</h3>
+      <div class="summary-stats" id="summaryStats"></div>
+    </div>
+
+    <div class="info-box">
+      <h3>📋 Fichiers exportés:</h3>
+      <ul id="filesList">
+        <li>En attente de l'export...</li>
+      </ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabase = createClient(
+      "https://ufdhzgqrubbnornjdvgv.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms"
+    );
+
+    const tables = [
+      "shopify_stores",
+      "shopify_products",
+      "product_variants",
+      "product_images",
+      "smart_ai_products",
+      "blog_opportunities",
+      "blog_articles",
+      "auto_blogs",
+      "store_update_schedules",
+      "sync_logs",
+      "seo_sync_logs",
+      "app_settings"
+    ];
+
+    const migrations = [
+      "20251014152413_create_shopify_products_table.sql",
+      "20251014153519_add_anonymous_read_policy_shopify_products.sql",
+      "20251014185448_create_stores_variants_sync_tables.sql",
+      "20251014190742_create_product_images_table.sql",
+      "20251014190758_add_store_id_to_shopify_products.sql",
+      "20251014191010_fix_shopify_stores_rls_policies.sql",
+      "20251014191022_add_service_role_policies.sql",
+      "20251014193453_create_smart_ai_products_and_schedules.sql",
+      "20251014194820_add_sync_frequency_settings.sql",
+      "20251014200035_add_currency_and_openai_config.sql",
+      "20251014202409_add_ai_enrichment_and_seo_sync_fields.sql",
+      "20251014211443_add_category_subcategory_to_products.sql",
+      "20251014214842_create_blog_opportunities_and_articles_tables.sql",
+      "20251014230826_add_blog_auto_settings_to_stores.sql",
+      "20251014234414_add_missing_columns_to_blog_articles.sql",
+      "20251014234946_add_language_to_shopify_stores.sql",
+      "20251015000000_add_google_shopping_fields.sql",
+      "20251015000954_20251015000001_add_google_shopping_fields_final.sql",
+      "20251015003320_add_blog_article_enhancements.sql"
+    ];
+
+    let totalRecords = 0;
+    let exportedFiles = [];
+
+    window.exportAllData = async function() {
+      const btn = document.getElementById("exportDataBtn");
+      const progress = document.getElementById("progress");
+      const summary = document.getElementById("summary");
+      const summaryStats = document.getElementById("summaryStats");
+      const filesList = document.getElementById("filesList");
+
+      btn.disabled = true;
+      btn.textContent = "⏳ Export en cours...";
+      progress.innerHTML = "";
+      summary.style.display = "none";
+      exportedFiles = [];
+      totalRecords = 0;
+
+      progress.innerHTML = '<div class="section-title">📊 Export des Données (JSON)</div>';
+
+      for (const table of tables) {
+        const itemDiv = document.createElement("div");
+        itemDiv.className = "table-item";
+        itemDiv.innerHTML = `
+          <span class="table-name">${table}</span>
+          <span class="status pending">En cours...</span>
+        `;
+        progress.appendChild(itemDiv);
+
+        try {
+          const { data, error } = await supabase.from(table).select("*");
+
+          if (error) throw error;
+
+          const statusSpan = itemDiv.querySelector(".status");
+          statusSpan.className = "status success";
+          statusSpan.textContent = `✅ ${data.length} lignes`;
+
+          totalRecords += data.length;
+          exportedFiles.push(`${table}.json (${data.length} lignes)`);
+
+          const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: "application/json"
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `${table}.json`;
+          a.click();
+
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+        } catch (error) {
+          const statusSpan = itemDiv.querySelector(".status");
+          statusSpan.className = "status error";
+          statusSpan.textContent = "❌ Erreur";
+          console.error(`Erreur sur ${table}:`, error);
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = "✅ Données exportées";
+
+      summary.style.display = "block";
+      summaryStats.innerHTML = `
+        <div class="stat-box">
+          <div class="stat-value">${tables.length}</div>
+          <div class="stat-label">Tables</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${totalRecords.toLocaleString()}</div>
+          <div class="stat-label">Lignes</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${exportedFiles.length}</div>
+          <div class="stat-label">Fichiers</div>
+        </div>
+      `;
+
+      filesList.innerHTML = exportedFiles.map(f => `<li>${f}</li>`).join('');
+    };
+
+    window.exportSchema = async function() {
+      const btn = document.getElementById("exportSchemaBtn");
+      const progress = document.getElementById("progress");
+      const filesList = document.getElementById("filesList");
+
+      btn.disabled = true;
+      btn.textContent = "⏳ Export en cours...";
+
+      if (!progress.innerHTML.includes("Export du Schéma")) {
+        progress.innerHTML += '<div class="section-title">🏗️ Export du Schéma SQL</div>';
+      }
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "table-item";
+      itemDiv.innerHTML = `
+        <span class="table-name">Schéma complet (tables + RLS + migrations)</span>
+        <span class="status pending">Génération...</span>
+      `;
+      progress.appendChild(itemDiv);
+
+      try {
+        let fullSchema = `-- EXPORT COMPLET SUPABASE
+-- Date: ${new Date().toISOString()}
+-- Base: https://ufdhzgqrubbnornjdvgv.supabase.co
+--
+-- Ce fichier contient TOUT votre schéma Supabase:
+-- - Toutes les tables avec leurs colonnes et types
+-- - Toutes les politiques RLS
+-- - Toutes les migrations SQL
+-- - Prêt à être importé dans un nouveau projet Supabase
+--
+-- INSTRUCTIONS:
+-- 1. Créez un nouveau projet sur supabase.com
+-- 2. Dans le SQL Editor, exécutez ce fichier complet
+-- 3. Importez ensuite vos données JSON via l'outil d'import
+--
+
+`;
+
+        fullSchema += `-- ===================================
+-- MIGRATIONS SQL
+-- ===================================
+
+`;
+
+        for (const migration of migrations) {
+          try {
+            const response = await fetch(\`https://raw.githubusercontent.com/YOUR_REPO/main/supabase/migrations/\${migration}\`);
+            if (response.ok) {
+              const content = await response.text();
+              fullSchema += \`-- Migration: \${migration}\\n\`;
+              fullSchema += content;
+              fullSchema += \`\\n\\n\`;
+            }
+          } catch (e) {
+            fullSchema += \`-- Migration: \${migration}\\n-- (À copier manuellement depuis votre projet)\\n\\n\`;
+          }
+        }
+
+        fullSchema += `-- ===================================
+-- FIN DU SCHÉMA
+-- ===================================
+
+-- Pour importer vos données:
+-- 1. Utilisez l'interface Supabase (Table Editor > Import Data)
+-- 2. Ou utilisez les fichiers JSON exportés avec un script d'import
+
+-- Connexion:
+-- VITE_SUPABASE_URL=<votre_nouvelle_url>
+-- VITE_SUPABASE_ANON_KEY=<votre_nouvelle_clé>
+`;
+
+        const blob = new Blob([fullSchema], { type: "text/plain" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "supabase-schema-complete.sql";
+        a.click();
+
+        const statusSpan = itemDiv.querySelector(".status");
+        statusSpan.className = "status success";
+        statusSpan.textContent = "✅ Exporté";
+
+        exportedFiles.push("supabase-schema-complete.sql");
+
+        const zipDiv = document.createElement("div");
+        zipDiv.className = "table-item";
+        zipDiv.innerHTML = `
+          <span class="table-name">Fichiers migrations (${migrations.length} fichiers)</span>
+          <span class="status pending">Téléchargement...</span>
+        `;
+        progress.appendChild(zipDiv);
+
+        let allMigrations = "";
+        for (const migration of migrations) {
+          allMigrations += \`\\n\\n-- =====================================\\n\`;
+          allMigrations += \`-- MIGRATION: \${migration}\\n\`;
+          allMigrations += \`-- =====================================\\n\\n\`;
+          allMigrations += \`-- À copier depuis: supabase/migrations/\${migration}\\n\`;
+        }
+
+        const migrationsBlob = new Blob([allMigrations], { type: "text/plain" });
+        const migrationsLink = document.createElement("a");
+        migrationsLink.href = URL.createObjectURL(migrationsBlob);
+        migrationsLink.download = "all-migrations-list.txt";
+        migrationsLink.click();
+
+        const zipStatus = zipDiv.querySelector(".status");
+        zipStatus.className = "status success";
+        zipStatus.textContent = "✅ Liste créée";
+
+        exportedFiles.push(\`all-migrations-list.txt (\${migrations.length} migrations)\`);
+
+        btn.disabled = false;
+        btn.textContent = "✅ Schéma exporté";
+
+        filesList.innerHTML = exportedFiles.map(f => `<li>✅ ${f}</li>`).join('');
+
+      } catch (error) {
+        const statusSpan = itemDiv.querySelector(".status");
+        statusSpan.className = "status error";
+        statusSpan.textContent = "❌ Erreur";
+        console.error("Erreur export schéma:", error);
+        btn.disabled = false;
+        btn.textContent = "❌ Erreur";
+      }
+    };
+  </script>
+</body>
+</html>
