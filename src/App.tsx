@@ -57,9 +57,19 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [language, setLanguage] = useState<Language>('en');
   const [languageLoaded, setLanguageLoaded] = useState(false);
+  const [configError, setConfigError] = useState(false);
   const t = getTranslation(language);
 
   useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://placeholder.supabase.co') {
+      setConfigError(true);
+      setLanguageLoaded(true);
+      return;
+    }
+
     const loadLanguage = async () => {
       try {
         const { data: stores } = await supabase
