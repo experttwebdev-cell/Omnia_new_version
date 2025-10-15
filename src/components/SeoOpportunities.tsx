@@ -19,6 +19,8 @@ import {
 import type { Database } from '../lib/database.types';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { LoadingAnimation } from './LoadingAnimation';
+import { useLanguage } from '../App';
+import { opportunityTemplates } from '../lib/language';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -37,6 +39,7 @@ interface Opportunity {
 }
 
 export function SeoOpportunities() {
+  const { language } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,10 @@ export function SeoOpportunities() {
   const [filterType, setFilterType] = useState<string>('all');
   const [generatingSmart, setGeneratingSmart] = useState(false);
   const { notifications, addNotification, dismissNotification } = useNotifications();
+
+  const supportedLangs: ('fr' | 'en')[] = ['fr', 'en'];
+  const templateLang = supportedLangs.includes(language as 'fr' | 'en') ? (language as 'fr' | 'en') : 'en';
+  const templates = opportunityTemplates[templateLang];
 
   useEffect(() => {
     fetchProducts();
@@ -138,7 +145,7 @@ export function SeoOpportunities() {
         },
         body: JSON.stringify({
           products: productsData,
-          language: 'fr'
+          language: language
         }),
       });
 
@@ -212,57 +219,34 @@ export function SeoOpportunities() {
     categoryMap.forEach((categoryProducts, category) => {
       if (categoryProducts.length >= 3) {
         const avgPrice = categoryProducts.reduce((sum, p) => sum + p.price, 0) / categoryProducts.length;
-        const keywords = [
-          `${category} buying guide`,
-          `best ${category.toLowerCase()}`,
-          `${category.toLowerCase()} comparison`,
-          `how to choose ${category.toLowerCase()}`
-        ];
 
         opps.push({
           id: `cat-guide-${category}`,
           type: 'category-guide',
-          title: `The Ultimate ${category} Buying Guide`,
-          description: `Create a comprehensive guide for customers looking to purchase ${category.toLowerCase()} products. Feature ${categoryProducts.length} products with detailed comparisons and recommendations.`,
-          targetKeywords: keywords,
+          title: templates.categoryGuide.title(category),
+          description: templates.categoryGuide.description(category, categoryProducts.length),
+          targetKeywords: templates.categoryGuide.keywords(category),
           productCount: categoryProducts.length,
           relatedProducts: categoryProducts.map((p) => p.title).slice(0, 10),
           score: Math.min(100, categoryProducts.length * 12),
           estimatedWordCount: 2000 + (categoryProducts.length * 100),
           difficulty: categoryProducts.length > 10 ? 'hard' : categoryProducts.length > 5 ? 'medium' : 'easy',
-          suggestedStructure: [
-            'Introduction to ' + category,
-            'Key Features to Consider',
-            'Product Comparisons',
-            'Budget vs Premium Options',
-            'Expert Recommendations',
-            'Frequently Asked Questions'
-          ]
+          suggestedStructure: templates.categoryGuide.structure(category)
         });
 
         if (categoryProducts.length >= 5) {
           opps.push({
             id: `cat-comp-${category}`,
             type: 'comparison',
-            title: `Top ${Math.min(10, categoryProducts.length)} ${category} Products Compared`,
-            description: `Side-by-side comparison of the best ${category.toLowerCase()} products. Include detailed specs, pricing, pros and cons.`,
-            targetKeywords: [
-              `${category.toLowerCase()} comparison`,
-              `best ${category.toLowerCase()} 2024`,
-              `${category.toLowerCase()} reviews`
-            ],
+            title: templates.comparison.title(category, categoryProducts.length),
+            description: templates.comparison.description(category),
+            targetKeywords: templates.comparison.keywords(category),
             productCount: categoryProducts.length,
             relatedProducts: categoryProducts.map((p) => p.title).slice(0, 10),
             score: Math.min(95, categoryProducts.length * 10),
             estimatedWordCount: 1500 + (categoryProducts.length * 80),
             difficulty: 'medium',
-            suggestedStructure: [
-              'Quick Comparison Table',
-              'Detailed Product Reviews',
-              'Price Analysis',
-              'Best for Different Needs',
-              'Final Verdict'
-            ]
+            suggestedStructure: templates.comparison.structure
           });
         }
       }
@@ -274,23 +258,19 @@ export function SeoOpportunities() {
         opps.push({
           id: `subcat-${key}`,
           type: 'category-guide',
-          title: `${subCategory} ${category} Guide`,
-          description: `Specialized guide focusing on ${subCategory.toLowerCase()} options within ${category.toLowerCase()}. Cover ${subCatProducts.length} products.`,
-          targetKeywords: [
-            `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
-            `best ${subCategory.toLowerCase()}`,
-            `${subCategory.toLowerCase()} guide`
-          ],
+          title: templates.subcategory.title(subCategory, category),
+          description: templates.subcategory.description(subCategory, category, subCatProducts.length),
+          targetKeywords: templates.subcategory.keywords(subCategory, category),
           productCount: subCatProducts.length,
           relatedProducts: subCatProducts.map((p) => p.title),
           score: Math.min(90, subCatProducts.length * 11),
           estimatedWordCount: 1500 + (subCatProducts.length * 90),
           difficulty: 'easy',
           suggestedStructure: [
-            `What Makes ${subCategory} Special`,
-            'Product Features Overview',
-            'Top Picks',
-            'Buying Tips'
+            `${language === 'fr' ? 'Ce qui rend' : 'What Makes'} ${subCategory} ${language === 'fr' ? 'spécial' : 'Special'}`,
+            language === 'fr' ? 'Aperçu des caractéristiques' : 'Product Features Overview',
+            language === 'fr' ? 'Meilleurs choix' : 'Top Picks',
+            language === 'fr' ? 'Conseils d\'achat' : 'Buying Tips'
           ]
         });
       }
@@ -313,22 +293,19 @@ export function SeoOpportunities() {
         opps.push({
           id: `color-${key}`,
           type: 'product-spotlight',
-          title: `Best ${color} ${category} Products`,
-          description: `Curated collection of ${color.toLowerCase()} ${category.toLowerCase()} items. Perfect for customers with specific color preferences.`,
-          targetKeywords: [
-            `${color.toLowerCase()} ${category.toLowerCase()}`,
-            `${category.toLowerCase()} in ${color.toLowerCase()}`
-          ],
+          title: templates.color.title(color, category),
+          description: templates.color.description(color, category),
+          targetKeywords: templates.color.keywords(color, category),
           productCount: colorProducts.length,
           relatedProducts: colorProducts.map((p) => p.title),
           score: Math.min(85, colorProducts.length * 9),
           estimatedWordCount: 1000 + (colorProducts.length * 70),
           difficulty: 'easy',
           suggestedStructure: [
-            'Why Choose ' + color,
-            'Featured Products',
-            'Styling Tips',
-            'Shop the Collection'
+            `${language === 'fr' ? 'Pourquoi choisir' : 'Why Choose'} ${color}`,
+            language === 'fr' ? 'Produits en vedette' : 'Featured Products',
+            language === 'fr' ? 'Conseils de style' : 'Styling Tips',
+            language === 'fr' ? 'Découvrir la collection' : 'Shop the Collection'
           ]
         });
       }
@@ -351,23 +328,19 @@ export function SeoOpportunities() {
         opps.push({
           id: `material-${key}`,
           type: 'how-to',
-          title: `${material} ${category}: Benefits & Care Guide`,
-          description: `Educational content about ${material.toLowerCase()} ${category.toLowerCase()}. Cover benefits, maintenance, and product recommendations.`,
-          targetKeywords: [
-            `${material.toLowerCase()} ${category.toLowerCase()}`,
-            `${material.toLowerCase()} care guide`,
-            `benefits of ${material.toLowerCase()}`
-          ],
+          title: templates.material.title(material, category),
+          description: templates.material.description(material, category),
+          targetKeywords: templates.material.keywords(material, category),
           productCount: materialProducts.length,
           relatedProducts: materialProducts.map((p) => p.title),
           score: Math.min(88, materialProducts.length * 10),
           estimatedWordCount: 1200 + (materialProducts.length * 60),
           difficulty: 'medium',
           suggestedStructure: [
-            `What is ${material}?`,
-            'Advantages & Disadvantages',
-            'Care & Maintenance',
-            'Recommended Products',
+            `${language === 'fr' ? 'Qu\'est-ce que' : 'What is'} ${material}?`,
+            language === 'fr' ? 'Avantages et inconvénients' : 'Advantages & Disadvantages',
+            language === 'fr' ? 'Entretien et maintenance' : 'Care & Maintenance',
+            language === 'fr' ? 'Produits recommandés' : 'Recommended Products',
             'FAQs'
           ]
         });
@@ -389,12 +362,16 @@ export function SeoOpportunities() {
         opps.push({
           id: `vendor-${vendor}`,
           type: 'product-spotlight',
-          title: `${vendor} Brand Spotlight: Top Products & Reviews`,
-          description: `In-depth look at ${vendor}'s product line. Feature ${vendorProducts.length} items with detailed reviews and brand story.`,
+          title: language === 'fr'
+            ? `${vendor} : Produits Phares et Avis`
+            : `${vendor} Brand Spotlight: Top Products & Reviews`,
+          description: language === 'fr'
+            ? `Découverte approfondie de la gamme ${vendor}. Présentation de ${vendorProducts.length} produits avec avis détaillés et histoire de la marque.`
+            : `In-depth look at ${vendor}'s product line. Feature ${vendorProducts.length} items with detailed reviews and brand story.`,
           targetKeywords: [
-            `${vendor.toLowerCase()} products`,
-            `${vendor.toLowerCase()} review`,
-            `best ${vendor.toLowerCase()}`
+            `${vendor.toLowerCase()} ${language === 'fr' ? 'produits' : 'products'}`,
+            `${vendor.toLowerCase()} ${language === 'fr' ? 'avis' : 'review'}`,
+            `${language === 'fr' ? 'meilleur' : 'best'} ${vendor.toLowerCase()}`
           ],
           productCount: vendorProducts.length,
           relatedProducts: vendorProducts.map((p) => p.title).slice(0, 10),
@@ -402,20 +379,20 @@ export function SeoOpportunities() {
           estimatedWordCount: 1800 + (vendorProducts.length * 80),
           difficulty: 'medium',
           suggestedStructure: [
-            `About ${vendor}`,
-            'Brand Philosophy',
-            'Featured Products',
-            'Customer Reviews',
-            'Where to Buy'
+            `${language === 'fr' ? 'À propos de' : 'About'} ${vendor}`,
+            language === 'fr' ? 'Philosophie de la marque' : 'Brand Philosophy',
+            language === 'fr' ? 'Produits en vedette' : 'Featured Products',
+            language === 'fr' ? 'Avis clients' : 'Customer Reviews',
+            language === 'fr' ? 'Où acheter' : 'Where to Buy'
           ]
         });
       }
     });
 
     const priceRanges = [
-      { min: 0, max: 50, label: 'Budget-Friendly' },
-      { min: 50, max: 150, label: 'Mid-Range' },
-      { min: 150, max: Infinity, label: 'Premium' }
+      { min: 0, max: 50, label: language === 'fr' ? 'Économique' : 'Budget-Friendly' },
+      { min: 50, max: 150, label: language === 'fr' ? 'Milieu de gamme' : 'Mid-Range' },
+      { min: 150, max: Infinity, label: language === 'fr' ? 'Premium' : 'Premium' }
     ];
 
     priceRanges.forEach(range => {
@@ -433,26 +410,23 @@ export function SeoOpportunities() {
 
       categoryGroups.forEach((products, category) => {
         if (products.length >= 5) {
+          const currencySymbol = language === 'fr' ? '€' : '$';
           opps.push({
             id: `price-${range.label}-${category}`,
             type: 'comparison',
-            title: `Best ${range.label} ${category} Under $${range.max === Infinity ? '500+' : range.max}`,
-            description: `Curated selection of ${range.label.toLowerCase()} ${category.toLowerCase()} products. Help customers find quality options within their budget.`,
-            targetKeywords: [
-              `affordable ${category.toLowerCase()}`,
-              `${range.label.toLowerCase()} ${category.toLowerCase()}`,
-              `best ${category.toLowerCase()} under ${range.max}`
-            ],
+            title: templates.priceRange.title(range.label, category, range.max),
+            description: templates.priceRange.description(range.label, category),
+            targetKeywords: templates.priceRange.keywords(category, range.label, range.max),
             productCount: products.length,
             relatedProducts: products.map((p) => p.title).slice(0, 8),
             score: Math.min(87, products.length * 8),
             estimatedWordCount: 1300 + (products.length * 70),
             difficulty: 'easy',
             suggestedStructure: [
-              'Value for Money',
-              'Top Picks by Price',
-              'What to Expect',
-              'Shopping Tips'
+              language === 'fr' ? 'Rapport qualité-prix' : 'Value for Money',
+              language === 'fr' ? 'Meilleurs choix par prix' : 'Top Picks by Price',
+              language === 'fr' ? 'À quoi s\'attendre' : 'What to Expect',
+              language === 'fr' ? 'Conseils d\'achat' : 'Shopping Tips'
             ]
           });
         }

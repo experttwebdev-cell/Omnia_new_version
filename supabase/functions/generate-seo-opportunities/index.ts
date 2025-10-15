@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { products, language = 'fr' } = await req.json();
+    const { products, language = 'en' } = await req.json();
 
     if (!products || !Array.isArray(products) || products.length === 0) {
       return new Response(
@@ -50,6 +50,39 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    const languageInstructions: Record<string, any> = {
+      fr: {
+        expertRole: "Tu es un expert SEO et rédacteur e-commerce spécialisé dans le mobilier et la décoration.",
+        analyzeText: "Analyse ces informations de produits",
+        generateText: "Génère 3 idées d'articles de blog SEO optimisés pour cette catégorie.",
+        toneText: "Le ton doit être naturel, engageant, et orienté conversion."
+      },
+      en: {
+        expertRole: "You are an SEO expert and e-commerce writer specialized in furniture and home decor.",
+        analyzeText: "Analyze this product information",
+        generateText: "Generate 3 SEO-optimized blog article ideas for this category.",
+        toneText: "The tone should be natural, engaging, and conversion-oriented."
+      },
+      es: {
+        expertRole: "Eres un experto en SEO y redactor de comercio electrónico especializado en muebles y decoración.",
+        analyzeText: "Analiza esta información de productos",
+        generateText: "Genera 3 ideas de artículos de blog optimizados para SEO para esta categoría.",
+        toneText: "El tono debe ser natural, atractivo y orientado a la conversión."
+      },
+      de: {
+        expertRole: "Sie sind ein SEO-Experte und E-Commerce-Autor, spezialisiert auf Möbel und Heimdekoration.",
+        analyzeText: "Analysieren Sie diese Produktinformationen",
+        generateText: "Generieren Sie 3 SEO-optimierte Blog-Artikel-Ideen für diese Kategorie.",
+        toneText: "Der Ton sollte natürlich, ansprechend und konversionsorientiert sein."
+      },
+      it: {
+        expertRole: "Sei un esperto SEO e scrittore di e-commerce specializzato in mobili e arredamento.",
+        analyzeText: "Analizza queste informazioni sui prodotti",
+        generateText: "Genera 3 idee per articoli di blog ottimizzati per SEO per questa categoria.",
+        toneText: "Il tono deve essere naturale, coinvolgente e orientato alla conversione."
+      }
+    };
 
     const categoryGroups = new Map<string, Product[]>();
     const subCategoryGroups = new Map<string, Product[]>();
@@ -83,31 +116,33 @@ Deno.serve(async (req: Request) => {
             .filter(Boolean)
         )].slice(0, 10);
 
-        const prompt = `Tu es un expert SEO et rédacteur e-commerce spécialisé dans le mobilier et la décoration.
+        const langInstr = languageInstructions[language] || languageInstructions['en'];
 
-Analyse ces informations de produits :
-- Catégorie : ${category}
-- Nombre de produits : ${categoryProducts.length}
-- Exemples de produits : ${sampleProducts.map(p => p.title).join(', ')}
-- Mots-clés disponibles : ${keywords.join(', ')}
-- Langue cible : ${language}
+        const prompt = `${langInstr.expertRole}
 
-Génère 3 idées d'articles de blog SEO optimisés pour cette catégorie.
+${langInstr.analyzeText}:
+- ${language === 'fr' ? 'Catégorie' : language === 'es' ? 'Categoría' : language === 'de' ? 'Kategorie' : language === 'it' ? 'Categoria' : 'Category'}: ${category}
+- ${language === 'fr' ? 'Nombre de produits' : language === 'es' ? 'Número de productos' : language === 'de' ? 'Anzahl der Produkte' : language === 'it' ? 'Numero di prodotti' : 'Number of products'}: ${categoryProducts.length}
+- ${language === 'fr' ? 'Exemples de produits' : language === 'es' ? 'Ejemplos de productos' : language === 'de' ? 'Produktbeispiele' : language === 'it' ? 'Esempi di prodotti' : 'Product examples'}: ${sampleProducts.map(p => p.title).join(', ')}
+- ${language === 'fr' ? 'Mots-clés disponibles' : language === 'es' ? 'Palabras clave disponibles' : language === 'de' ? 'Verfügbare Schlüsselwörter' : language === 'it' ? 'Parole chiave disponibili' : 'Available keywords'}: ${keywords.join(', ')}
+- ${language === 'fr' ? 'Langue cible' : language === 'es' ? 'Idioma objetivo' : language === 'de' ? 'Zielsprache' : language === 'it' ? 'Lingua di destinazione' : 'Target language'}: ${language}
 
-Pour chaque article, fournis :
-1. **Titre SEO optimisé** (moins de 65 caractères)
-2. **Meta description** (150-160 caractères)
-3. **Type d'article** : choisir parmi "category-guide", "comparison", "how-to", "product-spotlight", "seasonal"
-4. **Mots-clés principaux** (3-5 keywords)
-5. **Mots-clés secondaires** (3-5 keywords)
-6. **Structure de l'article** (4-6 sections H2)
-7. **Appel à l'action** (CTA vers produit/catégorie)
-8. **Niveau d'opportunité SEO** : score de 0 à 100 basé sur la pertinence et le potentiel
-9. **Difficulté** : "easy", "medium", ou "hard"
-10. **Extrait introductif** (2-3 phrases engageantes)
-11. **Nombre de mots estimé**
+${langInstr.generateText}
 
-Réponds UNIQUEMENT en JSON valide avec ce format exact :
+${language === 'fr' ? 'Pour chaque article, fournis' : language === 'es' ? 'Para cada artículo, proporciona' : language === 'de' ? 'Für jeden Artikel geben Sie an' : language === 'it' ? 'Per ogni articolo, fornisci' : 'For each article, provide'}:
+1. **${language === 'fr' ? 'Titre SEO optimisé' : language === 'es' ? 'Título SEO optimizado' : language === 'de' ? 'SEO-optimierter Titel' : language === 'it' ? 'Titolo SEO ottimizzato' : 'SEO-optimized title'}** (${language === 'fr' ? 'moins de' : language === 'es' ? 'menos de' : language === 'de' ? 'weniger als' : language === 'it' ? 'meno di' : 'less than'} 65 ${language === 'fr' ? 'caractères' : language === 'es' ? 'caracteres' : language === 'de' ? 'Zeichen' : language === 'it' ? 'caratteri' : 'characters'})
+2. **Meta description** (150-160 ${language === 'fr' ? 'caractères' : language === 'es' ? 'caracteres' : language === 'de' ? 'Zeichen' : language === 'it' ? 'caratteri' : 'characters'})
+3. **${language === 'fr' ? 'Type d\'article' : language === 'es' ? 'Tipo de artículo' : language === 'de' ? 'Artikeltyp' : language === 'it' ? 'Tipo di articolo' : 'Article type'}**: "category-guide", "comparison", "how-to", "product-spotlight", "seasonal"
+4. **${language === 'fr' ? 'Mots-clés principaux' : language === 'es' ? 'Palabras clave principales' : language === 'de' ? 'Hauptschlüsselwörter' : language === 'it' ? 'Parole chiave principali' : 'Primary keywords'}** (3-5 keywords)
+5. **${language === 'fr' ? 'Mots-clés secondaires' : language === 'es' ? 'Palabras clave secundarias' : language === 'de' ? 'Sekundäre Schlüsselwörter' : language === 'it' ? 'Parole chiave secondarie' : 'Secondary keywords'}** (3-5 keywords)
+6. **${language === 'fr' ? 'Structure de l\'article' : language === 'es' ? 'Estructura del artículo' : language === 'de' ? 'Artikelstruktur' : language === 'it' ? 'Struttura dell\'articolo' : 'Article structure'}** (4-6 ${language === 'fr' ? 'sections' : language === 'es' ? 'secciones' : language === 'de' ? 'Abschnitte' : language === 'it' ? 'sezioni' : 'sections'} H2)
+7. **${language === 'fr' ? 'Appel à l\'action' : language === 'es' ? 'Llamada a la acción' : language === 'de' ? 'Call-to-Action' : language === 'it' ? 'Invito all\'azione' : 'Call to action'}** (CTA)
+8. **${language === 'fr' ? 'Niveau d\'opportunité SEO' : language === 'es' ? 'Nivel de oportunidad SEO' : language === 'de' ? 'SEO-Opportunitätsniveau' : language === 'it' ? 'Livello di opportunità SEO' : 'SEO opportunity level'}**: score 0-100
+9. **${language === 'fr' ? 'Difficulté' : language === 'es' ? 'Dificultad' : language === 'de' ? 'Schwierigkeit' : language === 'it' ? 'Difficoltà' : 'Difficulty'}**: "easy", "medium", "hard"
+10. **${language === 'fr' ? 'Extrait introductif' : language === 'es' ? 'Extracto introductorio' : language === 'de' ? 'Einleitungsauszug' : language === 'it' ? 'Estratto introduttivo' : 'Intro excerpt'}** (2-3 ${language === 'fr' ? 'phrases' : language === 'es' ? 'frases' : language === 'de' ? 'Sätze' : language === 'it' ? 'frasi' : 'sentences'})
+11. **${language === 'fr' ? 'Nombre de mots estimé' : language === 'es' ? 'Número de palabras estimado' : language === 'de' ? 'Geschätzte Wortzahl' : language === 'it' ? 'Numero di parole stimato' : 'Estimated word count'}**
+
+${language === 'fr' ? 'Réponds UNIQUEMENT en JSON valide avec ce format exact' : language === 'es' ? 'Responde SOLO en JSON válido con este formato exacto' : language === 'de' ? 'Antworten Sie NUR in gültigem JSON mit diesem genauen Format' : language === 'it' ? 'Rispondi SOLO in JSON valido con questo formato esatto' : 'Respond ONLY in valid JSON with this exact format'}:
 {
   "opportunities": [
     {
@@ -129,7 +164,7 @@ Réponds UNIQUEMENT en JSON valide avec ce format exact :
   ]
 }
 
-Le ton doit être naturel, engageant, et orienté conversion.`;
+${langInstr.toneText}`;
 
         const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -142,7 +177,7 @@ Le ton doit être naturel, engageant, et orienté conversion.`;
             messages: [
               {
                 role: "system",
-                content: "Tu es un expert SEO spécialisé dans l'e-commerce. Tu génères des idées d'articles de blog optimisés pour le référencement naturel."
+                content: langInstr.expertRole
               },
               {
                 role: "user",
@@ -208,19 +243,21 @@ Le ton doit être naturel, engageant, et orienté conversion.`;
             .filter(Boolean)
         )].slice(0, 8);
 
-        const prompt = `Tu es un expert SEO et rédacteur e-commerce.
+        const langInstr = languageInstructions[language] || languageInstructions['en'];
 
-Analyse ces informations de produits :
-- Catégorie : ${category}
-- Sous-catégorie : ${subCategory}
-- Nombre de produits : ${subCatProducts.length}
-- Exemples : ${sampleProducts.map(p => p.title).join(', ')}
-- Mots-clés : ${keywords.join(', ')}
-- Langue : ${language}
+        const prompt = `${langInstr.expertRole}
 
-Génère 1 idée d'article de blog SEO optimisé spécifiquement pour cette sous-catégorie.
+${langInstr.analyzeText}:
+- ${language === 'fr' ? 'Catégorie' : language === 'es' ? 'Categoría' : language === 'de' ? 'Kategorie' : language === 'it' ? 'Categoria' : 'Category'}: ${category}
+- ${language === 'fr' ? 'Sous-catégorie' : language === 'es' ? 'Subcategoría' : language === 'de' ? 'Unterkategorie' : language === 'it' ? 'Sottocategoria' : 'Subcategory'}: ${subCategory}
+- ${language === 'fr' ? 'Nombre de produits' : language === 'es' ? 'Número de productos' : language === 'de' ? 'Anzahl der Produkte' : language === 'it' ? 'Numero di prodotti' : 'Number of products'}: ${subCatProducts.length}
+- ${language === 'fr' ? 'Exemples' : language === 'es' ? 'Ejemplos' : language === 'de' ? 'Beispiele' : language === 'it' ? 'Esempi' : 'Examples'}: ${sampleProducts.map(p => p.title).join(', ')}
+- ${language === 'fr' ? 'Mots-clés' : language === 'es' ? 'Palabras clave' : language === 'de' ? 'Schlüsselwörter' : language === 'it' ? 'Parole chiave' : 'Keywords'}: ${keywords.join(', ')}
+- ${language === 'fr' ? 'Langue' : language === 'es' ? 'Idioma' : language === 'de' ? 'Sprache' : language === 'it' ? 'Lingua' : 'Language'}: ${language}
 
-Réponds en JSON avec le même format que précédemment (1 seule opportunité).`;
+${language === 'fr' ? 'Génère 1 idée d\'article de blog SEO optimisé spécifiquement pour cette sous-catégorie.' : language === 'es' ? 'Genera 1 idea de artículo de blog optimizado para SEO específicamente para esta subcategoría.' : language === 'de' ? 'Generieren Sie 1 SEO-optimierte Blog-Artikel-Idee speziell für diese Unterkategorie.' : language === 'it' ? 'Genera 1 idea per un articolo di blog ottimizzato per SEO specificamente per questa sottocategoria.' : 'Generate 1 SEO-optimized blog article idea specifically for this subcategory.'}
+
+${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment (1 seule opportunité).' : language === 'es' ? 'Responde en JSON con el mismo formato que antes (1 sola oportunidad).' : language === 'de' ? 'Antworten Sie in JSON mit dem gleichen Format wie zuvor (1 Gelegenheit).' : language === 'it' ? 'Rispondi in JSON con lo stesso formato di prima (1 sola opportunità).' : 'Respond in JSON with the same format as before (1 opportunity only).'}`;
 
         const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -233,7 +270,7 @@ Réponds en JSON avec le même format que précédemment (1 seule opportunité).
             messages: [
               {
                 role: "system",
-                content: "Tu es un expert SEO. Réponds uniquement en JSON valide."
+                content: `${langInstr.expertRole} ${language === 'fr' ? 'Réponds uniquement en JSON valide.' : language === 'es' ? 'Responde solo en JSON válido.' : language === 'de' ? 'Antworten Sie nur in gültigem JSON.' : language === 'it' ? 'Rispondi solo in JSON valido.' : 'Respond only in valid JSON.'}`
               },
               {
                 role: "user",
