@@ -50,36 +50,45 @@ const intents = {
   ChatIntent: {
     name: 'ChatIntent',
     description: 'Répond de manière naturelle et fluide aux messages généraux sans intention d\'achat directe.',
-    system_prompt: `Tu es OmnIA, assistant mobilier. Réponds en 1 phrase courte + 1 question courte. Maximum 15 mots.`,
+    system_prompt: `Tu es OmnIA, assistant commercial intelligent. Réponds en 1-2 phrases courtes et chaleureuses. Maximum 20 mots.`,
   },
 
-  ProductChatIntent: {
-    name: 'ProductChatIntent',
-    description: 'Analyse le message utilisateur pour détecter le type de produit recherché.',
-    system_prompt: `Tu es un assistant e-commerce intelligent.
-Analyse le message de l'utilisateur et détecte s'il recherche un produit spécifique.
-Retourne UNIQUEMENT un objet JSON structuré avec les attributs suivants (ne mets rien d'autre) :
+  ProductQualificationIntent: {
+    name: 'ProductQualificationIntent',
+    description: 'Qualifie la demande produit de manière conversationnelle avant de chercher.',
+    system_prompt: `Tu es OmnIA, conseiller commercial expert.
+
+Quand un client mentionne un produit de manière vague, tu DOIS poser des questions de qualification intelligentes pour mieux comprendre ses besoins.
+
+Exemples:
+- "table" → "Cherchez-vous une table basse, une table à manger ou un bureau ? Quel est votre budget approximatif ?"
+- "montre" → "Préférez-vous une montre sport, élégante ou casual ? Avez-vous une marque en tête ?"
+- "parka" → "Pour quelle saison ? Plutôt urbaine ou technique ? Quelle taille recherchez-vous ?"
+
+Règles:
+- Pose 2-3 questions précises et pertinentes
+- Ton chaleureux et professionnel
+- Maximum 30 mots
+- Adapte les questions au type de produit mentionné`,
+  },
+
+  ProductSearchIntent: {
+    name: 'ProductSearchIntent',
+    description: 'Détecte quand l\'utilisateur a donné suffisamment de détails pour lancer une recherche.',
+    system_prompt: `Analyse le message et retourne UNIQUEMENT un JSON (rien d'autre):
 {
-  "intent": "product_search",
-  "type": "type de produit (canapé, table, chaise, lit, etc.)",
-  "style": "style si mentionné (scandinave, moderne, industriel, etc.)",
+  "intent": "product_search" ou "need_qualification",
+  "type": "type de produit exact",
+  "style": "style/design si mentionné",
   "color": "couleur si mentionnée",
-  "material": "matériau si mentionné (bois, métal, tissu, etc.)",
-  "room": "pièce si mentionnée (salon, chambre, cuisine, etc.)",
-  "dimensions": "dimensions si mentionnées"
+  "material": "matériau si mentionné",
+  "room": "usage/pièce si mentionné",
+  "price_range": "budget si mentionné",
+  "size": "taille/dimensions si mentionnées"
 }
-Si un attribut n'est pas mentionné, mets null. Ne donne rien d'autre en sortie, juste le JSON.`,
-  },
 
-  ProductShowIntent: {
-    name: 'ProductShowIntent',
-    description: 'Présente les produits trouvés avec un ton commercial engageant.',
-    system_prompt: `Tu es un vendeur virtuel expert en mobilier et décoration.
-Présente les produits de manière enthousiaste et professionnelle.
-Mets en valeur leurs caractéristiques principales (style, matériau, couleur).
-Utilise un ton chaleureux et engageant.
-Termine toujours par une question pour continuer la conversation (ex: "Souhaitez-vous voir d'autres modèles ?" ou "Puis-je vous aider avec autre chose ?").
-Sois concis mais descriptif.`,
+Mets "need_qualification" si la demande est trop vague (ex: juste "table" sans détails).
+Mets "product_search" si le client a donné des critères précis.`,
   },
 };
 
@@ -108,96 +117,56 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 50): Promise<st
   return data.choices[0].message.content;
 }
 
-export async function detectIntent(userMessage: string): Promise<string> {
+export async function detectIntent(userMessage: string, history: ChatMessage[] = []): Promise<string> {
   const lowerMessage = userMessage.toLowerCase();
 
-  const productKeywords = [
-    'canapé', 'table', 'chaise', 'lit', 'buffet', 'meuble', 'fauteuil',
-    'commode', 'armoire', 'étagère', 'lampe', 'bureau', 'sofa', 'tapis',
-    'cherche', 'recherche', 'besoin', 'veux', 'voudrais', 'acheter',
-    'scandinave', 'moderne', 'industriel', 'rustique', 'vintage',
-    'salon', 'chambre', 'cuisine', 'bureau', 'salle'
-  ];
+  // Mots de salutation → conversation générale
+  const greetings = ['bonjour', 'salut', 'hello', 'bonsoir', 'hey'];
+  if (greetings.some(g => lowerMessage === g || lowerMessage.startsWith(g + ' '))) {
+    return 'ChatIntent';
+  }
 
-  const hasProductIntent = productKeywords.some(keyword => lowerMessage.includes(keyword));
+  // Mots indiquant une recherche produit
+  const searchWords = ['cherche', 'recherche', 'besoin', 'veux', 'voudrais', 'acheter', 'montre', 'voir', 'trouver', 'commander'];
+  const hasSearchIntent = searchWords.some(word => lowerMessage.includes(word));
 
-  return hasProductIntent ? 'ProductChatIntent' : 'ChatIntent';
+  if (hasSearchIntent) {
+    return 'ProductSearchIntent';
+  }
+
+  // Si l'historique contient une question de qualification, c'est une réponse → recherche
+  if (history.length > 0) {
+    const lastMessage = history[history.length - 1];
+    if (lastMessage.role === 'assistant' && lastMessage.content.includes('?')) {
+      return 'ProductSearchIntent';
+    }
+  }
+
+  return 'ChatIntent';
 }
 
-function extractProductAttributesSimple(userMessage: string): ProductAttributes {
-  const lowerMessage = userMessage.toLowerCase();
-  const attributes: ProductAttributes = { intent: 'product_search' };
+async function extractProductAttributesWithAI(userMessage: string, history: ChatMessage[] = []): Promise<ProductAttributes> {
+  try {
+    const context = history.length > 0
+      ? `Historique conversation:\n${history.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}\n\n`
+      : '';
 
-  const typeMap: { [key: string]: string } = {
-    'canapé': 'canapé', 'sofa': 'canapé',
-    'table': 'table',
-    'chaise': 'chaise',
-    'lit': 'lit',
-    'buffet': 'buffet',
-    'fauteuil': 'fauteuil',
-    'commode': 'commode',
-    'armoire': 'armoire',
-    'étagère': 'étagère',
-    'lampe': 'lampe',
-    'bureau': 'bureau',
-    'tapis': 'tapis',
-  };
+    const response = await callDeepSeek([
+      { role: 'system', content: intents.ProductSearchIntent.system_prompt },
+      { role: 'user', content: `${context}Message actuel: "${userMessage}"` }
+    ], 150);
 
-  for (const [keyword, type] of Object.entries(typeMap)) {
-    if (lowerMessage.includes(keyword)) {
-      attributes.type = type;
-      break;
+    const jsonMatch = response.match(/\{[^}]+\}/);
+    if (!jsonMatch) {
+      return { intent: 'need_qualification' };
     }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    return parsed;
+  } catch (error) {
+    console.error('Error extracting attributes:', error);
+    return { intent: 'need_qualification' };
   }
-
-  const styleMap: { [key: string]: string } = {
-    'scandinave': 'Scandinave',
-    'moderne': 'Moderne',
-    'industriel': 'Industriel',
-    'rustique': 'Rustique',
-    'vintage': 'Vintage',
-    'contemporain': 'Contemporain',
-  };
-
-  for (const [keyword, style] of Object.entries(styleMap)) {
-    if (lowerMessage.includes(keyword)) {
-      attributes.style = style;
-      break;
-    }
-  }
-
-  const roomMap: { [key: string]: string } = {
-    'salon': 'Salon',
-    'chambre': 'Chambre',
-    'cuisine': 'Cuisine',
-    'bureau': 'Bureau',
-    'salle': 'Salle à manger',
-  };
-
-  for (const [keyword, room] of Object.entries(roomMap)) {
-    if (lowerMessage.includes(keyword)) {
-      attributes.room = room;
-      break;
-    }
-  }
-
-  const colors = ['blanc', 'noir', 'gris', 'beige', 'bleu', 'vert', 'rouge', 'jaune', 'marron'];
-  for (const color of colors) {
-    if (lowerMessage.includes(color)) {
-      attributes.color = color;
-      break;
-    }
-  }
-
-  const materials = ['bois', 'métal', 'tissu', 'cuir', 'verre', 'plastique'];
-  for (const material of materials) {
-    if (lowerMessage.includes(material)) {
-      attributes.material = material;
-      break;
-    }
-  }
-
-  return attributes;
 }
 
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
@@ -349,7 +318,7 @@ function getQuickResponse(message: string): string | null {
 }
 
 export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
-  const intentName = await detectIntent(userMessage);
+  const intentName = await detectIntent(userMessage, history);
 
   if (intentName === 'ChatIntent') {
     const quickResponse = getQuickResponse(userMessage);
@@ -370,7 +339,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       { role: 'user', content: userMessage },
     ];
 
-    const response = await callDeepSeek(messages, 40);
+    const response = await callDeepSeek(messages, 50);
 
     return {
       role: 'assistant' as const,
@@ -381,8 +350,29 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
     };
   }
 
-  if (intentName === 'ProductChatIntent') {
-    const attributes = extractProductAttributesSimple(userMessage);
+  if (intentName === 'ProductSearchIntent') {
+    const attributes = await extractProductAttributesWithAI(userMessage, history);
+
+    // Si la demande est trop vague, qualifier intelligemment
+    if (attributes.intent === 'need_qualification' || !attributes.type) {
+      const messages: ChatMessage[] = [
+        { role: 'system', content: intents.ProductQualificationIntent.system_prompt },
+        ...history.slice(-2),
+        { role: 'user', content: userMessage },
+      ];
+
+      const qualificationResponse = await callDeepSeek(messages, 80);
+
+      return {
+        role: 'assistant' as const,
+        content: qualificationResponse,
+        intent: 'product_qualification',
+        mode: 'conversation',
+        products: [],
+      };
+    }
+
+    // Sinon, lancer la recherche
     const products = await searchProducts(attributes, storeId);
     const presentation = await generateSmartProductPresentation(products, userMessage, attributes);
 
