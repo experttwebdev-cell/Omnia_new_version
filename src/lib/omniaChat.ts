@@ -329,49 +329,11 @@ export async function processOmniaMessage(userMessage: string, history: ChatMess
   return OmnIAChat(userMessage, history, storeId);
 }
 
-const quickResponses: { [key: string]: string } = {
-  'bonjour': 'Bonjour ! Quel type de meuble recherchez-vous ?',
-  'salut': 'Salut ! Je peux vous aider à trouver un meuble ?',
-  'hello': 'Hello ! Que puis-je faire pour vous ?',
-  'bonsoir': 'Bonsoir ! Comment puis-je vous aider ?',
-  'merci': 'Avec plaisir ! Autre chose ?',
-  'merci beaucoup': 'Je vous en prie ! Besoin d\'autre chose ?',
-  'au revoir': 'Au revoir ! À bientôt !',
-  'bye': 'À bientôt !',
-  'comment vas-tu': 'Très bien ! Cherchez-vous un meuble ?',
-  'comment allez-vous': 'Très bien merci ! Que recherchez-vous ?',
-  'aide': 'Je vous aide à trouver du mobilier. Quel type ?',
-  'help': 'Je vous aide à trouver des meubles. Quel style ?',
-};
-
-function getQuickResponse(message: string): string | null {
-  const normalized = message.toLowerCase().trim();
-
-  for (const [key, response] of Object.entries(quickResponses)) {
-    if (normalized === key || normalized.includes(key)) {
-      return response;
-    }
-  }
-
-  return null;
-}
 
 export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string, settings?: ChatSettings) {
   const intentName = await detectIntent(userMessage, history);
 
   if (intentName === 'ChatIntent') {
-    const quickResponse = getQuickResponse(userMessage);
-
-    if (quickResponse) {
-      return {
-        role: 'assistant' as const,
-        content: quickResponse,
-        intent: 'chat',
-        mode: 'conversation',
-        products: [],
-      };
-    }
-
     const chatPrompt = buildChatIntent(settings);
     const maxTokens = settings?.chat_response_length === 'concise' ? 30 :
                       settings?.chat_response_length === 'detailed' ? 100 : 50;
