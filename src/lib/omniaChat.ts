@@ -186,14 +186,66 @@ export async function detectIntent(userMessage: string, history: ChatMessage[] =
 
 async function extractProductAttributesWithAI(userMessage: string, history: ChatMessage[] = []): Promise<ProductAttributes> {
   try {
+    // Extraction rapide avec regex pour les cas simples
+    const msg = userMessage.toLowerCase();
+
+    // Détection rapide du type de produit
+    const productTypes = ['table basse', 'table', 'chaise', 'canapé', 'fauteuil', 'lit', 'armoire', 'commode', 'meuble', 'étagère', 'bureau', 'tabouret'];
+    let detectedType = '';
+
+    for (const type of productTypes) {
+      if (msg.includes(type)) {
+        detectedType = type;
+        break;
+      }
+    }
+
+    // Si on a détecté un type simple, retourner directement
+    if (detectedType) {
+      const attributes: ProductAttributes = {
+        intent: 'product_search',
+        type: detectedType
+      };
+
+      // Détection style
+      const styles = ['scandinave', 'moderne', 'industriel', 'vintage', 'classique', 'contemporain'];
+      for (const style of styles) {
+        if (msg.includes(style)) {
+          attributes.style = style;
+          break;
+        }
+      }
+
+      // Détection couleur
+      const colors = ['blanc', 'noir', 'beige', 'gris', 'bois', 'marron', 'bleu', 'vert', 'rouge'];
+      for (const color of colors) {
+        if (msg.includes(color)) {
+          attributes.color = color;
+          break;
+        }
+      }
+
+      // Détection matériau
+      const materials = ['bois', 'métal', 'verre', 'marbre', 'tissu', 'cuir', 'céramique'];
+      for (const material of materials) {
+        if (msg.includes(material)) {
+          attributes.material = material;
+          break;
+        }
+      }
+
+      return attributes;
+    }
+
+    // Si pas de détection simple, utiliser DeepSeek
     const context = history.length > 0
-      ? `Historique conversation:\n${history.slice(-3).map(m => `${m.role}: ${m.content}`).join('\n')}\n\n`
+      ? `Historique:\n${history.slice(-2).map(m => `${m.role}: ${m.content}`).join('\n')}\n\n`
       : '';
 
     const response = await callDeepSeek([
       { role: 'system', content: intents.ProductSearchIntent.system_prompt },
-      { role: 'user', content: `${context}Message actuel: "${userMessage}"` }
-    ], 150);
+      { role: 'user', content: `${context}Message: "${userMessage}"` }
+    ], 100);
 
     const jsonMatch = response.match(/\{[^}]+\}/);
     if (!jsonMatch) {
@@ -213,30 +265,25 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     .from('shopify_products')
     .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_vision_analysis, handle, shopify_id, currency, shop_name, category, sub_category, tags, length, width, height, length_unit, width_unit, height_unit, inventory_quantity')
     .eq('status', 'active')
-    .limit(8);
+    .limit(12);
 
   if (storeId) {
     query = query.eq('store_id', storeId);
   }
 
+  // Recherche principale par type de produit (plus large et rapide)
   if (filters.type) {
-    query = query.or(`title.ilike.%${filters.type}%,product_type.ilike.%${filters.type}%,tags.ilike.%${filters.type}%,category.ilike.%${filters.type}%,sub_category.ilike.%${filters.type}%`);
-  }
+    const searchTerms = filters.type.toLowerCase().split(' ');
+    const orConditions = [];
 
-  if (filters.style) {
-    query = query.or(`style.eq.${filters.style},tags.ilike.%${filters.style}%`);
-  }
+    for (const term of searchTerms) {
+      orConditions.push(`title.ilike.%${term}%`);
+      orConditions.push(`category.ilike.%${term}%`);
+      orConditions.push(`sub_category.ilike.%${term}%`);
+      orConditions.push(`tags.ilike.%${term}%`);
+    }
 
-  if (filters.color) {
-    query = query.or(`color.ilike.%${filters.color}%,ai_color.ilike.%${filters.color}%,tags.ilike.%${filters.color}%`);
-  }
-
-  if (filters.material) {
-    query = query.or(`material.ilike.%${filters.material}%,ai_material.ilike.%${filters.material}%,tags.ilike.%${filters.material}%`);
-  }
-
-  if (filters.room) {
-    query = query.or(`room.eq.${filters.room},tags.ilike.%${filters.room}%`);
+    query = query.or(orConditions.join(','));
   }
 
   const { data, error } = await query;
@@ -246,7 +293,36 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     return [];
   }
 
-  return data || [];
+  let results = data || [];
+
+  // Filtrage secondaire côté client pour style, couleur, matériau
+  if (filters.style && results.length > 0) {
+    const styleFiltered = results.filter(p =>
+      p.style?.toLowerCase().includes(filters.style!.toLowerCase()) ||
+      p.tags?.toLowerCase().includes(filters.style!.toLowerCase())
+    );
+    if (styleFiltered.length > 0) results = styleFiltered;
+  }
+
+  if (filters.color && results.length > 0) {
+    const colorFiltered = results.filter(p =>
+      p.color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
+      p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
+      p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
+    );
+    if (colorFiltered.length > 0) results = colorFiltered;
+  }
+
+  if (filters.material && results.length > 0) {
+    const materialFiltered = results.filter(p =>
+      p.material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+      p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+      p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
+    );
+    if (materialFiltered.length > 0) results = materialFiltered;
+  }
+
+  return results.slice(0, 8);
 }
 
 async function generateSmartProductPresentation(products: Product[], userMessage: string, filters: ProductAttributes): Promise<string> {
