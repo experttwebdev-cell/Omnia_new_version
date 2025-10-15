@@ -23,6 +23,7 @@ import { useLanguage } from '../App';
 import { opportunityTemplates } from '../lib/language';
 import { BlogArticleModal } from './BlogArticleModal';
 import { ProductDiagnostics } from './ProductDiagnostics';
+import { ProgressModal } from './ProgressModal';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -51,6 +52,12 @@ export function SeoOpportunities() {
   const [filterType, setFilterType] = useState<string>('all');
   const [generatingSmart, setGeneratingSmart] = useState(false);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [showCreationProgress, setShowCreationProgress] = useState(false);
+  const [creationProgress, setCreationProgress] = useState({ current: 0, total: 100, currentItem: '' });
+  const [isCreationComplete, setIsCreationComplete] = useState(false);
+  const [showGenerationProgress, setShowGenerationProgress] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 100, currentItem: '' });
+  const [isGenerationComplete, setIsGenerationComplete] = useState(false);
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const supportedLangs: ('fr' | 'en' | 'es' | 'de' | 'it')[] = ['fr', 'en', 'es', 'de', 'it'];
@@ -247,6 +254,9 @@ export function SeoOpportunities() {
   const handleGenerateSmartOpportunities = async () => {
     if (generatingSmart) return;
     setGeneratingSmart(true);
+    setShowGenerationProgress(true);
+    setIsGenerationComplete(false);
+    setGenerationProgress({ current: 10, total: 100, currentItem: language === 'fr' ? 'Analyse du catalogue produits...' : 'Analyzing product catalog...' });
     await generateSmartOpportunities(products);
     setGeneratingSmart(false);
   };
@@ -258,6 +268,8 @@ export function SeoOpportunities() {
     }
 
     try {
+      setGenerationProgress({ current: 30, total: 100, currentItem: language === 'fr' ? 'Préparation des données produits...' : 'Preparing product data...' });
+
       const productsData = products.map(p => ({
         id: p.id,
         title: p.title,
@@ -270,6 +282,8 @@ export function SeoOpportunities() {
         ai_color: p.ai_color,
         ai_material: p.ai_material,
       }));
+
+      setGenerationProgress({ current: 50, total: 100, currentItem: language === 'fr' ? 'IA en cours d\'analyse...' : 'AI analyzing...' });
 
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
       const response = await fetch(apiUrl, {
@@ -287,6 +301,8 @@ export function SeoOpportunities() {
       if (!response.ok) {
         throw new Error('Failed to generate opportunities');
       }
+
+      setGenerationProgress({ current: 80, total: 100, currentItem: language === 'fr' ? 'Finalisation des opportunités...' : 'Finalizing opportunities...' });
 
       const result = await response.json();
 
@@ -306,18 +322,25 @@ export function SeoOpportunities() {
         }));
 
         setOpportunities(formattedOpps);
+        setGenerationProgress({ current: 100, total: 100, currentItem: language === 'fr' ? 'Terminé !' : 'Complete!' });
+        setIsGenerationComplete(true);
 
-        addNotification({
-          type: 'success',
-          title: 'Opportunités générées',
-          message: `${formattedOpps.length} opportunités SEO intelligentes créées avec succès`,
-          duration: 5000
-        });
+        setTimeout(() => {
+          setShowGenerationProgress(false);
+          setIsGenerationComplete(false);
+          addNotification({
+            type: 'success',
+            title: 'Opportunités générées',
+            message: `${formattedOpps.length} opportunités SEO intelligentes créées avec succès`,
+            duration: 5000
+          });
+        }, 1500);
       } else {
         throw new Error('Invalid response format');
       }
     } catch (error) {
       console.error('Error generating smart opportunities:', error);
+      setShowGenerationProgress(false);
       addNotification({
         type: 'error',
         title: 'Erreur',
@@ -617,8 +640,16 @@ export function SeoOpportunities() {
 
   const handleCreateArticle = async (opportunity: Opportunity) => {
     setCreatingArticle(opportunity.id);
+    setShowCreationProgress(true);
+    setIsCreationComplete(false);
 
     try {
+      setCreationProgress({
+        current: 10,
+        total: 100,
+        currentItem: language === 'fr' ? 'Préparation de l\'article...' : 'Preparing article...'
+      });
+
       const relatedProductIds = products
         .filter(p => opportunity.relatedProducts.includes(p.title))
         .map(p => p.id);
@@ -632,13 +663,10 @@ export function SeoOpportunities() {
       const targetLanguage = storeData?.language || language || 'fr';
       const category = products.find(p => opportunity.relatedProducts.includes(p.title))?.category || '';
 
-      addNotification({
-        type: 'info',
-        title: language === 'fr' ? 'Génération en cours' : 'Generating',
-        message: language === 'fr'
-          ? 'L\'IA génère un article complet avec du contenu de qualité...'
-          : 'AI is generating a complete article with quality content...',
-        duration: 10000
+      setCreationProgress({
+        current: 30,
+        total: 100,
+        currentItem: language === 'fr' ? 'IA en train de rédiger...' : 'AI writing content...'
       });
 
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`;
@@ -661,6 +689,12 @@ export function SeoOpportunities() {
         }),
       });
 
+      setCreationProgress({
+        current: 70,
+        total: 100,
+        currentItem: language === 'fr' ? 'Finalisation de l\'article...' : 'Finalizing article...'
+      });
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate article');
@@ -671,6 +705,12 @@ export function SeoOpportunities() {
       if (!result.success || !result.article_id) {
         throw new Error('Article generation failed');
       }
+
+      setCreationProgress({
+        current: 90,
+        total: 100,
+        currentItem: language === 'fr' ? 'Enregistrement...' : 'Saving...'
+      });
 
       const { data: opportunityData, error: oppError } = await supabase
         .from('blog_opportunities')
@@ -697,31 +737,45 @@ export function SeoOpportunities() {
           .eq('id', result.article_id);
       }
 
-      if (result.validation_warnings && result.validation_warnings.length > 0) {
-        addNotification({
-          type: 'warning',
-          title: language === 'fr' ? 'Article créé avec avertissements' : 'Article created with warnings',
-          message: language === 'fr'
-            ? `L'article a été créé mais contient ${result.validation_warnings.length} avertissement(s) de qualité.`
-            : `Article created but contains ${result.validation_warnings.length} quality warning(s).`,
-          duration: 5000
-        });
-      } else {
-        addNotification({
-          type: 'success',
-          title: language === 'fr' ? 'Article créé' : 'Article Created',
-          message: language === 'fr'
-            ? `Article de ${result.word_count} mots généré avec succès (Score: ${result.content_quality_score}/100)`
-            : `${result.word_count}-word article generated successfully (Score: ${result.content_quality_score}/100)`,
-          duration: 5000
-        });
-      }
+      setCreationProgress({
+        current: 100,
+        total: 100,
+        currentItem: language === 'fr' ? 'Terminé !' : 'Complete!'
+      });
+      setIsCreationComplete(true);
 
       setTimeout(() => {
-        setSelectedArticleId(result.article_id);
-      }, 500);
+        setShowCreationProgress(false);
+        setIsCreationComplete(false);
+
+        if (result.validation_warnings && result.validation_warnings.length > 0) {
+          addNotification({
+            type: 'warning',
+            title: language === 'fr' ? 'Article créé avec avertissements' : 'Article created with warnings',
+            message: language === 'fr'
+              ? `L'article a été créé mais contient ${result.validation_warnings.length} avertissement(s) de qualité.`
+              : `Article created but contains ${result.validation_warnings.length} quality warning(s).`,
+            duration: 5000
+          });
+        } else {
+          addNotification({
+            type: 'success',
+            title: language === 'fr' ? 'Article créé' : 'Article Created',
+            message: language === 'fr'
+              ? `Article de ${result.word_count} mots généré avec succès (Score: ${result.content_quality_score}/100)`
+              : `${result.word_count}-word article generated successfully (Score: ${result.content_quality_score}/100)`,
+            duration: 5000
+          });
+        }
+
+        setTimeout(() => {
+          setSelectedArticleId(result.article_id);
+        }, 500);
+      }, 1500);
     } catch (err) {
       console.error('Error creating article:', err);
+      setShowCreationProgress(false);
+      setIsCreationComplete(false);
       addNotification({
         type: 'error',
         title: language === 'fr' ? 'Échec de la création' : 'Creation Failed',
@@ -808,6 +862,39 @@ export function SeoOpportunities() {
   return (
     <>
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
+
+      <ProgressModal
+        isOpen={showCreationProgress}
+        title={language === 'fr' ? 'Création de l\'article en cours' : 'Creating Article'}
+        current={creationProgress.current}
+        total={creationProgress.total}
+        currentItem={creationProgress.currentItem}
+        itemType="article"
+        isComplete={isCreationComplete}
+        onClose={() => {
+          if (isCreationComplete) {
+            setShowCreationProgress(false);
+            setIsCreationComplete(false);
+          }
+        }}
+      />
+
+      <ProgressModal
+        isOpen={showGenerationProgress}
+        title={language === 'fr' ? 'Génération des opportunités' : 'Generating Opportunities'}
+        current={generationProgress.current}
+        total={generationProgress.total}
+        currentItem={generationProgress.currentItem}
+        itemType="opportunity"
+        isComplete={isGenerationComplete}
+        onClose={() => {
+          if (isGenerationComplete) {
+            setShowGenerationProgress(false);
+            setIsGenerationComplete(false);
+          }
+        }}
+      />
+
       {selectedArticleId && (
         <BlogArticleModal
           articleId={selectedArticleId}

@@ -30,6 +30,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { LoadingAnimation } from './LoadingAnimation';
 import { BlogArticleModal } from './BlogArticleModal';
 import { BlogWizard } from './BlogWizard';
+import { useLanguage } from '../App';
 
 interface BlogArticle {
   id: string;
@@ -56,6 +57,7 @@ interface BlogArticle {
 }
 
 export function BlogArticles() {
+  const { language, t } = useLanguage();
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,6 +73,24 @@ export function BlogArticles() {
   const [categories, setCategories] = useState<string[]>([]);
 
   const { notifications, addNotification, dismissNotification } = useNotifications();
+
+  const ui = {
+    title: language === 'fr' ? 'Articles de Blog' : language === 'es' ? 'Artículos de Blog' : language === 'de' ? 'Blog-Artikel' : language === 'it' ? 'Articoli Blog' : 'Blog Articles',
+    createArticle: language === 'fr' ? 'Créer un Article' : language === 'es' ? 'Crear Artículo' : language === 'de' ? 'Artikel Erstellen' : language === 'it' ? 'Crea Articolo' : 'Create Article',
+    search: language === 'fr' ? 'Rechercher des articles...' : language === 'es' ? 'Buscar artículos...' : language === 'de' ? 'Artikel suchen...' : language === 'it' ? 'Cerca articoli...' : 'Search articles...',
+    allStatuses: language === 'fr' ? 'Tous les statuts' : language === 'es' ? 'Todos los estados' : language === 'de' ? 'Alle Status' : language === 'it' ? 'Tutti gli stati' : 'All Statuses',
+    draft: language === 'fr' ? 'Brouillon' : language === 'es' ? 'Borrador' : language === 'de' ? 'Entwurf' : language === 'it' ? 'Bozza' : 'Draft',
+    synced: language === 'fr' ? 'Synchronisé' : language === 'es' ? 'Sincronizado' : language === 'de' ? 'Synchronisiert' : language === 'it' ? 'Sincronizzato' : 'Synced',
+    pending: language === 'fr' ? 'En attente' : language === 'es' ? 'Pendiente' : language === 'de' ? 'Ausstehend' : language === 'it' ? 'In attesa' : 'Pending',
+    failed: language === 'fr' ? 'Échec' : language === 'es' ? 'Fallido' : language === 'de' ? 'Fehlgeschlagen' : language === 'it' ? 'Fallito' : 'Failed',
+    gridView: language === 'fr' ? 'Vue grille' : language === 'es' ? 'Vista de cuadrícula' : language === 'de' ? 'Rasteransicht' : language === 'it' ? 'Vista griglia' : 'Grid view',
+    listView: language === 'fr' ? 'Vue liste' : language === 'es' ? 'Vista de lista' : language === 'de' ? 'Listenansicht' : language === 'it' ? 'Vista lista' : 'List view',
+    view: language === 'fr' ? 'Voir' : language === 'es' ? 'Ver' : language === 'de' ? 'Ansehen' : language === 'it' ? 'Visualizza' : 'View',
+    edit: language === 'fr' ? 'Modifier' : language === 'es' ? 'Editar' : language === 'de' ? 'Bearbeiten' : language === 'it' ? 'Modifica' : 'Edit',
+    delete: language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'de' ? 'Löschen' : language === 'it' ? 'Elimina' : 'Delete',
+    sync: language === 'fr' ? 'Synchroniser avec Shopify' : language === 'es' ? 'Sincronizar con Shopify' : language === 'de' ? 'Mit Shopify synchronisieren' : language === 'it' ? 'Sincronizza con Shopify' : 'Sync to Shopify',
+    syncing: language === 'fr' ? 'Synchronisation...' : language === 'es' ? 'Sincronizando...' : language === 'de' ? 'Synchronisierung...' : language === 'it' ? 'Sincronizzazione...' : 'Syncing...'
+  };
 
   const fetchArticles = async () => {
     try {
@@ -303,14 +323,14 @@ export function BlogArticles() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <BookOpen className="w-7 h-7 text-blue-600" />
-            Blog Articles
+            {ui.title}
           </h2>
           <button
             onClick={() => setShowWizard(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-md"
           >
             <Plus className="w-5 h-5" />
-            Create Article
+            {ui.createArticle}
           </button>
         </div>
 
@@ -320,7 +340,7 @@ export function BlogArticles() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search articles..."
+                placeholder={ui.search}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -331,10 +351,10 @@ export function BlogArticles() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
             >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="synced">Synced</option>
-              <option value="error">Error</option>
+              <option value="all">{ui.allStatuses}</option>
+              <option value="draft">{ui.draft}</option>
+              <option value="synced">{ui.synced}</option>
+              <option value="error">{ui.failed}</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -346,7 +366,7 @@ export function BlogArticles() {
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
-                title="Grid view"
+                title={ui.gridView}
               >
                 <Grid className="w-5 h-5" />
               </button>
@@ -357,7 +377,7 @@ export function BlogArticles() {
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
-                title="List view"
+                title={ui.listView}
               >
                 <List className="w-5 h-5" />
               </button>
