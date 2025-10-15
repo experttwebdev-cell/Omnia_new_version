@@ -33,12 +33,10 @@ const intents = {
   ChatIntent: {
     name: 'ChatIntent',
     description: 'Répond de manière naturelle et fluide aux messages généraux sans intention d\'achat directe.',
-    system_prompt: `Tu es OmnIA, un assistant commercial spécialisé dans le mobilier et la décoration intérieure.
-Ton rôle est d'accueillir, conseiller et aider les visiteurs du site.
-Reste professionnel, convivial et pertinent.
-Engage une conversation naturelle pour comprendre les besoins du client.
-Pose des questions sur le style préféré (scandinave, moderne, industriel, etc.), la pièce (salon, chambre, bureau, etc.) et le type de meuble recherché.
-Sois enthousiaste mais pas insistant.`,
+    system_prompt: `Tu es OmnIA, assistant mobilier et décoration.
+Réponds de manière concise et directe (2-3 phrases max).
+Pose UNE question pour mieux comprendre les besoins.
+Sois professionnel et sympathique.`,
   },
 
   ProductChatIntent: {
@@ -71,7 +69,7 @@ Sois concis mais descriptif.`,
   },
 };
 
-async function callDeepSeek(messages: ChatMessage[], maxTokens = 400): Promise<string> {
+async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<string> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
   const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
@@ -257,6 +255,10 @@ function generateProductPresentationSimple(products: Product[], userMessage: str
   return `${intro}\n${productsList}\n\nSouhaitez-vous plus d'informations sur l'un de ces produits ? 😊`;
 }
 
+export async function processOmniaMessage(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
+  return OmnIAChat(userMessage, history, storeId);
+}
+
 export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
   const intentName = await detectIntent(userMessage);
 
@@ -267,7 +269,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       { role: 'user', content: userMessage },
     ];
 
-    const response = await callDeepSeek(messages, 300);
+    const response = await callDeepSeek(messages, 100);
 
     return {
       role: 'assistant' as const,
