@@ -19,6 +19,8 @@ interface Filters {
   minPrice: string;
   maxPrice: string;
   stockStatus: string;
+  room: string;
+  style: string;
 }
 
 interface EnhancedProductListProps {
@@ -46,7 +48,9 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
     productType: 'all',
     minPrice: '',
     maxPrice: '',
-    stockStatus: 'all'
+    stockStatus: 'all',
+    room: 'all',
+    style: 'all'
   });
 
   const [sortBy, setSortBy] = useState<'title' | 'price' | 'inventory' | 'created'>('created');
@@ -54,6 +58,8 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
   const [vendors, setVendors] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<string[]>([]);
+  const [rooms, setRooms] = useState<string[]>([]);
+  const [styles, setStyles] = useState<string[]>([]);
 
   const [enrichingProducts, setEnrichingProducts] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState({ current: 0, total: 0, currentProduct: '', currentImage: '' });
@@ -89,9 +95,13 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
       const uniqueVendors = [...new Set(data?.map(p => p.vendor).filter(Boolean))].sort();
       const uniqueTypes = [...new Set(data?.map(p => p.product_type).filter(Boolean))].sort();
+      const uniqueRooms = [...new Set(data?.map(p => p.room).filter(Boolean))].sort();
+      const uniqueStyles = [...new Set(data?.map(p => p.style).filter(Boolean))].sort();
 
       setVendors(uniqueVendors as string[]);
       setProductTypes(uniqueTypes as string[]);
+      setRooms(uniqueRooms as string[]);
+      setStyles(uniqueStyles as string[]);
     } catch (err) {
       console.error('Error fetching products:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products from database';
@@ -174,6 +184,14 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
       }
     }
 
+    if (filters.room !== 'all') {
+      result = result.filter(p => p.room === filters.room);
+    }
+
+    if (filters.style !== 'all') {
+      result = result.filter(p => p.style === filters.style);
+    }
+
     result.sort((a, b) => {
       let aVal, bVal;
 
@@ -222,7 +240,9 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
       productType: 'all',
       minPrice: '',
       maxPrice: '',
-      stockStatus: 'all'
+      stockStatus: 'all',
+      room: 'all',
+      style: 'all'
     });
   };
 
@@ -522,7 +542,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
         {showFilters && (
           <div className="border-t border-gray-200 pt-4 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -582,6 +602,28 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                 onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
+
+              <select
+                value={filters.room}
+                onChange={(e) => setFilters({ ...filters, room: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="all">All Rooms</option>
+                {rooms.map(room => (
+                  <option key={room} value={room}>{room.charAt(0).toUpperCase() + room.slice(1)}</option>
+                ))}
+              </select>
+
+              <select
+                value={filters.style}
+                onChange={(e) => setFilters({ ...filters, style: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="all">All Styles</option>
+                {styles.map(style => (
+                  <option key={style} value={style}>{style.charAt(0).toUpperCase() + style.slice(1)}</option>
+                ))}
+              </select>
 
               <button
                 onClick={resetFilters}

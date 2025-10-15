@@ -12,6 +12,7 @@ import { AiBlogWriter } from './components/AiBlogWriter';
 import { AiCampaigns } from './components/AiCampaigns';
 import { GoogleShopping } from './components/GoogleShopping';
 import { Settings as SettingsComponent } from './components/Settings';
+import { AiChat } from './components/AiChat';
 import { CacheProvider } from './lib/cache';
 import { Language, getTranslation, type Translations } from './lib/translations';
 import { supabase } from './lib/supabase';
@@ -31,10 +32,11 @@ import {
   Lightbulb,
   BookOpen,
   Sparkles,
-  Settings
+  Settings,
+  MessageCircle
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -145,6 +147,7 @@ function App() {
     { id: 'products' as ViewType, name: t.nav.products, icon: Package },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
+    { id: 'ai-chat' as ViewType, name: 'AI Chat', icon: MessageCircle },
   ];
 
   const seoSubItems = [
@@ -317,6 +320,7 @@ function App() {
           {activeView === 'seo-articles' && <BlogArticles />}
           {activeView === 'seo-ai-blog' && <AiBlogWriter />}
           {activeView === 'seo-ai-campaigns' && <AiCampaigns />}
+          {activeView === 'ai-chat' && <AiChat />}
           {activeView === 'settings' && <SettingsComponent />}
         </div>
       </main>
