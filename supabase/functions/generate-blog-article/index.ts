@@ -57,15 +57,7 @@ Deno.serve(async (req: Request) => {
       const uniqueCategories = [...new Set(categories?.map(p => p.category).filter(Boolean))];
       const randomCategory = uniqueCategories[Math.floor(Math.random() * uniqueCategories.length)];
 
-      const topicPrompt = `Tu es un expert SEO en e-commerce.
-Génère un sujet d'article de blog à fort potentiel SEO pour la catégorie: ${randomCategory}
-
-Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
-{
-  "title": "titre de l'article",
-  "meta_description": "description méta (150-160 caractères)",
-  "keywords": ["mot-clé1", "mot-clé2", "mot-clé3"]
-}`;
+      const topicPrompt = `Tu es un expert SEO en décoration, ameublement et aménagement intérieur.\nGénère un sujet d'article de blog à fort potentiel SEO pour la catégorie: ${randomCategory}\n\nLe sujet doit être informatif, engageant, et pertinent pour des clients cherchant des conseils en décoration d'intérieur.\n\nRéponds UNIQUEMENT avec un JSON valide dans ce format exact:\n{\n  \"title\": \"titre de l'article (question ou conseil pratique)\",\n  \"meta_description\": \"description méta (150-160 caractères)\",\n  \"keywords\": [\"mot-clé1\", \"mot-clé2\", \"mot-clé3\", \"mot-clé4\"]\n}`;
 
       const topicResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -76,7 +68,7 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
         body: JSON.stringify({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: "Tu es un expert en SEO et marketing de contenu. Tu réponds UNIQUEMENT en JSON valide." },
+            { role: "system", content: "Tu es un expert en SEO et décoration d'intérieur. Tu réponds UNIQUEMENT en JSON valide." },
             { role: "user", content: topicPrompt }
           ],
           temperature: 0.8,
@@ -104,42 +96,29 @@ Réponds UNIQUEMENT avec un JSON valide dans ce format exact:
     if (requestData.internal_linking) {
       const query = supabase
         .from('shopify_products')
-        .select('id, shopify_id, title, handle')
-        .limit(requestData.max_internal_links * 2);
+        .select('id, shopify_id, title, handle, seo_title')
+        .limit(requestData.max_internal_links * 3);
 
       if (topicData.category) {
         query.eq('category', topicData.category);
       }
 
       const { data } = await query;
-      relatedProducts = data || [];
+      relatedProducts = data?.slice(0, requestData.max_internal_links) || [];
     }
 
-    const productLinksInfo = relatedProducts.length > 0
-      ? `\n\nProduits disponibles pour liens internes (utilise maximum ${requestData.max_internal_links}):\n${
-          relatedProducts.map(p => `- ${p.title} (ID: ${p.shopify_id})`).join('\n')
-        }`
-      : '';
+    const { data: storeData } = await supabase
+      .from('shopify_stores')
+      .select('shopify_store_url')
+      .limit(1)
+      .single();
 
-    const articlePrompt = `Tu es un rédacteur SEO expert spécialisé dans l'e-commerce.
+    const storeUrl = storeData?.shopify_store_url || 'decora-home.fr';
+    const storeBaseUrl = storeUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-Sujet: ${topicData.title || 'Article sur ' + topicData.category}
-Catégorie: ${topicData.category}
-${topicData.subcategory ? `Sous-catégorie: ${topicData.subcategory}` : ''}
-Mots-clés principaux: ${topicData.keywords.join(', ')}
-Langue: ${requestData.language === 'fr' ? 'Français' : requestData.language}
-Longueur: ${requestData.word_count_min}-${requestData.word_count_max} mots
-${productLinksInfo}
+    const productExamples = relatedProducts.map(p => p.title).join('", "');
 
-Instructions:
-1. Crée un article de blog SEO-optimisé, engageant et informatif
-2. Structure: Introduction, 3-5 sections avec sous-titres H2/H3, conclusion
-3. Intègre naturellement les mots-clés sans sur-optimisation
-4. Ton professionnel mais accessible
-5. ${requestData.internal_linking ? `Ajoute ${requestData.max_internal_links} liens internes vers les produits mentionnés ci-dessus en utilisant le format [PRODUCT:shopify_id] dans le texte` : 'Pas de liens internes'}
-6. Format de sortie: ${requestData.output_format === 'html' ? 'HTML propre avec balises sémantiques' : 'Markdown'}
-
-Génère l'article complet maintenant:`;
+    const articlePrompt = `Tu es un rédacteur SEO expert spécialisé en décoration d'intérieur et ameublement.\n\nINFORMATIONS:\nTitre de l'article: ${topicData.title || 'Article sur ' + topicData.category}\nCatégorie principale: ${topicData.category}\n${topicData.subcategory ? `Sous-catégorie: ${topicData.subcategory}` : ''}\nMots-clés SEO: ${topicData.keywords.join(', ')}\nLangue: ${requestData.language === 'fr' ? 'Français' : requestData.language}\nLongueur cible: ${requestData.word_count_min}-${requestData.word_count_max} mots\nProduits disponibles: [${productExamples}]\n\nSTRUCTURE REQUISE (HTML):\n1. Introduction engageante (1-2 paragraphes)\n2. Table des matières cliquable avec liens ancres\n3. 4-6 sections principales avec <h2> et <h3>\n   - Conseils pratiques et concrets\n   - Idées d'agencement et décoration\n   - Erreurs à éviter\n   - Tendances actuelles\n4. Intégrer naturellement ${requestData.max_internal_links} liens vers ${storeBaseUrl} avec ancres contextuelles variées\n5. Conclusion (1 paragraphe)\n6. Section FAQ (3-5 questions/réponses en <h3> + <p>)\n7. Liste de tags SEO à la fin\n\nRÈGLES IMPORTANTES:\n- Format HTML sémantique (<h2>, <h3>, <p>, <ul>, <li>)\n- Ton professionnel mais chaleureux et accessible\n- Intégration naturelle des mots-clés (pas de sur-optimisation)\n- Liens internes contextuels avec ancres variées (pas \"cliquez ici\")\n- Exemples concrets et conseils actionnables\n- Maximum 2000 mots\n- Ajouter un lien global vers ${storeBaseUrl} en conclusion\n\nEXEMPLE DE LIENS:\n- \"Découvrez notre sélection de <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a>\"\n- \"Un <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a> peut transformer votre espace\"\n- \"Pour un style moderne, optez pour <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a>\"\n\nGénère maintenant l'article complet en HTML:`;
 
     const articleResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -150,11 +129,14 @@ Génère l'article complet maintenant:`;
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "Tu es un rédacteur SEO expert. Tu crées du contenu optimisé, engageant et de haute qualité." },
+          {
+            role: "system",
+            content: "Tu es un rédacteur SEO expert en décoration d'intérieur. Tu crées du contenu HTML structuré, optimisé SEO, engageant et de haute qualité. Tu intègres naturellement les liens vers les produits dans le contenu."
+          },
           { role: "user", content: articlePrompt }
         ],
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 4000
       }),
     });
 
@@ -165,49 +147,52 @@ Génère l'article complet maintenant:`;
     const articleResult = await articleResponse.json();
     let content = articleResult.choices[0].message.content.trim();
 
-    const productLinks: Array<{ product_id: string; shopify_id: string; title: string }> = [];
+    if (content.startsWith('```html')) {
+      content = content.replace(/^```html\n/, '').replace(/\n```$/, '');
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```\n/, '').replace(/\n```$/, '');
+    }
+
+    const productLinks: Array<{ product_id: string; shopify_id: string; title: string; handle: string }> = [];
 
     if (requestData.internal_linking) {
-      const linkPattern = /\[PRODUCT:(\d+)\]/g;
-      let match;
+      for (const product of relatedProducts) {
+        const productUrl = `https://${storeBaseUrl}/products/${product.handle}`;
 
-      while ((match = linkPattern.exec(content)) !== null) {
-        const shopifyId = match[1];
-        const product = relatedProducts.find(p => p.shopify_id === shopifyId);
+        const linkRegex = new RegExp(`href=[\"']https://${storeBaseUrl.replace('.', '\\.')}/products/\\[handle\\][\"']`, 'g');
+        const hasPlaceholder = content.match(linkRegex);
 
-        if (product) {
+        if (hasPlaceholder && productLinks.length < requestData.max_internal_links) {
+          content = content.replace(
+            `href=\"https://${storeBaseUrl}/products/[handle]\"`,
+            `href=\"${productUrl}\"`
+          );
+          content = content.replace(/\[nom produit\]/, product.title);
+
           productLinks.push({
             product_id: product.id,
             shopify_id: product.shopify_id,
-            title: product.title
+            title: product.title,
+            handle: product.handle
           });
-
-          const storeUrl = Deno.env.get("SHOPIFY_STORE_URL") || "your-store.myshopify.com";
-          const productUrl = `https://${storeUrl}/products/${product.handle}`;
-          content = content.replace(
-            match[0],
-            requestData.output_format === 'html'
-              ? `<a href="${productUrl}" class="product-link">${product.title}</a>`
-              : `[${product.title}](${productUrl})`
-          );
-        } else {
-          content = content.replace(match[0], '');
         }
       }
     }
 
+    const wordCount = content.replace(/<[^>]*>/g, '').split(/\s+/).filter(w => w.length > 0).length;
+
     const { data: article, error: insertError } = await supabase
       .from('blog_articles')
       .insert({
-        title: topicData.title || `Article sur ${topicData.category}`,
+        title: topicData.title || `Guide ${topicData.category}`,
         content: content,
         meta_description: topicData.meta_description || '',
         target_keywords: topicData.keywords || [],
         category: topicData.category,
         subcategory: topicData.subcategory || null,
         language: requestData.language,
-        word_count: content.split(/\s+/).length,
-        format: requestData.output_format,
+        word_count: wordCount,
+        format: 'html',
         product_links: productLinks,
         status: 'draft',
         generated_at: new Date().toISOString()
@@ -227,7 +212,7 @@ Génère l'article complet maintenant:`;
         title: article.title,
         word_count: article.word_count,
         internal_links: productLinks.length,
-        message: 'Blog article generated successfully'
+        message: 'Article de blog généré avec succès'
       }),
       {
         status: 200,
