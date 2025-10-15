@@ -212,7 +212,7 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   }
 
   if (filters.type) {
-    query = query.or(`title.ilike.%${filters.type}%,product_type.ilike.%${filters.type}%,tags.ilike.%${filters.type}%`);
+    query = query.or(`title.ilike.%${filters.type}%,product_type.ilike.%${filters.type}%,tags.ilike.%${filters.type}%,category.ilike.%${filters.type}%,sub_category.ilike.%${filters.type}%`);
   }
 
   if (filters.style) {
