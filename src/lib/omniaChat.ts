@@ -336,69 +336,35 @@ async function generateSmartProductPresentation(products: Product[], userMessage
     return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Par exemple :\n- Quel style préférez-vous ? (scandinave, moderne, industriel...)\n- Quelle pièce souhaitez-vous aménager ?\n- Avez-vous des préférences de couleur ou matériau ?`;
   }
 
-  // Construire les données enrichies pour l'IA
-  const productsData = products.map((p, idx) => {
-    const hasPromo = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
-    const discount = hasPromo ? Math.round((1 - Number(p.price) / Number(p.compare_at_price!)) * 100) : 0;
+  // Génération rapide sans IA pour la présentation
+  const intro = products.length === 1
+    ? `Voici ce que j'ai trouvé pour vous :`
+    : `J'ai trouvé ${products.length} ${filters.type || 'produits'} qui pourraient vous intéresser :`;
 
-    const dimensions = [];
-    if (p.width) dimensions.push(`L${p.width}${p.width_unit || 'cm'}`);
-    if (p.height) dimensions.push(`H${p.height}${p.height_unit || 'cm'}`);
-    if (p.length) dimensions.push(`P${p.length}${p.length_unit || 'cm'}`);
-
-    return {
-      index: idx + 1,
-      titre: p.title,
-      prix: `${p.price}${p.currency || '€'}`,
-      prix_barre: hasPromo ? `${p.compare_at_price}${p.currency || '€'}` : null,
-      reduction: hasPromo ? `${discount}%` : null,
-      categorie: p.category,
-      sous_categorie: p.sub_category,
-      style: p.style,
-      couleur: p.ai_color || p.color,
-      materiau: p.ai_material || p.material,
-      piece: p.room,
-      dimensions: dimensions.join(' x '),
-      description: p.description?.replace(/<[^>]*>/g, '').substring(0, 300),
-      tags: p.tags,
-      stock: p.inventory_quantity || 'Disponible'
-    };
-  });
-
-  const systemPrompt = `Tu es OmnIA, expert conseil en ameublement et décoration.
-Analyse la demande du client et présente les produits de manière personnalisée et engageante.
-
-Règles importantes:
-- Réponds en français naturel et chaleureux
-- Mets en avant les caractéristiques qui correspondent à la demande du client
-- Mentionne les promotions s'il y en a (prix barré, réduction)
-- Cite les dimensions si pertinent
-- Sois concis mais informatif (maximum 150 mots)
-- Termine par une question ouverte pour continuer la conversation
-- N'invente rien, utilise uniquement les données fournies`;
-
-  const userPrompt = `Demande client: "${userMessage}"
-
-Produits trouvés:
-${JSON.stringify(productsData, null, 2)}
-
-Présente ces produits au client de manière engageante.`;
-
-  try {
-    const response = await callDeepSeek([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 300);
-
-    return response;
-  } catch (error) {
-    console.error('Error generating smart presentation:', error);
-    // Fallback simple
-    const intro = products.length === 1
-      ? `J'ai trouvé ce produit qui pourrait vous intéresser :`
-      : `J'ai trouvé ${products.length} produits correspondants :`;
-    return `${intro}\n\nSouhaitez-vous plus de détails ? 😊`;
+  // Détection des promotions
+  const promos = products.filter(p => p.compare_at_price && Number(p.compare_at_price) > Number(p.price));
+  let promoText = '';
+  if (promos.length > 0) {
+    const bestPromo = promos.reduce((best, current) => {
+      const currentDiscount = Math.round((1 - Number(current.price) / Number(current.compare_at_price!)) * 100);
+      const bestDiscount = Math.round((1 - Number(best.price) / Number(best.compare_at_price!)) * 100);
+      return currentDiscount > bestDiscount ? current : best;
+    });
+    const discount = Math.round((1 - Number(bestPromo.price) / Number(bestPromo.compare_at_price!)) * 100);
+    promoText = `\n\n✨ Bonne nouvelle ! ${promos.length} article${promos.length > 1 ? 's sont' : ' est'} en promotion jusqu'à -${discount}% !`;
   }
+
+  // Mise en avant des caractéristiques pertinentes
+  const features = [];
+  if (filters.style) features.push(`style ${filters.style}`);
+  if (filters.color) features.push(`couleur ${filters.color}`);
+  if (filters.material) features.push(`en ${filters.material}`);
+
+  const featureText = features.length > 0
+    ? `\n\nCaractéristiques : ${features.join(', ')}`
+    : '';
+
+  return `${intro}${promoText}${featureText}\n\nVous pouvez cliquer sur les produits ci-dessous pour plus de détails. Besoin d'aide pour choisir ? 😊`;
 }
 
 export async function processOmniaMessage(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
