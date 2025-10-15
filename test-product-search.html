@@ -133,7 +133,7 @@
         async function searchProducts(filters) {
             let query = supabase
                 .from('shopify_products')
-                .select('id, title, price, ai_style, ai_material, ai_color, ai_room, image_url, product_type')
+                .select('id, title, price, style, ai_material, room, image_url, product_type')
                 .eq('status', 'active')
                 .limit(8);
 
@@ -142,11 +142,11 @@
             }
 
             if (filters.style) {
-                query = query.eq('ai_style', filters.style);
+                query = query.eq('style', filters.style);
             }
 
             if (filters.room) {
-                query = query.eq('ai_room', filters.room);
+                query = query.eq('room', filters.room);
             }
 
             const startTime = performance.now();
