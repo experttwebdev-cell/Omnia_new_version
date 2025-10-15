@@ -16,23 +16,24 @@ VITE_OPENAI_API_KEY=sk-proj-9K85iZ5Hq81d5kEQi5Qr3Smm-Iz2b1Uqg9IpalcjcI-cYYB1VDhi
 
 1. Allez dans votre projet Netlify
 2. Cliquez sur **Site settings** → **Environment variables**
-3. Ajoutez les 3 variables ci-dessus
+3. Ajoutez les 3 variables ci-dessus avec les valeurs exactes
 4. Cliquez sur **Deploys** → **Trigger deploy** → **Deploy site**
 
 ## Vercel
 
 1. Allez dans votre projet Vercel
 2. Cliquez sur **Settings** → **Environment Variables**
-3. Ajoutez les 3 variables ci-dessus
+3. Ajoutez les 3 variables ci-dessus avec les valeurs exactes
 4. Sélectionnez **Production, Preview, and Development**
 5. Retournez à **Deployments** et cliquez sur **Redeploy**
 
 ## Important
 
-- Les variables d'environnement sont injectées automatiquement pendant le build
-- Le script `inject-env.sh` remplace les valeurs dans `config.js`
-- Si l'écran reste blanc, vérifiez que les variables sont bien configurées
+- Les variables d'environnement sont injectées automatiquement pendant le build par Vite
+- Les variables DOIVENT commencer par `VITE_` pour être accessibles dans le code
+- Si l'écran reste blanc après déploiement, vérifiez que les variables sont bien configurées
 - Ouvrez la console du navigateur (F12) pour voir les erreurs éventuelles
+- Après avoir ajouté ou modifié les variables, un redéploiement est nécessaire
 
 ## Test Local
 

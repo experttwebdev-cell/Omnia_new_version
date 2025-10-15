@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Store as StoreIcon,
   Plus,
@@ -210,7 +210,7 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
     });
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
       const apiUrl = `${supabaseUrl}/functions/v1/import-shopify-products`;
 
       setImportProgress({
@@ -223,7 +223,7 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
         },
         body: JSON.stringify({
           shopName: store.store_name,

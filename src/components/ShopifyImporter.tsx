@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Store, Download, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { getEnvVar } from '../lib/supabase';
 
 interface ShopifyImporterProps {
   onImportComplete: () => void;
@@ -19,7 +20,7 @@ export function ShopifyImporter({ onImportComplete }: ShopifyImporterProps) {
     setSuccess('');
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
       const apiUrl = `${supabaseUrl}/functions/v1/import-shopify-products`;
 
       console.log('Starting import from:', shopName);
@@ -29,7 +30,7 @@ export function ShopifyImporter({ onImportComplete }: ShopifyImporterProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
         },
         body: JSON.stringify({
           shopName: shopName.trim().replace('.myshopify.com', ''),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Sparkles,
   Upload,
@@ -37,9 +37,9 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
       setEnrichError('');
       setEnrichSuccess('');
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-product-with-ai`;
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
         'Content-Type': 'application/json',
       };
 
@@ -71,9 +71,9 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
       setSyncError('');
       setSyncSuccess('');
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-seo-to-shopify`;
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-seo-to-shopify`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
         'Content-Type': 'application/json',
       };
 

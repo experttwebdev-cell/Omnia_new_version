@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Sparkles,
   Calendar,
@@ -129,7 +129,7 @@ export function AiBlogWriter() {
       setSuccess('');
 
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const token = session?.access_token || getEnvVar('VITE_SUPABASE_ANON_KEY');
 
       const payload = settings.mode === 'manual'
         ? {
@@ -155,7 +155,7 @@ export function AiBlogWriter() {
           };
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blog-article`,
+        `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`,
         {
           method: 'POST',
           headers: {

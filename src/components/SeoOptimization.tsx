@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Search,
   Filter,
@@ -168,11 +168,11 @@ export function SeoOptimization() {
       setPushProgress({ current: i + 1, total: productsToGenerate.length });
 
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-product-with-ai`;
+        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ productId: product.id }),
@@ -215,11 +215,11 @@ export function SeoOptimization() {
       setPushProgress({ current: i + 1, total: productsToSync.length });
 
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-seo-to-shopify`;
+        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-seo-to-shopify`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ productId: product.id }),

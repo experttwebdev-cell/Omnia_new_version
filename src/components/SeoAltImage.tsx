@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import { Search, RefreshCw, Image as ImageIcon, Sparkles, Upload, Loader2, Package, CheckCircle, Clock, Check } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { ProgressModal } from './ProgressModal';
@@ -162,11 +162,11 @@ export function SeoAltImage() {
       });
 
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-alt-texts`;
+        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-alt-texts`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ imageId: image.id }),
@@ -244,11 +244,11 @@ export function SeoAltImage() {
       });
 
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-seo-to-shopify`;
+        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-seo-to-shopify`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ imageId: image.id, syncAltText: true }),

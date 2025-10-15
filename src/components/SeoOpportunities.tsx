@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   RefreshCw,
   Lightbulb,
@@ -129,11 +129,11 @@ export function SeoOpportunities() {
         ai_material: p.ai_material,
       }));
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -477,11 +477,11 @@ export function SeoOpportunities() {
     setGeneratingOutline(opportunity.id);
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

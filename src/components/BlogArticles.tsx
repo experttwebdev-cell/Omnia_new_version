@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Search,
   RefreshCw,
@@ -91,11 +91,11 @@ export function BlogArticles() {
     setSyncing(articleId);
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-blog-to-shopify`;
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-blog-to-shopify`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ articleId }),

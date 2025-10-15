@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, getEnvVar } from './supabase';
 
 export interface ConnectionTestResult {
   success: boolean;
@@ -12,8 +12,8 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult[]> 
 
   // Test 1: Check environment variables
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+    const supabaseKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
     if (!supabaseUrl || supabaseUrl === 'https://placeholder.supabase.co') {
       results.push({
