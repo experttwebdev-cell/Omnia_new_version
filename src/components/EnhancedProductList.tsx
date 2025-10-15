@@ -17,12 +17,16 @@ import {
   Palette,
   Layers,
   Tag as TagIcon,
-  Loader2
+  Loader2,
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { formatPrice } from '../lib/currency';
 import { ProgressModal } from './ProgressModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { ConnectionDiagnostics } from './ConnectionDiagnostics';
+import { getConnectionErrorMessage, testSupabaseConnection } from '../lib/connectionTest';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -45,8 +49,10 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorDetails, setErrorDetails] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(50);
@@ -77,14 +83,26 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
     try {
       setLoading(true);
       setError('');
+      setErrorDetails(null);
+
+      console.log('Attempting to fetch products from Supabase...');
 
       const { data, error: fetchError } = await supabase
         .from('shopify_products')
         .select('*')
         .order('imported_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Supabase fetch error:', fetchError);
+        setErrorDetails(fetchError);
 
+        // Run connection tests to get detailed error message
+        const testResults = await testSupabaseConnection();
+        const detailedMessage = getConnectionErrorMessage(testResults);
+        throw new Error(detailedMessage);
+      }
+
+      console.log(`Successfully fetched ${data?.length || 0} products`);
       setProducts(data || []);
 
       const uniqueVendors = [...new Set(data?.map(p => p.vendor).filter(Boolean))].sort();
@@ -94,7 +112,9 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
       setProductTypes(uniqueTypes as string[]);
     } catch (err) {
       console.error('Error fetching products:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products from database';
+      setError(errorMessage);
+      setErrorDetails(err);
     } finally {
       setLoading(false);
     }
@@ -304,15 +324,59 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <p className="text-red-600 mb-4">{error}</p>
-        <button
-          onClick={fetchProducts}
-          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition"
-        >
-          Retry
-        </button>
-      </div>
+      <>
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="flex items-start gap-4 mb-6">
+            <AlertCircle className="w-12 h-12 text-red-600 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Connection Error</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+
+              {errorDetails && (
+                <details className="mb-4">
+                  <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-900">
+                    View technical details
+                  </summary>
+                  <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-x-auto text-gray-700">
+                    {JSON.stringify(errorDetails, null, 2)}
+                  </pre>
+                </details>
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={fetchProducts}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry Connection
+                </button>
+                <button
+                  onClick={() => setShowDiagnostics(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition"
+                >
+                  <Activity className="w-4 h-4" />
+                  Run Diagnostics
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-semibold text-blue-900 mb-2">Quick Troubleshooting:</h4>
+            <ul className="list-disc list-inside space-y-1 text-sm text-blue-800">
+              <li>Verify your .env file contains valid Supabase credentials</li>
+              <li>Check that your Supabase project is active (not paused)</li>
+              <li>Ensure you have internet connectivity</li>
+              <li>Try opening your browser's developer console for more details</li>
+            </ul>
+          </div>
+        </div>
+
+        {showDiagnostics && (
+          <ConnectionDiagnostics onClose={() => setShowDiagnostics(false)} />
+        )}
+      </>
     );
   }
 
@@ -865,6 +929,10 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
         itemType="product"
         onClose={handleCancelEnrichment}
       />
+
+      {showDiagnostics && (
+        <ConnectionDiagnostics onClose={() => setShowDiagnostics(false)} />
+      )}
       </div>
     </>
   );

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, RefreshCw, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity } from 'lucide-react';
 import { Language } from '../lib/translations';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
+import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 
 interface SettingsData {
   enrichment_mode: 'manual' | 'auto';
@@ -19,6 +20,7 @@ export function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -213,6 +215,23 @@ export function Settings() {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Activity className="w-5 h-5 text-gray-600" />
+          <h2 className="text-lg font-semibold text-gray-800">Database Connection</h2>
+        </div>
+        <p className="text-gray-600 mb-4">
+          Test your Supabase database connection and diagnose any configuration issues.
+        </p>
+        <button
+          onClick={() => setShowDiagnostics(true)}
+          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+        >
+          <Activity className="w-4 h-4" />
+          Run Connection Diagnostics
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           {t.settings.aboutEnrichment}
         </h2>
@@ -232,6 +251,10 @@ export function Settings() {
           </p>
         </div>
       </div>
+
+      {showDiagnostics && (
+        <ConnectionDiagnostics onClose={() => setShowDiagnostics(false)} />
+      )}
     </div>
   );
 }
