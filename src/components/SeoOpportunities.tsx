@@ -497,7 +497,54 @@ export function SeoOpportunities() {
         .filter(p => opportunity.relatedProducts.includes(p.title))
         .map(p => p.id);
 
-      const productLanguage = products[0]?.product_type || 'en';
+      const { data: storeData } = await supabase
+        .from('shopify_stores')
+        .select('language')
+        .limit(1)
+        .maybeSingle();
+
+      const targetLanguage = storeData?.language || language || 'fr';
+      const category = products.find(p => opportunity.relatedProducts.includes(p.title))?.category || '';
+
+      addNotification({
+        type: 'info',
+        title: language === 'fr' ? 'Génération en cours' : 'Generating',
+        message: language === 'fr'
+          ? 'L\'IA génère un article complet avec du contenu de qualité...'
+          : 'AI is generating a complete article with quality content...',
+        duration: 10000
+      });
+
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mode: 'manual',
+          category: category,
+          keywords: opportunity.targetKeywords,
+          language: targetLanguage,
+          word_count_min: opportunity.estimatedWordCount || 2000,
+          word_count_max: (opportunity.estimatedWordCount || 2000) + 500,
+          output_format: 'html',
+          internal_linking: true,
+          max_internal_links: Math.min(opportunity.productCount, 5)
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate article');
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.article_id) {
+        throw new Error('Article generation failed');
+      }
 
       const { data: opportunityData, error: oppError } = await supabase
         .from('blog_opportunities')
@@ -507,68 +554,51 @@ export function SeoOpportunities() {
           type: opportunity.type,
           target_keywords: opportunity.targetKeywords,
           related_product_ids: relatedProductIds,
-          product_language: productLanguage,
-          category: products[0]?.category || '',
-          sub_category: products[0]?.sub_category || '',
+          product_language: targetLanguage,
+          category: category,
           score: opportunity.score,
           estimated_word_count: opportunity.estimatedWordCount,
           difficulty: opportunity.difficulty,
           status: 'approved'
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (oppError) throw oppError;
+      if (opportunityData) {
+        await supabase
+          .from('blog_articles')
+          .update({ opportunity_id: opportunityData.id })
+          .eq('id', result.article_id);
+      }
 
-      const articleContent = `<h1>${opportunity.title}</h1>\n<p>${opportunity.description}</p>\n\n${opportunity.suggestedStructure?.map((section, idx) => `<h2>${idx + 1}. ${section}</h2>\n<p>[Content for ${section}]</p>`).join('\n') || ''}`;
-
-      const { error: articleError } = await supabase
-        .from('blog_articles')
-        .insert({
-          opportunity_id: opportunityData.id,
-          title: opportunity.title,
-          content: articleContent,
-          excerpt: opportunity.description.substring(0, 200),
-          target_keywords: opportunity.targetKeywords,
-          related_product_ids: relatedProductIds,
-          category: products[0]?.category || '',
-          subcategory: products[0]?.sub_category || '',
-          language: 'en',
-          word_count: articleContent.split(/\s+/).length,
-          format: 'html',
-          product_links: [],
-          status: 'draft',
-          sync_status: 'draft',
-          author: 'AI Generated',
-          tags: opportunity.targetKeywords.slice(0, 3).join(', '),
-          meta_description: opportunity.description.substring(0, 160)
+      if (result.validation_warnings && result.validation_warnings.length > 0) {
+        addNotification({
+          type: 'warning',
+          title: language === 'fr' ? 'Article créé avec avertissements' : 'Article created with warnings',
+          message: language === 'fr'
+            ? `L'article a été créé mais contient ${result.validation_warnings.length} avertissement(s) de qualité.`
+            : `Article created but contains ${result.validation_warnings.length} quality warning(s).`,
+          duration: 5000
         });
-
-      if (articleError) throw articleError;
-
-      const { data: createdArticle } = await supabase
-        .from('blog_articles')
-        .select('id')
-        .eq('opportunity_id', opportunityData.id)
-        .single();
-
-      addNotification({
-        type: 'success',
-        title: 'Article Created',
-        message: 'Draft article created successfully. Opening preview...',
-        duration: 3000
-      });
+      } else {
+        addNotification({
+          type: 'success',
+          title: language === 'fr' ? 'Article créé' : 'Article Created',
+          message: language === 'fr'
+            ? `Article de ${result.word_count} mots généré avec succès (Score: ${result.content_quality_score}/100)`
+            : `${result.word_count}-word article generated successfully (Score: ${result.content_quality_score}/100)`,
+          duration: 5000
+        });
+      }
 
       setTimeout(() => {
-        if (createdArticle) {
-          setSelectedArticleId(createdArticle.id);
-        }
+        setSelectedArticleId(result.article_id);
       }, 500);
     } catch (err) {
       console.error('Error creating article:', err);
       addNotification({
         type: 'error',
-        title: 'Creation Failed',
+        title: language === 'fr' ? 'Échec de la création' : 'Creation Failed',
         message: err instanceof Error ? err.message : 'Failed to create article',
         duration: 5000
       });
