@@ -33,11 +33,24 @@ Deno.serve(async (req: Request) => {
       throw new Error('Messages array is required and must not be empty');
     }
 
-    const deepseekApiKey = 'sk-f8371ab077764e799458200be57edd9f';
+    // Try to get API key from environment variables first, then fallback to hardcoded
+    let deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    
+    if (!deepseekApiKey) {
+      deepseekApiKey = 'sk-f8371ab077764e799458200be57edd9f';
+      console.warn('Using hardcoded DeepSeek API key. Please set DEEPSEEK_API_KEY environment variable.');
+    }
+
+    if (!deepseekApiKey || deepseekApiKey.trim() === '') {
+      throw new Error('DeepSeek API key is not configured. Please provide DEEPSEEK_API_KEY.');
+    }
     
     console.log('Calling DeepSeek API...');
     console.log('Model:', model);
     console.log('Messages count:', messages.length);
+    console.log('API Key present:', !!deepseekApiKey);
+    console.log('API Key length:', deepseekApiKey.length);
+    console.log('API Key starts with:', deepseekApiKey.substring(0, 8));
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -53,13 +66,25 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
+    const responseText = await response.text();
+    console.log('DeepSeek API response status:', response.status);
+    console.log('DeepSeek API response:', responseText);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('DeepSeek API error:', response.status, errorText);
-      throw new Error(`DeepSeek API request failed: ${response.status} - ${errorText}`);
+      console.error('DeepSeek API error:', response.status, responseText);
+      
+      let errorMessage = `DeepSeek API request failed: ${response.status}`;
+      
+      if (response.status === 401) {
+        errorMessage = 'Invalid or expired DeepSeek API key. Please check your API key at https://platform.deepseek.com/api_keys';
+      } else if (response.status === 429) {
+        errorMessage = 'DeepSeek API rate limit exceeded. Please try again later.';
+      }
+      
+      throw new Error(`${errorMessage} - ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     console.log('DeepSeek response received successfully');
 
     return new Response(
@@ -76,6 +101,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'An error occurred',
+        hint: 'Please verify your DeepSeek API key at https://platform.deepseek.com/api_keys',
       }),
       {
         status: 500,
