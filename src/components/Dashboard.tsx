@@ -51,54 +51,37 @@ export function Dashboard({ onProductSelect }: DashboardProps) {
       setLoading(true);
       setError('');
 
-      const [productsResult, syncLogsResult] = await Promise.all([
-        supabase.from('shopify_products').select('*'),
-        supabase
-          .from('sync_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5)
+      const [dashboardStatsResult, productTypesResult, enrichedProductsResult, syncLogsResult] = await Promise.all([
+        supabase.from('fast_dashboard_cache').select('*').maybeSingle(),
+        supabase.from('product_type_statistics_cache').select('*').limit(5),
+        supabase.from('fast_products_view').select('*').eq('enrichment_status', 'enriched').order('last_enriched_at', { ascending: false }),
+        supabase.from('recent_sync_logs_view').select('*').limit(5)
       ]);
 
-      if (productsResult.error) throw productsResult.error;
+      if (dashboardStatsResult.error) throw dashboardStatsResult.error;
+      if (productTypesResult.error) throw productTypesResult.error;
+      if (enrichedProductsResult.error) throw enrichedProductsResult.error;
       if (syncLogsResult.error) throw syncLogsResult.error;
 
-      const products = productsResult.data || [];
+      const statsData = dashboardStatsResult.data;
+      const productTypes = (productTypesResult.data || []).map(pt => ({ type: pt.product_type, count: pt.product_count }));
+      const products = enrichedProductsResult.data || [];
       const syncLogs = syncLogsResult.data || [];
 
-      const totalProducts = products.length;
-      const activeProducts = products.filter(p => p.status === 'active').length;
-      const lowStockProducts = products.filter(p => p.inventory_quantity < 10).length;
-      const totalInventory = products.reduce((sum, p) => sum + (p.inventory_quantity || 0), 0);
-      const enrichedProducts = products.filter(p => p.enrichment_status === 'enriched').length;
-      const syncedProducts = products.filter(p => p.seo_synced_to_shopify).length;
-      const pendingSyncProducts = products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length;
-
-      const vendorsSet = new Set(products.map(p => p.vendor).filter(Boolean));
-      const uniqueVendors = vendorsSet.size;
-
-      const typeMap = new Map<string, number>();
-      products.forEach(p => {
-        if (p.product_type) {
-          typeMap.set(p.product_type, (typeMap.get(p.product_type) || 0) + 1);
-        }
-      });
-
-      const productTypes = Array.from(typeMap.entries())
-        .map(([type, count]) => ({ type, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+      if (!statsData) {
+        throw new Error('Dashboard statistics not available');
+      }
 
       setProducts(products);
       setStats({
-        totalProducts,
-        totalInventory,
-        activeProducts,
-        lowStockProducts,
-        uniqueVendors,
-        enrichedProducts,
-        syncedProducts,
-        pendingSyncProducts,
+        totalProducts: statsData.total_products,
+        totalInventory: statsData.total_inventory,
+        activeProducts: statsData.active_products,
+        lowStockProducts: statsData.low_stock_products,
+        uniqueVendors: statsData.unique_vendors,
+        enrichedProducts: statsData.enriched_products,
+        syncedProducts: statsData.synced_products,
+        pendingSyncProducts: statsData.pending_sync_products,
         productTypes,
         recentSyncs: syncLogs
       });

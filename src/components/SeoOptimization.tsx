@@ -48,7 +48,7 @@ export function SeoOptimization() {
       setError('');
 
       const { data, error: fetchError } = await supabase
-        .from('shopify_products')
+        .from('fast_products_view')
         .select('*')
         .order('imported_at', { ascending: false });
 
