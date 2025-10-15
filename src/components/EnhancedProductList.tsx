@@ -284,6 +284,20 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
     setEnrichingProducts(false);
     setEnrichProgress({ current: 0, total: 0, currentProduct: '', currentImage: '' });
+
+    try {
+      const refreshUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/refresh-dashboard-cache`;
+      await fetch(refreshUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (err) {
+      console.error('Error refreshing cache:', err);
+    }
+
     await fetchProducts();
   };
 
