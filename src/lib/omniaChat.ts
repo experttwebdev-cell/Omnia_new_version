@@ -29,12 +29,21 @@ interface Product {
   image_url?: string;
   product_type?: string;
   description?: string;
-  ai_enhanced_description?: string;
   ai_vision_analysis?: string;
   handle?: string;
   shopify_id?: string;
   currency?: string;
   shop_name?: string;
+  category?: string;
+  sub_category?: string;
+  tags?: string;
+  length?: number;
+  width?: number;
+  height?: number;
+  length_unit?: string;
+  width_unit?: string;
+  height_unit?: string;
+  inventory_quantity?: number;
 }
 
 const intents = {
@@ -194,7 +203,7 @@ function extractProductAttributesSimple(userMessage: string): ProductAttributes 
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
   let query = supabase
     .from('shopify_products')
-    .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_enhanced_description, ai_vision_analysis, handle, shopify_id, currency, shop_name')
+    .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_vision_analysis, handle, shopify_id, currency, shop_name, category, sub_category, tags, length, width, height, length_unit, width_unit, height_unit, inventory_quantity')
     .eq('status', 'active')
     .limit(8);
 
@@ -232,7 +241,7 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   return data || [];
 }
 
-function generateProductPresentationSimple(products: Product[], userMessage: string, filters: ProductAttributes): string {
+async function generateSmartProductPresentation(products: Product[], userMessage: string, filters: ProductAttributes): Promise<string> {
   if (products.length === 0) {
     const filterDesc = [];
     if (filters.type) filterDesc.push(`${filters.type}s`);
@@ -243,21 +252,69 @@ function generateProductPresentationSimple(products: Product[], userMessage: str
     return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Par exemple :\n- Quel style préférez-vous ? (scandinave, moderne, industriel...)\n- Quelle pièce souhaitez-vous aménager ?\n- Avez-vous des préférences de couleur ou matériau ?`;
   }
 
-  const intro = products.length === 1
-    ? `J'ai trouvé ce produit qui pourrait vous intéresser :`
-    : `J'ai trouvé ${products.length} produits qui correspondent à votre recherche :`;
+  // Construire les données enrichies pour l'IA
+  const productsData = products.map((p, idx) => {
+    const hasPromo = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
+    const discount = hasPromo ? Math.round((1 - Number(p.price) / Number(p.compare_at_price!)) * 100) : 0;
 
-  const productsList = products.map((p, index) => {
-    const details = [];
-    if (p.style) details.push(p.style);
-    if (p.material) details.push(p.material);
-    if (p.color) details.push(p.color);
+    const dimensions = [];
+    if (p.width) dimensions.push(`L${p.width}${p.width_unit || 'cm'}`);
+    if (p.height) dimensions.push(`H${p.height}${p.height_unit || 'cm'}`);
+    if (p.length) dimensions.push(`P${p.length}${p.length_unit || 'cm'}`);
 
-    const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : '';
-    return `\n${index + 1}. **${p.title}**${detailsStr}\n   Prix: ${p.price} €`;
-  }).join('\n');
+    return {
+      index: idx + 1,
+      titre: p.title,
+      prix: `${p.price}${p.currency || '€'}`,
+      prix_barre: hasPromo ? `${p.compare_at_price}${p.currency || '€'}` : null,
+      reduction: hasPromo ? `${discount}%` : null,
+      categorie: p.category,
+      sous_categorie: p.sub_category,
+      style: p.style,
+      couleur: p.ai_color || p.color,
+      materiau: p.ai_material || p.material,
+      piece: p.room,
+      dimensions: dimensions.join(' x '),
+      description: p.description?.replace(/<[^>]*>/g, '').substring(0, 300),
+      tags: p.tags,
+      stock: p.inventory_quantity || 'Disponible'
+    };
+  });
 
-  return `${intro}\n${productsList}\n\nSouhaitez-vous plus d'informations sur l'un de ces produits ? 😊`;
+  const systemPrompt = `Tu es OmnIA, expert conseil en ameublement et décoration.
+Analyse la demande du client et présente les produits de manière personnalisée et engageante.
+
+Règles importantes:
+- Réponds en français naturel et chaleureux
+- Mets en avant les caractéristiques qui correspondent à la demande du client
+- Mentionne les promotions s'il y en a (prix barré, réduction)
+- Cite les dimensions si pertinent
+- Sois concis mais informatif (maximum 150 mots)
+- Termine par une question ouverte pour continuer la conversation
+- N'invente rien, utilise uniquement les données fournies`;
+
+  const userPrompt = `Demande client: "${userMessage}"
+
+Produits trouvés:
+${JSON.stringify(productsData, null, 2)}
+
+Présente ces produits au client de manière engageante.`;
+
+  try {
+    const response = await callDeepSeek([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], 300);
+
+    return response;
+  } catch (error) {
+    console.error('Error generating smart presentation:', error);
+    // Fallback simple
+    const intro = products.length === 1
+      ? `J'ai trouvé ce produit qui pourrait vous intéresser :`
+      : `J'ai trouvé ${products.length} produits correspondants :`;
+    return `${intro}\n\nSouhaitez-vous plus de détails ? 😊`;
+  }
 }
 
 export async function processOmniaMessage(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
@@ -327,7 +384,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
   if (intentName === 'ProductChatIntent') {
     const attributes = extractProductAttributesSimple(userMessage);
     const products = await searchProducts(attributes, storeId);
-    const presentation = generateProductPresentationSimple(products, userMessage, attributes);
+    const presentation = await generateSmartProductPresentation(products, userMessage, attributes);
 
     return {
       role: 'assistant' as const,
