@@ -199,19 +199,19 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   }
 
   if (filters.style) {
-    query = query.eq('style', filters.style);
+    query = query.or(`style.eq.${filters.style},tags.ilike.%${filters.style}%`);
   }
 
   if (filters.color) {
-    query = query.ilike('color', `%${filters.color}%`);
+    query = query.or(`color.ilike.%${filters.color}%,tags.ilike.%${filters.color}%`);
   }
 
   if (filters.material) {
-    query = query.ilike('material', `%${filters.material}%`);
+    query = query.or(`material.ilike.%${filters.material}%,tags.ilike.%${filters.material}%`);
   }
 
   if (filters.room) {
-    query = query.eq('room', filters.room);
+    query = query.or(`room.eq.${filters.room},tags.ilike.%${filters.room}%`);
   }
 
   const { data, error } = await query;
