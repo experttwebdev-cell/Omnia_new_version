@@ -1,26 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
-import {
-  Package,
-  RefreshCw,
-  Search,
-  Filter,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Sparkles,
-  CheckCircle,
-  Clock,
-  List,
-  Grid,
-  Palette,
-  Layers,
-  Tag as TagIcon,
-  Loader2,
-  Activity,
-  AlertCircle
-} from 'lucide-react';
+import { Package, RefreshCw, Search, Filter, ChevronDown, ChevronLeft, ChevronRight, Eye, Sparkles, CheckCircle, Clock, List, Grid2x2 as Grid, Palette, Layers, Tag as TagIcon, Loader2, Activity, AlertCircle } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { formatPrice } from '../lib/currency';
 import { ProgressModal } from './ProgressModal';
