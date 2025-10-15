@@ -21,7 +21,7 @@ import type { Database } from '../lib/database.types';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
-type QuickFilterTab = 'all' | 'not-optimized' | 'optimized' | 'pending-sync' | 'synced';
+type QuickFilterTab = 'all' | 'not-enriched' | 'enriched' | 'pending-sync' | 'synced';
 
 export function SeoOptimization() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -128,8 +128,8 @@ export function SeoOptimization() {
     if (filters.syncStatus === 'pending' && (product.seo_synced_to_shopify || product.enrichment_status !== 'enriched')) return false;
     if (filters.syncStatus === 'not-enriched' && product.enrichment_status === 'enriched') return false;
 
-    if (activeTab === 'not-optimized' && (product.seo_title || product.seo_description)) return false;
-    if (activeTab === 'optimized' && product.enrichment_status !== 'enriched') return false;
+    if (activeTab === 'not-enriched' && product.enrichment_status === 'enriched') return false;
+    if (activeTab === 'enriched' && product.enrichment_status !== 'enriched') return false;
     if (activeTab === 'pending-sync' && (product.enrichment_status !== 'enriched' || product.seo_synced_to_shopify)) return false;
     if (activeTab === 'synced' && !product.seo_synced_to_shopify) return false;
 
@@ -322,8 +322,8 @@ export function SeoOptimization() {
 
   const tabs = [
     { id: 'all' as QuickFilterTab, label: 'Tous', count: products.length },
-    { id: 'not-optimized' as QuickFilterTab, label: 'Non optimisés', count: quickStats?.not_optimized_count || 0 },
-    { id: 'optimized' as QuickFilterTab, label: 'Optimisés', count: quickStats?.optimized_count || 0 },
+    { id: 'not-enriched' as QuickFilterTab, label: 'Produits non enrichis', count: quickStats?.not_optimized_count || 0 },
+    { id: 'enriched' as QuickFilterTab, label: 'Produits enrichis', count: quickStats?.optimized_count || 0 },
     { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.pending_sync_count || 0 },
     { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.synced_count || 0 }
   ];

@@ -411,10 +411,10 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-600">
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">AI Enriched</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">Produits enrichis</p>
               <p className="text-3xl font-bold text-gray-900">
                 {products.filter(p => p.enrichment_status === 'enriched').length}
               </p>
@@ -422,11 +422,11 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                 {products.length > 0 ? Math.round((products.filter(p => p.enrichment_status === 'enriched').length / products.length) * 100) : 0}% of total
               </p>
             </div>
-            <Sparkles className="w-10 h-10 text-purple-600 opacity-20" />
+            <Sparkles className="w-10 h-10 text-green-600 opacity-20" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-600">
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-600">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">Synced to Shopify</p>
@@ -434,7 +434,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                 {products.filter(p => p.seo_synced_to_shopify).length}
               </p>
             </div>
-            <CheckCircle className="w-10 h-10 text-green-600 opacity-20" />
+            <CheckCircle className="w-10 h-10 text-blue-600 opacity-20" />
           </div>
         </div>
 
