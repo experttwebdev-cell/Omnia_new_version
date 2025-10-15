@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase, getEnvVar } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import {
   Calendar,
   Clock,
   Tag,
-  Share2,
   Facebook,
   Twitter,
   Linkedin,
@@ -88,7 +87,9 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
         .maybeSingle();
 
       if (error) throw error;
-      setArticle(data as BlogArticle);
+      if (data) {
+        setArticle(data as BlogArticle);
+      }
     } catch (err) {
       console.error('Error fetching article:', err);
     } finally {
@@ -97,15 +98,19 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
   };
 
   const extractSections = (htmlContent: string): Array<{ id: string; title: string }> => {
-    const h2Regex = /<h2[^>]*id="([^"]*)"[^>]*>(.*?)<\/h2>/gi;
+    if (!htmlContent) return [];
+
+    const h2Regex = /<h2[^>]*(?:id="([^"]*)")?[^>]*>(.*?)<\/h2>/gi;
     const sections: Array<{ id: string; title: string }> = [];
     let match;
+    let sectionIndex = 0;
 
     while ((match = h2Regex.exec(htmlContent)) !== null) {
-      sections.push({
-        id: match[1],
-        title: match[2].replace(/<[^>]*>/g, '')
-      });
+      const id = match[1] || `section-${sectionIndex++}`;
+      const title = match[2].replace(/<[^>]*>/g, '').trim();
+      if (title) {
+        sections.push({ id, title });
+      }
     }
 
     return sections;
@@ -177,7 +182,11 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
   const sections = extractSections(article.content);
   const readingTime = getReadingTime(article.word_count);
 
-  // Validate heading hierarchy
+  const hasIncompleteContent = useMemo(() => {
+    if (!article.content) return true;
+    return article.content.includes('[Content for') || article.content.length < 200;
+  }, [article.content]);
+
   const headingValidation = useMemo(() => {
     return validateHeadingHierarchy(article.content);
   }, [article.content]);
@@ -346,7 +355,22 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
           </aside>
 
           <article className="lg:col-span-9">
-            {/* Heading Validation Warning */}
+            {hasIncompleteContent && (
+              <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-orange-900 mb-1">
+                      Contenu incomplet détecté
+                    </h4>
+                    <p className="text-sm text-orange-800">
+                      Cet article contient du contenu placeholder. Le contenu complet sera généré automatiquement lors de la prochaine génération.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {headingValidation.score < 70 && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -520,10 +544,20 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
               }
             `}</style>
 
-            <div
-              className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h1:mb-6 prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-img:shadow-lg prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-gray-600 prose-figcaption:mt-2 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal"
-              dangerouslySetInnerHTML={{ __html: article.content }}
-            />
+            {article.content && article.content.trim() ? (
+              <div
+                className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h1:mb-6 prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-img:shadow-lg prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-gray-600 prose-figcaption:mt-2 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal"
+                dangerouslySetInnerHTML={{ __html: article.content }}
+              />
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium">Aucun contenu disponible</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Le contenu de cet article n'a pas encore été généré
+                </p>
+              </div>
+            )}
 
             <div className="mt-12 pt-8 border-t border-gray-200">
               <div className="flex items-center justify-between">

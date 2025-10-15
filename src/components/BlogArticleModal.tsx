@@ -44,7 +44,7 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [mode, setMode] = useState<'preview' | 'edit' | 'landing'>('landing');
+  const [mode, setMode] = useState<'preview' | 'edit' | 'landing'>('preview');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [formData, setFormData] = useState({
@@ -230,6 +230,20 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
             <div className="prose max-w-none">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">{article.title}</h1>
 
+              {article.content && article.content.includes('[Content for') && (
+                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-orange-800 font-medium">Contenu incomplet</p>
+                      <p className="text-xs text-orange-700 mt-1">
+                        Cet article contient du contenu placeholder qui doit être complété.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {article.excerpt && (
                 <div className="bg-gray-50 border-l-4 border-blue-500 p-4 mb-6">
                   <p className="text-gray-700 italic">{article.excerpt}</p>
@@ -249,10 +263,17 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
                 </div>
               )}
 
-              <div
-                className="text-gray-800 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: article.content }}
-              />
+              {article.content && article.content.trim() ? (
+                <div
+                  className="text-gray-800 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: article.content }}
+                />
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium">Aucun contenu disponible</p>
+                </div>
+              )}
 
               {(article.meta_title || article.meta_description) && (
                 <div className="mt-8 pt-6 border-t border-gray-200">
