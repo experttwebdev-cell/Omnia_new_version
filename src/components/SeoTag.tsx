@@ -18,7 +18,7 @@ import { useNotifications, NotificationSystem } from './NotificationSystem';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
-type TagTab = 'all' | 'without-tags' | 'with-tags' | 'to-sync';
+type TagTab = 'all' | 'not-enriched' | 'enriched' | 'to-sync';
 
 export function SeoTag() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -83,8 +83,8 @@ export function SeoTag() {
   const filteredProducts = products.filter((product) => {
     if (searchTerm && !product.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
 
-    if (activeTab === 'without-tags' && product.tags && product.tags.trim() !== '') return false;
-    if (activeTab === 'with-tags' && (!product.tags || product.tags.trim() === '')) return false;
+    if (activeTab === 'not-enriched' && product.enrichment_status === 'enriched') return false;
+    if (activeTab === 'enriched' && product.enrichment_status !== 'enriched') return false;
     if (activeTab === 'to-sync' && (!product.tags || product.tags.trim() === '' || product.seo_synced_to_shopify)) return false;
 
     return true;
@@ -329,14 +329,14 @@ export function SeoTag() {
     );
   }
 
-  const productsWithoutTags = quickStats?.products_without_tags || products.filter(p => !p.tags || p.tags.trim() === '').length;
-  const productsWithTags = quickStats?.products_with_tags || products.filter(p => p.tags && p.tags.trim() !== '').length;
+  const productsNotEnriched = quickStats?.products_without_tags || products.filter(p => p.enrichment_status !== 'enriched').length;
+  const productsEnriched = quickStats?.products_with_tags || products.filter(p => p.enrichment_status === 'enriched').length;
   const productsNeedingSync = quickStats?.tags_pending_sync || products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
 
   const tabs = [
     { id: 'all' as TagTab, label: 'Tous les produits', count: products.length },
-    { id: 'without-tags' as TagTab, label: 'Sans tags', count: productsWithoutTags },
-    { id: 'with-tags' as TagTab, label: 'Avec tags', count: productsWithTags },
+    { id: 'not-enriched' as TagTab, label: 'Tags non enrichis', count: productsNotEnriched },
+    { id: 'enriched' as TagTab, label: 'Tags enrichis', count: productsEnriched },
     { id: 'to-sync' as TagTab, label: 'À synchroniser', count: productsNeedingSync }
   ];
 
@@ -482,9 +482,9 @@ export function SeoTag() {
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <AlertCircle className="w-5 h-5 text-orange-600" />
-            <h3 className="font-semibold text-orange-900">Without Tags</h3>
+            <h3 className="font-semibold text-orange-900">Tags non enrichis</h3>
           </div>
-          <p className="text-2xl font-bold text-orange-900">{productsWithoutTags}</p>
+          <p className="text-2xl font-bold text-orange-900">{productsNotEnriched}</p>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
