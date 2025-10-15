@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Product Search Performance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .test-item {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-item.running {
+            border-left-color: #2196F3;
+        }
+        .test-item.error {
+            border-left-color: #f44336;
+        }
+        .test-query {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 3px;
+        }
+        .test-time {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .test-time.slow {
+            color: #ff9800;
+        }
+        .test-time.very-slow {
+            color: #f44336;
+        }
+        .product-count {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .stats {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        .stats-item {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔍 Test de Performance - Recherche de Produits</h1>
+
+        <div>
+            <button id="runTests" onclick="runAllTests()">Lancer tous les tests</button>
+            <button onclick="clearResults()">Effacer les résultats</button>
+        </div>
+
+        <div id="results"></div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <h2>📊 Statistiques</h2>
+            <div class="stats-item">Tests réussis: <span id="successCount">0</span></div>
+            <div class="stats-item">Tests échoués: <span id="errorCount">0</span></div>
+            <div class="stats-item">Temps moyen: <span id="avgTime">0</span>ms</div>
+            <div class="stats-item">Temps le plus rapide: <span id="minTime">0</span>ms</div>
+            <div class="stats-item">Temps le plus lent: <span id="maxTime">0</span>ms</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        const supabaseUrl = window.ENV?.VITE_SUPABASE_URL || 'https://qmnrqrzwbctxgxmxyfcf.supabase.co';
+        const supabaseKey = window.ENV?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtbnJxcnp3YmN0eGd4bXh5ZmNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjg5MjEzMTQsImV4cCI6MjA0NDQ5NzMxNH0.7mJa4FrQ1HlXcxd97baTqNSe9PqWiYjvx2bj6gXOx1k';
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const testQueries = [
+            { query: 'canapé', type: 'canapé' },
+            { query: 'table scandinave', type: 'table', style: 'Scandinave' },
+            { query: 'chaise moderne', type: 'chaise', style: 'Moderne' },
+            { query: 'lit', type: 'lit' },
+            { query: 'meuble de salon', type: 'meuble', room: 'Salon' },
+        ];
+
+        const times = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        async function searchProducts(filters) {
+            let query = supabase
+                .from('shopify_products')
+                .select('id, title, price, style, material, color, room, image_url, product_type')
+                .eq('status', 'active')
+                .limit(8);
+
+            if (filters.type) {
+                query = query.or(`title.ilike.%${filters.type}%,product_type.ilike.%${filters.type}%,tags.ilike.%${filters.type}%`);
+            }
+
+            if (filters.style) {
+                query = query.eq('style', filters.style);
+            }
+
+            if (filters.room) {
+                query = query.eq('room', filters.room);
+            }
+
+            const startTime = performance.now();
+            const { data, error } = await query;
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+
+            return { data, error, duration };
+        }
+
+        async function runTest(testQuery, index) {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-item running';
+            testDiv.id = `test-${index}`;
+
+            testDiv.innerHTML = `
+                <div class="test-query">Test ${index + 1}: "${testQuery.query}"</div>
+                <div class="test-result">⏳ Recherche en cours...</div>
+            `;
+
+            resultsDiv.appendChild(testDiv);
+
+            try {
+                const result = await searchProducts(testQuery);
+
+                if (result.error) {
+                    throw result.error;
+                }
+
+                times.push(result.duration);
+                successCount++;
+
+                let timeClass = '';
+                if (result.duration > 1000) timeClass = 'very-slow';
+                else if (result.duration > 500) timeClass = 'slow';
+
+                testDiv.className = 'test-item';
+                testDiv.innerHTML = `
+                    <div class="test-query">✅ Test ${index + 1}: "${testQuery.query}"</div>
+                    <div class="test-result">
+                        <div>⏱️ Temps: <span class="test-time ${timeClass}">${result.duration.toFixed(0)}ms</span></div>
+                        <div>📦 Produits trouvés: <span class="product-count">${result.data.length}</span></div>
+                        ${result.data.length > 0 ? `<div>Premier résultat: ${result.data[0].title}</div>` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                errorCount++;
+                testDiv.className = 'test-item error';
+                testDiv.innerHTML = `
+                    <div class="test-query">❌ Test ${index + 1}: "${testQuery.query}"</div>
+                    <div class="test-result">
+                        <div style="color: #f44336;">Erreur: ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        window.runAllTests = async function() {
+            const button = document.getElementById('runTests');
+            button.disabled = true;
+            button.textContent = 'Tests en cours...';
+
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('stats').style.display = 'none';
+            times.length = 0;
+            successCount = 0;
+            errorCount = 0;
+
+            for (let i = 0; i < testQueries.length; i++) {
+                await runTest(testQueries[i], i);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            if (times.length > 0) {
+                const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+                const minTime = Math.min(...times);
+                const maxTime = Math.max(...times);
+
+                document.getElementById('successCount').textContent = successCount;
+                document.getElementById('errorCount').textContent = errorCount;
+                document.getElementById('avgTime').textContent = avgTime.toFixed(0);
+                document.getElementById('minTime').textContent = minTime.toFixed(0);
+                document.getElementById('maxTime').textContent = maxTime.toFixed(0);
+                document.getElementById('stats').style.display = 'block';
+            }
+
+            button.disabled = false;
+            button.textContent = 'Relancer les tests';
+        };
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('stats').style.display = 'none';
+            times.length = 0;
+            successCount = 0;
+            errorCount = 0;
+        };
+
+        console.log('🚀 Test de recherche de produits prêt !');
+    </script>
+</body>
+</html>
