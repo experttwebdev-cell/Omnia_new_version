@@ -53,8 +53,8 @@ export function SeoOpportunities() {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
-  const supportedLangs: ('fr' | 'en')[] = ['fr', 'en'];
-  const templateLang = supportedLangs.includes(language as 'fr' | 'en') ? (language as 'fr' | 'en') : 'fr';
+  const supportedLangs: ('fr' | 'en' | 'es' | 'de' | 'it')[] = ['fr', 'en', 'es', 'de', 'it'];
+  const templateLang = supportedLangs.includes(language as 'fr' | 'en' | 'es' | 'de' | 'it') ? (language as 'fr' | 'en' | 'es' | 'de' | 'it') : 'fr';
   const templates = opportunityTemplates[templateLang];
 
   const uiText = {
@@ -105,6 +105,78 @@ export function SeoOpportunities() {
       targetKeywords: 'Target Keywords',
       suggestedStructure: 'Suggested Structure',
       createArticle: 'Create Article'
+    },
+    es: {
+      title: 'Oportunidades de Contenido Blog',
+      subtitle: 'Ideas de contenido impulsadas por IA basadas en su catálogo de productos',
+      generating: 'Generando...',
+      generateButton: 'Generar Oportunidades Inteligentes',
+      allTypes: 'Todos los Tipos',
+      categoryGuides: 'Guías de Categoría',
+      comparisons: 'Comparaciones',
+      howToGuides: 'Guías Prácticas',
+      productSpotlights: 'Productos Destacados',
+      categoryGuide: 'Guía de Categoría',
+      comparison: 'Comparación',
+      howTo: 'Guía Práctica',
+      spotlight: 'Destacado',
+      easy: 'fácil',
+      medium: 'medio',
+      hard: 'difícil',
+      products: 'productos',
+      words: 'palabras',
+      score: 'Puntuación',
+      targetKeywords: 'Palabras Clave Objetivo',
+      suggestedStructure: 'Estructura Sugerida',
+      createArticle: 'Crear Artículo'
+    },
+    de: {
+      title: 'Blog-Inhalts-Chancen',
+      subtitle: 'KI-gestützte Content-Ideen basierend auf Ihrem Produktkatalog',
+      generating: 'Wird generiert...',
+      generateButton: 'Intelligente Chancen Generieren',
+      allTypes: 'Alle Typen',
+      categoryGuides: 'Kategorie-Ratgeber',
+      comparisons: 'Vergleiche',
+      howToGuides: 'Anleitungen',
+      productSpotlights: 'Produkt-Highlights',
+      categoryGuide: 'Kategorie-Ratgeber',
+      comparison: 'Vergleich',
+      howTo: 'Anleitung',
+      spotlight: 'Highlight',
+      easy: 'einfach',
+      medium: 'mittel',
+      hard: 'schwer',
+      products: 'Produkte',
+      words: 'Wörter',
+      score: 'Bewertung',
+      targetKeywords: 'Ziel-Keywords',
+      suggestedStructure: 'Vorgeschlagene Struktur',
+      createArticle: 'Artikel Erstellen'
+    },
+    it: {
+      title: 'Opportunità di Contenuto Blog',
+      subtitle: 'Idee di contenuto basate su IA dal tuo catalogo prodotti',
+      generating: 'Generazione...',
+      generateButton: 'Genera Opportunità Intelligenti',
+      allTypes: 'Tutti i Tipi',
+      categoryGuides: 'Guide per Categoria',
+      comparisons: 'Confronti',
+      howToGuides: 'Guide Pratiche',
+      productSpotlights: 'Prodotti in Evidenza',
+      categoryGuide: 'Guida per Categoria',
+      comparison: 'Confronto',
+      howTo: 'Guida Pratica',
+      spotlight: 'In Evidenza',
+      easy: 'facile',
+      medium: 'medio',
+      hard: 'difficile',
+      products: 'prodotti',
+      words: 'parole',
+      score: 'Punteggio',
+      targetKeywords: 'Parole Chiave Target',
+      suggestedStructure: 'Struttura Suggerita',
+      createArticle: 'Crea Articolo'
     }
   };
   const ui = uiText[templateLang];
@@ -697,7 +769,7 @@ export function SeoOpportunities() {
       'comparison': ui.comparison,
       'how-to': ui.howTo,
       'product-spotlight': ui.spotlight,
-      'seasonal': templateLang === 'fr' ? 'Saisonnier' : 'Seasonal'
+      'seasonal': templateLang === 'fr' ? 'Saisonnier' : templateLang === 'es' ? 'Temporal' : templateLang === 'de' ? 'Saisonal' : templateLang === 'it' ? 'Stagionale' : 'Seasonal'
     };
     return labels[type];
   };
@@ -894,7 +966,7 @@ export function SeoOpportunities() {
                     {creatingArticle === opportunity.id ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        {templateLang === 'fr' ? 'Création...' : 'Creating...'}
+                        {templateLang === 'fr' ? 'Création...' : templateLang === 'es' ? 'Creando...' : templateLang === 'de' ? 'Wird erstellt...' : templateLang === 'it' ? 'Creazione...' : 'Creating...'}
                       </>
                     ) : (
                       <>
