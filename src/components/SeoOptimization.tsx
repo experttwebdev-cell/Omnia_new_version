@@ -560,12 +560,12 @@ export function SeoOptimization() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto max-w-full">
-          <table className="min-w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="overflow-x-scroll">
+          <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left">
+                <th className="px-4 py-3 text-left whitespace-nowrap w-12">
                   <input
                     type="checkbox"
                     checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
@@ -573,11 +573,11 @@ export function SeoOptimization() {
                     className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Category</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">SEO Title</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Meta Description</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap min-w-[250px]">Product</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap min-w-[150px]">Category</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap min-w-[300px]">SEO Title</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap min-w-[350px]">Meta Description</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap min-w-[150px]">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -591,26 +591,26 @@ export function SeoOptimization() {
                       className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {product.image_url && (
-                        <img src={product.image_url} alt={product.title} className="w-12 h-12 object-cover rounded" />
+                        <img src={product.image_url} alt={product.title} className="w-12 h-12 object-cover rounded flex-shrink-0" />
                       )}
                       <div className="min-w-0">
-                        <div className="font-medium text-gray-900 truncate">{product.title}</div>
+                        <div className="font-medium text-gray-900 max-w-[200px] truncate">{product.title}</div>
                         <div className="text-xs text-gray-500">{product.vendor}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div>
                       <div className="text-gray-900 font-medium">{product.category || '-'}</div>
                       <div className="text-xs text-gray-500">{product.sub_category || '-'}</div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="max-w-xs">
-                      <div className="text-gray-900 truncate">{product.seo_title || '-'}</div>
+                    <div className="max-w-[300px]">
+                      <div className="text-gray-900 line-clamp-2">{product.seo_title || '-'}</div>
                       <div className={`text-xs mt-1 ${
                         product.seo_title && product.seo_title.length >= 60 && product.seo_title.length <= 70
                           ? 'text-green-600'
@@ -621,8 +621,8 @@ export function SeoOptimization() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="max-w-xs">
-                      <div className="text-gray-900 truncate">{product.seo_description || '-'}</div>
+                    <div className="max-w-[350px]">
+                      <div className="text-gray-900 line-clamp-2">{product.seo_description || '-'}</div>
                       <div className={`text-xs mt-1 ${
                         product.seo_description && product.seo_description.length >= 150 && product.seo_description.length <= 160
                           ? 'text-green-600'
