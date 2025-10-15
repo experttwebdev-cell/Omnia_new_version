@@ -65,7 +65,24 @@ function App() {
     const checkConfig = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      return supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co' && supabaseUrl !== '';
+
+      const isValid = supabaseUrl &&
+        supabaseAnonKey &&
+        supabaseUrl.trim() !== '' &&
+        supabaseAnonKey.trim() !== '' &&
+        supabaseUrl !== 'https://placeholder.supabase.co' &&
+        supabaseAnonKey !== 'placeholder-key';
+
+      if (!isValid) {
+        console.error('Configuration check failed:', {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseAnonKey,
+          urlValue: supabaseUrl || 'undefined',
+          isPlaceholder: supabaseUrl === 'https://placeholder.supabase.co'
+        });
+      }
+
+      return isValid;
     };
 
     if (!checkConfig()) {
