@@ -294,6 +294,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
         role: 'assistant' as const,
         content: quickResponse,
         intent: 'chat',
+        mode: 'conversation',
         products: [],
       };
     }
@@ -310,6 +311,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       role: 'assistant' as const,
       content: response,
       intent: 'chat',
+      mode: 'conversation',
       products: [],
     };
   }
@@ -323,7 +325,9 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       role: 'assistant' as const,
       content: presentation,
       intent: 'product_search',
+      mode: 'product_show',
       products: products,
+      searchFilters: attributes,
     };
   }
 
@@ -331,6 +335,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
     role: 'assistant' as const,
     content: 'Comment puis-je vous aider aujourd\'hui ?',
     intent: 'chat',
+    mode: 'conversation',
     products: [],
   };
 }

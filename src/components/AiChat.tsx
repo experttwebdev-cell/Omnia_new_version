@@ -21,6 +21,8 @@ interface ChatMessage {
   products?: any[];
   selectedProduct?: any;
   timestamp: string;
+  mode?: 'conversation' | 'product_show';
+  searchFilters?: any;
 }
 
 export function AiChat() {
@@ -92,7 +94,9 @@ export function AiChat() {
         role: 'assistant',
         content: response.content,
         products: response.products || [],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        mode: response.mode || 'conversation',
+        searchFilters: response.searchFilters
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -151,6 +155,26 @@ export function AiChat() {
                     ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
                     : 'bg-white text-gray-800 border border-gray-200'
                 }`}>
+                  {message.role === 'assistant' && message.mode && (
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                      {message.mode === 'conversation' ? (
+                        <>
+                          <MessageCircle className="w-4 h-4 text-blue-500" />
+                          <span className="text-xs font-semibold text-blue-600">Mode: Discussion</span>
+                        </>
+                      ) : (
+                        <>
+                          <Package className="w-4 h-4 text-purple-500" />
+                          <span className="text-xs font-semibold text-purple-600">Mode: Recherche Produits</span>
+                          {message.products && message.products.length > 0 && (
+                            <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                              {message.products.length} trouvé{message.products.length > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
                 <p className="text-xs text-gray-500 mt-1 px-2">
