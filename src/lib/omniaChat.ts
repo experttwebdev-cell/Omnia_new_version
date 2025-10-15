@@ -33,10 +33,7 @@ const intents = {
   ChatIntent: {
     name: 'ChatIntent',
     description: 'Répond de manière naturelle et fluide aux messages généraux sans intention d\'achat directe.',
-    system_prompt: `Tu es OmnIA, assistant mobilier et décoration.
-Réponds de manière concise et directe (2-3 phrases max).
-Pose UNE question pour mieux comprendre les besoins.
-Sois professionnel et sympathique.`,
+    system_prompt: `Tu es OmnIA, assistant mobilier. Réponds en 1 phrase courte + 1 question courte. Maximum 15 mots.`,
   },
 
   ProductChatIntent: {
@@ -69,7 +66,7 @@ Sois concis mais descriptif.`,
   },
 };
 
-async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<string> {
+async function callDeepSeek(messages: ChatMessage[], maxTokens = 50): Promise<string> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
   const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
@@ -80,7 +77,7 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<s
     body: JSON.stringify({
       messages,
       model: 'deepseek-chat',
-      temperature: 0.7,
+      temperature: 0.3,
       max_tokens: maxTokens,
     }),
   });
@@ -269,7 +266,7 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       { role: 'user', content: userMessage },
     ];
 
-    const response = await callDeepSeek(messages, 100);
+    const response = await callDeepSeek(messages, 40);
 
     return {
       role: 'assistant' as const,
