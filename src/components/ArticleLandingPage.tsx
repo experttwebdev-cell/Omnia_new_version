@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
 import {
   Calendar,
@@ -13,9 +13,11 @@ import {
   Check,
   ChevronRight,
   Home,
-  ArrowUp
+  ArrowUp,
+  AlertCircle
 } from 'lucide-react';
 import { getArticleThumbnail } from '../lib/imageUtils';
+import { validateHeadingHierarchy } from '../lib/headingValidator';
 
 interface ArticleLandingPageProps {
   articleId: string;
@@ -33,6 +35,14 @@ interface BlogArticle {
   author: string | null;
   created_at: string;
   word_count: number | null;
+  product_links?: Array<{
+    product_id: string;
+    title: string;
+    handle: string;
+    image_url: string;
+    price: number;
+    category: string;
+  }>;
 }
 
 export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
@@ -166,6 +176,11 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
   const featuredImage = getArticleThumbnail(article.content, article.category || undefined);
   const sections = extractSections(article.content);
   const readingTime = getReadingTime(article.word_count);
+
+  // Validate heading hierarchy
+  const headingValidation = useMemo(() => {
+    return validateHeadingHierarchy(article.content);
+  }, [article.content]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -331,8 +346,182 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
           </aside>
 
           <article className="lg:col-span-9">
+            {/* Heading Validation Warning */}
+            {headingValidation.score < 70 && (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-900 mb-1">
+                      Attention: Structure des titres à améliorer
+                    </h4>
+                    <p className="text-sm text-yellow-800">
+                      Score SEO de la hiérarchie des titres: {headingValidation.score}/100
+                    </p>
+                    {headingValidation.errors.length > 0 && (
+                      <ul className="text-sm text-yellow-700 mt-2 list-disc list-inside">
+                        {headingValidation.errors.slice(0, 3).map((error, idx) => (
+                          <li key={idx}>{error}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <style>{`
+              /* Product Card Styles */
+              .product-card {
+                margin: 2rem 0;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+              }
+
+              .product-card:hover {
+                transform: translateY(-4px);
+              }
+
+              .product-image {
+                background: linear-gradient(135deg, #f5f7fa 0%, #e3e8ef 100%);
+              }
+
+              .product-title {
+                color: #1a202c;
+                min-height: 3.5rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+              }
+
+              .product-price {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #2563eb;
+              }
+
+              .product-description {
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+              }
+
+              .product-cta {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+                width: 100%;
+                padding: 0.75rem 1rem;
+                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+                color: white;
+                font-weight: 500;
+                border-radius: 0.5rem;
+                transition: all 0.2s ease;
+                text-decoration: none;
+              }
+
+              .product-cta:hover {
+                background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+                transform: translateY(-2px);
+              }
+
+              /* Product Gallery Grid */
+              #produits-recommandes + * {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1.5rem;
+                margin: 2rem 0;
+              }
+
+              /* Inline Product Links */
+              .inline-product-link {
+                color: #2563eb;
+                font-weight: 500;
+                text-decoration: none;
+                border-bottom: 1px solid transparent;
+                transition: all 0.2s ease;
+              }
+
+              .inline-product-link:hover {
+                color: #1d4ed8;
+                border-bottom-color: #2563eb;
+              }
+
+              /* FAQ Items */
+              .faq-item {
+                margin: 1.5rem 0;
+                padding: 1.5rem;
+                background: #f9fafb;
+                border-left: 4px solid #2563eb;
+                border-radius: 0.5rem;
+              }
+
+              .faq-item h3 {
+                margin: 0 0 1rem 0 !important;
+                color: #1a202c;
+                font-size: 1.25rem !important;
+              }
+
+              .faq-item p {
+                margin: 0;
+              }
+
+              /* Table of Contents Styling */
+              .table-of-contents {
+                background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                border: 2px solid #bae6fd;
+                border-radius: 1rem;
+                padding: 1.5rem;
+                margin: 2rem 0;
+              }
+
+              .table-of-contents ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+              }
+
+              .table-of-contents li {
+                margin: 0.5rem 0;
+              }
+
+              .table-of-contents a {
+                color: #0369a1;
+                font-weight: 500;
+                text-decoration: none;
+                transition: color 0.2s ease;
+              }
+
+              .table-of-contents a:hover {
+                color: #075985;
+                text-decoration: underline;
+              }
+
+              /* Tags Styling */
+              .tags {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin: 2rem 0;
+              }
+
+              .tag {
+                display: inline-block;
+                padding: 0.375rem 0.75rem;
+                background: #eff6ff;
+                color: #1e40af;
+                font-size: 0.875rem;
+                font-weight: 500;
+                border-radius: 9999px;
+                border: 1px solid #bfdbfe;
+              }
+            `}</style>
+
             <div
-              className="prose prose-lg max-w-none prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-img:shadow-lg prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-gray-600 prose-figcaption:mt-2 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal"
+              className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h1:mb-6 prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-img:shadow-lg prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-gray-600 prose-figcaption:mt-2 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 

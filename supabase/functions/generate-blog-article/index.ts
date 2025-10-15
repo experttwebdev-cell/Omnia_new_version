@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
     if (requestData.internal_linking) {
       const query = supabase
         .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title')
+        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
         .limit(requestData.max_internal_links * 3);
 
       if (topicData.category) {
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { data } = await query;
-      relatedProducts = data?.slice(0, requestData.max_internal_links) || [];
+      relatedProducts = data?.slice(0, requestData.max_internal_links * 2) || [];
     }
 
     const { data: storeData } = await supabase
@@ -118,6 +118,11 @@ Deno.serve(async (req: Request) => {
 
     const productExamples = relatedProducts.map(p => p.title).join('", "');
 
+    const productDetailsForAI = relatedProducts.slice(0, requestData.max_internal_links).map(p => {
+      const description = p.body_html ? p.body_html.replace(/<[^>]*>/g, '').substring(0, 150) : '';
+      return `- ${p.title} (${p.price}€)${p.ai_color ? ` - Couleur: ${p.ai_color}` : ''}${p.ai_material ? ` - Matériau: ${p.ai_material}` : ''} - ${description}`;
+    }).join('\n');
+
     const articlePrompt = `Tu es un rédacteur SEO expert spécialisé en décoration d'intérieur et ameublement. Tu crées des articles structurés comme de véritables articles de presse professionnels.
 
 INFORMATIONS OBLIGATOIRES À UTILISER:
@@ -126,13 +131,18 @@ ${topicData.subcategory ? `Sous-catégorie: ${topicData.subcategory}` : ''}
 Mots-clés SEO OBLIGATOIRES à intégrer naturellement: ${topicData.keywords.join(', ')}
 Langue: ${requestData.language === 'fr' ? 'Français' : requestData.language}
 Longueur cible: ${requestData.word_count_min}-${requestData.word_count_max} mots
-Produits disponibles: [${productExamples}]
+
+PRODUITS DISPONIBLES AVEC DÉTAILS COMPLETS:
+${productDetailsForAI}
+
+URL de base du magasin: https://${storeBaseUrl}
 
 STRUCTURE ARTICLE DE PRESSE PROFESSIONNELLE (HTML):
 
-1. TITRE PRINCIPAL <h1>
+1. TITRE PRINCIPAL <h1> - EXACTEMENT UN SEUL H1 PAR ARTICLE
    - Titre accrocheur intégrant les mots-clés principaux
    - Entre 50-70 caractères optimisé SEO
+   - IMPORTANT: Un seul <h1> dans tout l'article (le titre principal)
 
 2. CHAPEAU / INTRODUCTION (2-3 paragraphes)
    - Résumé captivant de l'article
@@ -152,42 +162,77 @@ STRUCTURE ARTICLE DE PRESSE PROFESSIONNELLE (HTML):
    </ul>
    </nav>
 
-5. CORPS DE L'ARTICLE (5-7 SECTIONS)
-   Chaque section doit avoir:
-   - <h2 id="section-X"> avec ancre pour navigation
+5. CORPS DE L'ARTICLE (5-7 SECTIONS H2 avec sous-sections H3)
+   HIÉRARCHIE DES TITRES STRICTE:
+   - <h2 id="section-X"> pour CHAQUE section principale (5-7 sections H2)
+   - <h3> UNIQUEMENT pour les sous-sections SOUS un H2 (jamais de H3 sans H2 parent)
+   - <h4> UNIQUEMENT pour les subdivisions SOUS un H3 (jamais de H4 sans H3 parent)
+   - NE JAMAIS sauter de niveau (pas de H1 → H3 directement)
+
+   Chaque section H2 doit avoir:
+   - Ancre id="section-X" pour navigation
    - 2-3 paragraphes <p> riches et informatifs
-   - <h3> pour les sous-sections
+   - 1-3 sous-sections <h3> si approprié
    - IMAGE ILLUSTRATIVE avec <img> Pexels + <figcaption>
    - Listes <ul>/<ol> pour conseils pratiques
    - Intégrer NATURELLEMENT les mots-clés: ${topicData.keywords.join(', ')}
-   - Citations ou encadrés <blockquote> si pertinent
 
-   THÉMATIQUES SUGGÉRÉES:
+   THÉMATIQUES SUGGÉRÉES (chaque thématique = 1 section H2):
    - Introduction au sujet (contexte catégorie: ${topicData.category})
    - Tendances actuelles en ${topicData.category}
    - Guide pratique et conseils d'expert
+   - Produits recommandés (SECTION H2 OBLIGATOIRE - voir point 6B)
    - Erreurs courantes à éviter
    - Inspiration et idées créatives
    - Conseils d'achat et critères de sélection
 
-6. IMAGES PEXELS
+6A. IMAGES PEXELS DÉCORATIVES
    - Utiliser 3-5 images pertinentes de Pexels
    - Format: <figure><img src="https://images.pexels.com/photos/[ID]/pexels-photo-[ID].jpeg" alt="description avec mots-clés" /><figcaption>Légende descriptive</figcaption></figure>
    - Alt text optimisé avec mots-clés naturels
 
-7. LIENS INTERNES PRODUITS (${requestData.max_internal_links} liens)
-   Intégrer naturellement avec ancres variées:
-   - "Découvrez notre collection de <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a>"
-   - "Un <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a> apporte élégance et fonctionnalité"
-   - "Explorez nos <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a> pour un style unique"
+6B. SECTION PRODUITS RECOMMANDÉS (OBLIGATOIRE)
+   CRÉER une section <h2 id="produits-recommandes">Nos Produits Recommandés</h2>
 
-8. SECTION FAQ <h2>
-   Questions/réponses format journalistique:
+   Pour CHAQUE produit de la liste, créer une CARTE PRODUIT avec cette structure HTML EXACTE:
+
+   <div class="product-card" data-product-id="[PRODUCT_ID]">
+     <div class="product-image">
+       <img src="[PRODUCT_IMAGE_URL]" alt="[PRODUCT_TITLE] - [CATEGORY]" loading="lazy" />
+     </div>
+     <div class="product-details">
+       <h3 class="product-title">[PRODUCT_TITLE]</h3>
+       <p class="product-price">[PRODUCT_PRICE]€</p>
+       <p class="product-description">[Description courte du produit basée sur ses caractéristiques]</p>
+       <a href="https://${storeBaseUrl}/products/[PRODUCT_HANDLE]" class="product-cta" target="_blank" rel="noopener">Découvrir ce produit</a>
+     </div>
+   </div>
+
+   REMPLACER les placeholders:
+   - [PRODUCT_ID] = ID du produit
+   - [PRODUCT_IMAGE_URL] = URL réelle de l'image du produit
+   - [PRODUCT_TITLE] = Titre exact du produit
+   - [CATEGORY] = Catégorie du produit
+   - [PRODUCT_PRICE] = Prix réel du produit
+   - [PRODUCT_HANDLE] = Handle exact du produit pour l'URL
+
+   Créer ${requestData.max_internal_links} cartes produits avec les détails réels fournis ci-dessus.
+
+7. LIENS INTERNES CONTEXTUELS ADDITIONNELS
+   EN PLUS de la section produits recommandés, intégrer 2-3 mentions de produits dans le texte:
+   - "Découvrez notre collection de <a href="https://${storeBaseUrl}/products/[handle]" class="inline-product-link">[nom produit]</a>"
+   - "Un <a href="https://${storeBaseUrl}/products/[handle]" class="inline-product-link">[nom produit]</a> apporte élégance et fonctionnalité"
+   - "Explorez nos <a href="https://${storeBaseUrl}/products/[handle]" class="inline-product-link">[nom produit]</a> pour un style unique"
+
+   Ces liens doivent s'intégrer NATURELLEMENT dans le contenu des sections H2.
+
+8. SECTION FAQ <h2 id="faq">Questions Fréquentes</h2>
+   Questions/réponses format journalistique avec hiérarchie correcte:
    <div class="faq-item">
      <h3>Question pratique ?</h3>
      <p>Réponse détaillée et utile</p>
    </div>
-   (4-6 questions pertinentes)
+   (4-6 questions pertinentes, chaque question en H3 sous le H2 "Questions Fréquentes")
 
 9. CONCLUSION PROFESSIONNELLE
    - Résumé des points clés
@@ -201,7 +246,24 @@ STRUCTURE ARTICLE DE PRESSE PROFESSIONNELLE (HTML):
     ...
     </div>
 
-RÈGLES STRICTES:
+RÈGLES STRICTES ET NON-NÉGOCIABLES:
+
+🔴 HIÉRARCHIE DES TITRES (CRITIQUE POUR LE SEO):
+✓ EXACTEMENT UN SEUL <h1> dans tout l'article (le titre principal)
+✓ 5-7 sections <h2 id="section-X"> pour les sections principales
+✓ <h3> UNIQUEMENT sous des <h2> (sous-sections)
+✓ <h4> UNIQUEMENT sous des <h3> (subdivisions)
+✓ NE JAMAIS sauter de niveau (interdit: H1→H3, H2→H4)
+✓ Chaque H2 doit avoir un id unique pour la navigation
+
+🔴 CONTENU PRODUITS (OBLIGATOIRE):
+✓ Créer une section H2 "Nos Produits Recommandés" avec ${requestData.max_internal_links} cartes produits
+✓ Utiliser les URLs d'images RÉELLES des produits (pas de placeholders)
+✓ Inclure titre exact, prix, et handle de chaque produit
+✓ Ajouter 2-3 liens produits contextuels dans le texte
+✓ Utiliser les données produits fournies ci-dessus
+
+🔴 SEO ET QUALITÉ:
 ✓ UTILISER OBLIGATOIREMENT les mots-clés: ${topicData.keywords.join(', ')}
 ✓ RESPECTER la catégorie: ${topicData.category}
 ${topicData.subcategory ? `✓ MENTIONNER la sous-catégorie: ${topicData.subcategory}` : ''}
@@ -209,7 +271,6 @@ ${topicData.subcategory ? `✓ MENTIONNER la sous-catégorie: ${topicData.subcat
 ✓ Ton journalistique: informatif, expert, engageant, accessible
 ✓ Intégration naturelle des mots-clés (densité 1-2%, pas de keyword stuffing)
 ✓ 3-5 images Pexels avec alt optimisés
-✓ Structure hiérarchique claire H1 > H2 > H3
 ✓ Paragraphes riches (80-150 mots)
 ✓ Exemples concrets, données, conseils actionnables
 
@@ -248,28 +309,68 @@ Génère maintenant l'article complet en HTML avec toutes les sections, images P
       content = content.replace(/^```\n/, '').replace(/\n```$/, '');
     }
 
-    const productLinks: Array<{ product_id: string; shopify_id: string; title: string; handle: string }> = [];
+    const productLinks: Array<{
+      product_id: string;
+      shopify_id: string;
+      title: string;
+      handle: string;
+      image_url: string;
+      price: number;
+      category: string;
+      link_type: string;
+    }> = [];
 
     if (requestData.internal_linking) {
-      for (const product of relatedProducts) {
+      // Replace product card placeholders with real product data
+      for (const product of relatedProducts.slice(0, requestData.max_internal_links)) {
         const productUrl = `https://${storeBaseUrl}/products/${product.handle}`;
 
+        // Replace product card placeholders
+        content = content.replace(/\[PRODUCT_ID\]/, product.id);
+        content = content.replace(/\[PRODUCT_IMAGE_URL\]/, product.image_url || 'https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg');
+        content = content.replace(/\[PRODUCT_TITLE\]/, product.title);
+        content = content.replace(/\[CATEGORY\]/, product.category || topicData.category);
+        content = content.replace(/\[PRODUCT_PRICE\]/, product.price.toString());
+        content = content.replace(/\[PRODUCT_HANDLE\]/, product.handle);
+
+        productLinks.push({
+          product_id: product.id,
+          shopify_id: product.shopify_id,
+          title: product.title,
+          handle: product.handle,
+          image_url: product.image_url || '',
+          price: product.price,
+          category: product.category || topicData.category,
+          link_type: 'product_card'
+        });
+      }
+
+      // Replace inline product link placeholders
+      for (const product of relatedProducts) {
+        const productUrl = `https://${storeBaseUrl}/products/${product.handle}`;
         const linkRegex = new RegExp(`href=[\"']https://${storeBaseUrl.replace('.', '\\.')}/products/\\[handle\\][\"']`, 'g');
         const hasPlaceholder = content.match(linkRegex);
 
-        if (hasPlaceholder && productLinks.length < requestData.max_internal_links) {
+        if (hasPlaceholder) {
           content = content.replace(
             `href=\"https://${storeBaseUrl}/products/[handle]\"`,
             `href=\"${productUrl}\"`
           );
           content = content.replace(/\[nom produit\]/, product.title);
 
-          productLinks.push({
-            product_id: product.id,
-            shopify_id: product.shopify_id,
-            title: product.title,
-            handle: product.handle
-          });
+          // Only add if not already in productLinks
+          if (!productLinks.find(p => p.product_id === product.id)) {
+            productLinks.push({
+              product_id: product.id,
+              shopify_id: product.shopify_id,
+              title: product.title,
+              handle: product.handle,
+              image_url: product.image_url || '',
+              price: product.price,
+              category: product.category || topicData.category,
+              link_type: 'inline_link'
+            });
+          }
         }
       }
     }
