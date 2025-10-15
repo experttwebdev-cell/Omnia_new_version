@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test de Vitesse OmnIA</title>
+  <title>Test OmnIA Chat</title>
   <style>
     * {
       margin: 0;
@@ -21,77 +21,54 @@
       align-items: center;
     }
 
-    .container {
+    .chat-container {
       background: white;
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       max-width: 800px;
       width: 100%;
-      padding: 40px;
+      height: 90vh;
+      max-height: 700px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
-    h1 {
-      color: #667eea;
-      margin-bottom: 10px;
-      font-size: 32px;
-    }
-
-    .subtitle {
-      color: #666;
-      margin-bottom: 30px;
-      font-size: 14px;
-    }
-
-    .test-section {
-      margin-bottom: 30px;
-    }
-
-    .test-button {
+    .chat-header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      border: none;
-      padding: 15px 30px;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-      width: 100%;
-      margin-bottom: 15px;
-    }
-
-    .test-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-    }
-
-    .test-button:active {
-      transform: translateY(0);
-    }
-
-    .test-button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .result-box {
-      background: #f8f9fa;
-      border-radius: 10px;
       padding: 20px;
-      margin-top: 15px;
-      display: none;
+      text-align: center;
+      border-radius: 20px 20px 0 0;
     }
 
-    .result-box.show {
-      display: block;
+    .chat-header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    .chat-header .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 16px;
       animation: slideIn 0.3s ease-out;
     }
 
     @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(10px);
       }
       to {
         opacity: 1;
@@ -99,266 +76,454 @@
       }
     }
 
-    .timer {
-      font-size: 48px;
-      font-weight: 700;
-      color: #667eea;
-      text-align: center;
-      margin: 20px 0;
-      font-variant-numeric: tabular-nums;
+    .message.user {
+      justify-content: flex-end;
     }
 
-    .timer.running {
-      color: #f59e0b;
-      animation: pulse 1s ease-in-out infinite;
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      position: relative;
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
+    .message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-bottom-right-radius: 4px;
     }
 
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-
-    .metric {
+    .message.assistant .message-content {
       background: white;
-      padding: 15px;
-      border-radius: 8px;
-      text-align: center;
+      color: #333;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .metric-label {
-      font-size: 12px;
-      color: #666;
-      text-transform: uppercase;
-      margin-bottom: 5px;
+    .message-time {
+      font-size: 11px;
+      opacity: 0.6;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .metric-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: #667eea;
+    .message.user .message-time {
+      justify-content: flex-end;
     }
 
-    .response-box {
-      background: white;
-      border-radius: 8px;
-      padding: 15px;
-      margin-top: 15px;
-      border-left: 4px solid #667eea;
-      white-space: pre-wrap;
-      max-height: 300px;
-      overflow-y: auto;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
-      margin-left: 10px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .speed-rating {
-      text-align: center;
-      font-size: 24px;
-      margin: 20px 0;
-    }
-
-    .speed-excellent { color: #10b981; }
-    .speed-good { color: #3b82f6; }
-    .speed-average { color: #f59e0b; }
-    .speed-slow { color: #ef4444; }
-
-    .quick-tests {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-
-    .quick-test-btn {
-      background: white;
-      border: 2px solid #667eea;
-      color: #667eea;
-      padding: 10px 15px;
-      border-radius: 8px;
-      font-size: 14px;
+    .time-badge {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
       font-weight: 600;
+    }
+
+    .speed-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .speed-excellent { background: #10b981; }
+    .speed-good { background: #3b82f6; }
+    .speed-average { background: #f59e0b; }
+    .speed-slow { background: #ef4444; }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+    }
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #667eea;
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+      }
+      30% {
+        transform: translateY(-10px);
+        opacity: 1;
+      }
+    }
+
+    .chat-input-container {
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .quick-suggestions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .suggestion-btn {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 13px;
       cursor: pointer;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
-    .quick-test-btn:hover {
+    .suggestion-btn:hover {
       background: #667eea;
       color: white;
+      border-color: #667eea;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      resize: none;
+      max-height: 100px;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .stats-bar {
+      padding: 8px 20px;
+      background: #f3f4f6;
+      border-top: 1px solid #e5e7eb;
+      font-size: 12px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stats-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .product-card {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      border-left: 3px solid #667eea;
+    }
+
+    .product-title {
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 4px;
+    }
+
+    .product-details {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>⚡ Test de Vitesse OmnIA</h1>
-    <p class="subtitle">Mesurez les performances de votre assistant intelligent</p>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>OmnIA Chat</h1>
+      <div class="subtitle">Assistant intelligent avec mesure de vitesse</div>
+    </div>
 
-    <div class="test-section">
-      <h3 style="margin-bottom: 15px; color: #333;">Tests Rapides</h3>
-      <div class="quick-tests">
-        <button class="quick-test-btn" onclick="runTest('Je cherche un canapé scandinave')">
-          🛋️ Canapé Scandinave
-        </button>
-        <button class="quick-test-btn" onclick="runTest('Table moderne pour salon')">
-          🪑 Table Moderne
-        </button>
-        <button class="quick-test-btn" onclick="runTest('Lit en bois pour chambre')">
-          🛏️ Lit en Bois
-        </button>
-        <button class="quick-test-btn" onclick="runTest('Bonjour, comment allez-vous ?')">
-          💬 Chat Simple
-        </button>
+    <div class="chat-messages" id="chatMessages">
+      <div class="empty-state">
+        <div class="empty-state-icon">💬</div>
+        <p>Commencez une conversation ou utilisez une suggestion rapide</p>
       </div>
     </div>
 
-    <div class="test-section">
-      <button id="testBtn" class="test-button" onclick="runCustomTest()">
-        🚀 Test Personnalisé
-      </button>
-
-      <div id="results" class="result-box">
-        <div class="timer" id="timer">0.00s</div>
-        <div class="speed-rating" id="rating"></div>
-
-        <div class="metrics">
-          <div class="metric">
-            <div class="metric-label">Temps Total</div>
-            <div class="metric-value" id="totalTime">-</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Type</div>
-            <div class="metric-value" id="intentType">-</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Produits</div>
-            <div class="metric-value" id="productCount">-</div>
-          </div>
-        </div>
-
-        <div class="response-box" id="response"></div>
+    <div class="stats-bar">
+      <div class="stats-item">
+        <span>Messages: <strong id="messageCount">0</strong></span>
+      </div>
+      <div class="stats-item">
+        <span>Temps moyen: <strong id="avgTime">-</strong></span>
+      </div>
+      <div class="stats-item">
+        <span>Produits trouvés: <strong id="totalProducts">0</strong></span>
       </div>
     </div>
 
-    <div style="text-align: center; color: #666; font-size: 12px; margin-top: 30px;">
-      <p>✨ Objectif: &lt; 5s pour recherche produits | &lt; 10s pour chat général</p>
+    <div class="chat-input-container">
+      <div class="quick-suggestions">
+        <button class="suggestion-btn" onclick="sendQuickMessage('Je cherche un canapé scandinave')">
+          🛋️ Canapé scandinave
+        </button>
+        <button class="suggestion-btn" onclick="sendQuickMessage('Table moderne pour salon')">
+          🪑 Table moderne
+        </button>
+        <button class="suggestion-btn" onclick="sendQuickMessage('Lit en bois')">
+          🛏️ Lit en bois
+        </button>
+        <button class="suggestion-btn" onclick="sendQuickMessage('Bonjour')">
+          👋 Bonjour
+        </button>
+      </div>
+
+      <div class="input-wrapper">
+        <textarea
+          id="chatInput"
+          class="chat-input"
+          placeholder="Posez votre question..."
+          rows="1"
+          onkeydown="handleKeyPress(event)"
+        ></textarea>
+        <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+          Envoyer
+        </button>
+      </div>
     </div>
   </div>
 
   <script type="module">
     import { processOmniaMessage } from './src/lib/omniaChat.ts';
 
-    let startTime;
-    let timerInterval;
+    let conversationHistory = [];
+    let messageStats = [];
 
-    window.runTest = async function(message) {
-      const testBtn = document.getElementById('testBtn');
-      const results = document.getElementById('results');
-      const timer = document.getElementById('timer');
-      const rating = document.getElementById('rating');
-      const totalTime = document.getElementById('totalTime');
-      const intentType = document.getElementById('intentType');
-      const productCount = document.getElementById('productCount');
-      const response = document.getElementById('response');
+    window.sendQuickMessage = function(message) {
+      document.getElementById('chatInput').value = message;
+      sendMessage();
+    };
 
-      // Reset
-      results.classList.add('show');
-      timer.textContent = '0.00s';
-      timer.classList.add('running');
-      rating.innerHTML = '⏳ Test en cours...';
-      rating.className = 'speed-rating';
-      totalTime.textContent = '-';
-      intentType.textContent = '-';
-      productCount.textContent = '-';
-      response.textContent = 'Traitement...';
+    window.handleKeyPress = function(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    };
 
-      // Start timer
-      startTime = performance.now();
-      timerInterval = setInterval(() => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        timer.textContent = elapsed.toFixed(2) + 's';
-      }, 10);
+    window.sendMessage = async function() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      const sendBtn = document.getElementById('sendBtn');
+      sendBtn.disabled = true;
+      input.value = '';
+
+      addUserMessage(message);
+      showTypingIndicator();
+
+      const startTime = performance.now();
 
       try {
-        // Run test
-        const result = await processOmniaMessage(message, [], undefined);
-        const endTime = performance.now();
-        const duration = (endTime - startTime) / 1000;
+        const result = await processOmniaMessage(message, conversationHistory, undefined);
+        const duration = (performance.now() - startTime) / 1000;
 
-        // Stop timer
-        clearInterval(timerInterval);
-        timer.classList.remove('running');
-        timer.textContent = duration.toFixed(2) + 's';
+        conversationHistory.push({ role: 'user', content: message });
+        conversationHistory.push({ role: 'assistant', content: result.content });
 
-        // Update metrics
-        totalTime.textContent = duration.toFixed(2) + 's';
-        intentType.textContent = result.intent === 'product_search' ? '🔍 Recherche' : '💬 Chat';
-        productCount.textContent = result.products?.length || 0;
-        response.textContent = result.content;
+        hideTypingIndicator();
+        addAssistantMessage(result.content, duration, result.intent, result.products);
 
-        // Speed rating
-        let ratingText, ratingClass;
-        const isSearch = result.intent === 'product_search';
-        const threshold = isSearch ? 3 : 8;
-
-        if (duration < threshold * 0.5) {
-          ratingText = '🚀 EXCELLENT !';
-          ratingClass = 'speed-excellent';
-        } else if (duration < threshold) {
-          ratingText = '✅ RAPIDE';
-          ratingClass = 'speed-good';
-        } else if (duration < threshold * 1.5) {
-          ratingText = '⚠️ MOYEN';
-          ratingClass = 'speed-average';
-        } else {
-          ratingText = '🐌 LENT';
-          ratingClass = 'speed-slow';
-        }
-
-        rating.innerHTML = ratingText;
-        rating.className = 'speed-rating ' + ratingClass;
+        messageStats.push(duration);
+        updateStats();
 
       } catch (error) {
-        clearInterval(timerInterval);
-        timer.classList.remove('running');
-        rating.innerHTML = '❌ ERREUR';
-        rating.className = 'speed-rating speed-slow';
-        response.textContent = 'Erreur: ' + error.message;
-        console.error('Test error:', error);
+        hideTypingIndicator();
+        addAssistantMessage('Erreur: ' + error.message, 0, 'error');
+        console.error('Chat error:', error);
       }
+
+      sendBtn.disabled = false;
+      input.focus();
     };
 
-    window.runCustomTest = async function() {
-      const message = prompt('Entrez votre message de test:', 'Je cherche un canapé moderne');
-      if (message) {
-        await window.runTest(message);
-      }
-    };
+    function addUserMessage(text) {
+      const messagesContainer = document.getElementById('chatMessages');
+      const emptyState = messagesContainer.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
 
-    // Auto-run on load
-    setTimeout(() => {
-      window.runTest('Je cherche un canapé scandinave pour mon salon');
-    }, 500);
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message user';
+      messageDiv.innerHTML = `
+        <div class="message-content">
+          <div>${escapeHtml(text)}</div>
+          <div class="message-time">${getCurrentTime()}</div>
+        </div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+      scrollToBottom();
+    }
+
+    function addAssistantMessage(text, duration, intent, products = []) {
+      const messagesContainer = document.getElementById('chatMessages');
+
+      let speedClass = 'speed-excellent';
+      let speedText = 'Excellent';
+      const threshold = intent === 'product_search' ? 3 : 8;
+
+      if (duration > threshold * 1.5) {
+        speedClass = 'speed-slow';
+        speedText = 'Lent';
+      } else if (duration > threshold) {
+        speedClass = 'speed-average';
+        speedText = 'Moyen';
+      } else if (duration > threshold * 0.5) {
+        speedClass = 'speed-good';
+        speedText = 'Rapide';
+      }
+
+      let productsHtml = '';
+      if (products && products.length > 0) {
+        productsHtml = products.slice(0, 3).map(p => `
+          <div class="product-card">
+            <div class="product-title">${escapeHtml(p.title)}</div>
+            <div class="product-details">
+              ${p.price} € ${p.style ? '• ' + p.style : ''} ${p.material ? '• ' + p.material : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message assistant';
+      messageDiv.innerHTML = `
+        <div class="message-content">
+          <div>${formatMessage(text)}</div>
+          ${productsHtml}
+          <div class="message-time">
+            <span class="speed-indicator ${speedClass}"></span>
+            <span class="time-badge">${duration.toFixed(2)}s</span>
+            <span>${speedText}</span>
+            <span>•</span>
+            <span>${getCurrentTime()}</span>
+          </div>
+        </div>
+      `;
+      messagesContainer.appendChild(messageDiv);
+      scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+      const messagesContainer = document.getElementById('chatMessages');
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'message assistant';
+      typingDiv.id = 'typingIndicator';
+      typingDiv.innerHTML = `
+        <div class="message-content">
+          <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+      `;
+      messagesContainer.appendChild(typingDiv);
+      scrollToBottom();
+    }
+
+    function hideTypingIndicator() {
+      const typingIndicator = document.getElementById('typingIndicator');
+      if (typingIndicator) typingIndicator.remove();
+    }
+
+    function updateStats() {
+      document.getElementById('messageCount').textContent = messageStats.length;
+
+      if (messageStats.length > 0) {
+        const avg = messageStats.reduce((a, b) => a + b, 0) / messageStats.length;
+        document.getElementById('avgTime').textContent = avg.toFixed(2) + 's';
+      }
+
+      const totalProducts = conversationHistory.filter(m => m.products).reduce((sum, m) => sum + (m.products?.length || 0), 0);
+      document.getElementById('totalProducts').textContent = totalProducts;
+    }
+
+    function scrollToBottom() {
+      const messagesContainer = document.getElementById('chatMessages');
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function getCurrentTime() {
+      return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatMessage(text) {
+      return escapeHtml(text).replace(/\n/g, '<br>');
+    }
+
+    document.getElementById('chatInput').focus();
   </script>
 </body>
 </html>
