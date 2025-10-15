@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
 import {
   RefreshCw,
@@ -21,6 +21,7 @@ import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
 import { opportunityTemplates } from '../lib/language';
+import { BlogArticleModal } from './BlogArticleModal';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -48,6 +49,7 @@ export function SeoOpportunities() {
   const [creatingArticle, setCreatingArticle] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [generatingSmart, setGeneratingSmart] = useState(false);
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const supportedLangs: ('fr' | 'en')[] = ['fr', 'en'];
@@ -57,6 +59,12 @@ export function SeoOpportunities() {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    if (!loading && products.length > 0 && opportunities.length === 0) {
+      handleGenerateSmartOpportunities();
+    }
+  }, [loading, products.length]);
 
   const fetchProducts = async () => {
     try {
@@ -111,6 +119,7 @@ export function SeoOpportunities() {
   };
 
   const handleGenerateSmartOpportunities = async () => {
+    if (generatingSmart) return;
     setGeneratingSmart(true);
     await generateSmartOpportunities(products);
     setGeneratingSmart(false);
@@ -550,12 +559,24 @@ export function SeoOpportunities() {
 
       if (articleError) throw articleError;
 
+      const { data: createdArticle } = await supabase
+        .from('blog_articles')
+        .select('id')
+        .eq('opportunity_id', opportunityData.id)
+        .single();
+
       addNotification({
         type: 'success',
         title: 'Article Created',
-        message: 'Draft article created successfully. Check the "Article de blog" tab.',
-        duration: 5000
+        message: 'Draft article created successfully. Opening preview...',
+        duration: 3000
       });
+
+      setTimeout(() => {
+        if (createdArticle) {
+          setSelectedArticleId(createdArticle.id);
+        }
+      }, 500);
     } catch (err) {
       console.error('Error creating article:', err);
       addNotification({
@@ -648,6 +669,13 @@ export function SeoOpportunities() {
   return (
     <>
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
+      {selectedArticleId && (
+        <BlogArticleModal
+          articleId={selectedArticleId}
+          onClose={() => setSelectedArticleId(null)}
+          onUpdate={fetchProducts}
+        />
+      )}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>

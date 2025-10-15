@@ -12,8 +12,16 @@ import {
   FileText,
   Tag,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  Share2,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Copy,
+  Check
 } from 'lucide-react';
+import { getArticleThumbnail } from '../lib/imageUtils';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { ConfirmDialog } from './ConfirmDialog';
 import { LoadingAnimation } from './LoadingAnimation';
@@ -48,6 +56,8 @@ export function BlogArticles() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: 'delete' | 'sync'; articleId: string } | null>(null);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
 
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
@@ -154,6 +164,30 @@ export function BlogArticles() {
         duration: 5000
       });
     }
+  };
+
+  const handleShare = (platform: string, articleId: string, title: string) => {
+    const url = `${window.location.origin}/article/${articleId}`;
+    const text = title;
+
+    const shareUrls: Record<string, string> = {
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+    };
+
+    if (shareUrls[platform]) {
+      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+      setShowShareMenu(null);
+    }
+  };
+
+  const handleCopyLink = (articleId: string) => {
+    const url = `${window.location.origin}/article/${articleId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(articleId);
+    setTimeout(() => setCopiedLink(null), 2000);
+    setShowShareMenu(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -301,92 +335,167 @@ export function BlogArticles() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Title</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Keywords</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Created</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredArticles.map((article) => (
-                  <tr key={article.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <BookOpen className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <div className="font-medium text-gray-900 truncate">{article.title}</div>
-                          {article.excerpt && (
-                            <div className="text-xs text-gray-500 truncate">{article.excerpt}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">{getStatusBadge(article.sync_status)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {(article.target_keywords || []).slice(0, 2).map((keyword, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                            {keyword}
-                          </span>
-                        ))}
-                        {(article.target_keywords || []).length > 2 && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                            +{article.target_keywords.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-700">
-                          {new Date(article.created_at).toLocaleDateString()}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredArticles.map((article) => {
+            const thumbnail = getArticleThumbnail(article.content, article.category || undefined);
+
+            return (
+              <div key={article.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="relative h-48 overflow-hidden bg-gray-100">
+                  <img
+                    src={thumbnail}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3">
+                    {getStatusBadge(article.sync_status)}
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
+                    {article.title}
+                  </h3>
+
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                    <Calendar className="w-4 h-4" />
+                    <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  {article.meta_description && (
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+                      {article.meta_description}
+                    </p>
+                  )}
+
+                  {article.target_keywords && article.target_keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {article.target_keywords.slice(0, 3).map((keyword, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                          {keyword}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setConfirmAction({ type: 'sync', articleId: article.id });
-                            setShowConfirm(true);
-                          }}
-                          disabled={syncing === article.id || article.sync_status === 'synced'}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Sync to Shopify"
-                        >
-                          <Upload className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setSelectedArticleId(article.id)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setConfirmAction({ type: 'delete', articleId: article.id });
-                            setShowConfirm(true);
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      ))}
+                      {article.target_keywords.length > 3 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                          +{article.target_keywords.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowShareMenu(showShareMenu === article.id ? null : article.id)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                        title="Share"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+
+                      {showShareMenu === article.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setShowShareMenu(null)}
+                          />
+                          <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-20 min-w-[160px]">
+                            <button
+                              onClick={() => handleShare('facebook', article.id, article.title)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                            >
+                              <Facebook className="w-4 h-4 text-blue-600" />
+                              Facebook
+                            </button>
+                            <button
+                              onClick={() => handleShare('twitter', article.id, article.title)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                            >
+                              <Twitter className="w-4 h-4 text-blue-400" />
+                              Twitter
+                            </button>
+                            <button
+                              onClick={() => handleShare('linkedin', article.id, article.title)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                            >
+                              <Linkedin className="w-4 h-4 text-blue-700" />
+                              LinkedIn
+                            </button>
+                            <button
+                              onClick={() => handleCopyLink(article.id)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                            >
+                              {copiedLink === article.id ? (
+                                <>
+                                  <Check className="w-4 h-4 text-green-600" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4 text-gray-600" />
+                                  Copy link
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setSelectedArticleId(article.id)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedArticleId(article.id)}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                      title="Edit"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmAction({ type: 'delete', articleId: article.id });
+                        setShowConfirm(true);
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setConfirmAction({ type: 'sync', articleId: article.id });
+                      setShowConfirm(true);
+                    }}
+                    disabled={syncing === article.id || article.sync_status === 'synced'}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {syncing === article.id ? (
+                      <>
+                        <Clock className="w-4 h-4 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : article.sync_status === 'synced' ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Synced to Shopify
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Sync to Shopify
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {filteredArticles.length === 0 && (

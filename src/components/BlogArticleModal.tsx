@@ -8,8 +8,10 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  Upload
+  Upload,
+  ExternalLink
 } from 'lucide-react';
+import { ArticleLandingPage } from './ArticleLandingPage';
 
 interface BlogArticle {
   id: string;
@@ -42,7 +44,7 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [mode, setMode] = useState<'preview' | 'edit'>('preview');
+  const [mode, setMode] = useState<'preview' | 'edit' | 'landing'>('landing');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [formData, setFormData] = useState({
@@ -167,6 +169,21 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
 
   if (!article) {
     return null;
+  }
+
+  if (mode === 'landing') {
+    return (
+      <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="fixed top-4 right-4 z-50 p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition"
+          title="Close"
+        >
+          <X className="w-6 h-6 text-gray-700" />
+        </button>
+        <ArticleLandingPage articleId={articleId} />
+      </div>
+    );
   }
 
   return (
@@ -336,6 +353,14 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
 
         <div className="p-6 border-t border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMode('landing')}
+              disabled={saving || syncing}
+              className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Landing Page
+            </button>
             <button
               onClick={() => setMode(mode === 'preview' ? 'edit' : 'preview')}
               disabled={saving || syncing}
