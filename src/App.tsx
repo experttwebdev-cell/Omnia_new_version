@@ -61,10 +61,21 @@ function App() {
   const t = getTranslation(language);
 
   useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    // Check if env vars are configured (either at build time or runtime)
+    const checkConfig = () => {
+      if (typeof window !== 'undefined' && window.ENV_CONFIG) {
+        const url = window.ENV_CONFIG.VITE_SUPABASE_URL;
+        const key = window.ENV_CONFIG.VITE_SUPABASE_ANON_KEY;
+        if (url && key && !url.startsWith('__') && !key.startsWith('__')) {
+          return true;
+        }
+      }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      return supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co';
+    };
 
-    if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'https://placeholder.supabase.co') {
+    if (!checkConfig()) {
       setConfigError(true);
       setLanguageLoaded(true);
       return;
