@@ -22,6 +22,7 @@ import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
 import { opportunityTemplates } from '../lib/language';
 import { BlogArticleModal } from './BlogArticleModal';
+import { ProductDiagnostics } from './ProductDiagnostics';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
@@ -695,6 +696,9 @@ export function SeoOpportunities() {
         />
       )}
       <div className="space-y-6">
+        {/* Product Diagnostics - Show if no products */}
+        {products.length === 0 && <ProductDiagnostics />}
+
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Blog Content Opportunities</h2>
