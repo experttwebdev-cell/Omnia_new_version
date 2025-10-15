@@ -45,6 +45,10 @@ interface BlogArticle {
   published: boolean;
   created_at: string;
   updated_at: string;
+  content_quality_score?: number;
+  has_placeholders?: boolean;
+  language_validated?: boolean;
+  status?: string;
 }
 
 export function BlogArticles() {
@@ -347,8 +351,26 @@ export function BlogArticles() {
                     alt={article.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-3 right-3">
+                  <div className="absolute top-3 right-3 flex flex-col gap-2">
                     {getStatusBadge(article.sync_status)}
+                    {article.has_placeholders && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                        <AlertCircle className="w-3 h-3" />
+                        Incomplete
+                      </span>
+                    )}
+                    {!article.language_validated && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                        <AlertCircle className="w-3 h-3" />
+                        Language
+                      </span>
+                    )}
+                    {article.content_quality_score !== undefined && article.content_quality_score < 70 && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                        <AlertCircle className="w-3 h-3" />
+                        {article.content_quality_score}%
+                      </span>
+                    )}
                   </div>
                 </div>
 

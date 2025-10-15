@@ -31,6 +31,12 @@ interface BlogArticle {
   sync_error: string | null;
   created_at: string | null;
   updated_at: string | null;
+  content_quality_score?: number;
+  content_issues?: string[];
+  validation_errors?: string[];
+  has_placeholders?: boolean;
+  language_validated?: boolean;
+  language?: string;
 }
 
 interface BlogArticleModalProps {
@@ -222,6 +228,55 @@ export function BlogArticleModal({ articleId, onClose, onUpdate }: BlogArticleMo
             <p className={`text-sm ${message.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
               {message.text}
             </p>
+          </div>
+        )}
+
+        {(article.has_placeholders || !article.language_validated || (article.content_quality_score && article.content_quality_score < 70)) && (
+          <div className="mx-6 mt-4 space-y-2">
+            {article.has_placeholders && (
+              <div className="flex items-start gap-2 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-orange-800 font-medium">Contenu incomplet</p>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Cet article contient du contenu placeholder qui doit être complété.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!article.language_validated && (
+              <div className="flex items-start gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-yellow-800 font-medium">Problème de langue</p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    Le contenu ne correspond pas à la langue demandée ({article.language || 'unknown'}).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {article.content_quality_score !== undefined && article.content_quality_score < 70 && (
+              <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-800 font-medium">
+                    Qualité du contenu: {article.content_quality_score}/100
+                  </p>
+                  {article.content_issues && article.content_issues.length > 0 && (
+                    <ul className="text-xs text-red-700 mt-2 space-y-1 list-disc list-inside">
+                      {article.content_issues.slice(0, 3).map((issue, idx) => (
+                        <li key={idx}>{issue}</li>
+                      ))}
+                      {article.content_issues.length > 3 && (
+                        <li>+{article.content_issues.length - 3} autres problèmes</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
