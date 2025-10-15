@@ -158,12 +158,20 @@ export function BlogArticles() {
     setShowConfirm(false);
 
     try {
-      const { error } = await supabase
+      console.log('Deleting article:', articleId);
+
+      const { error, data } = await supabase
         .from('blog_articles')
         .delete()
-        .eq('id', articleId);
+        .eq('id', articleId)
+        .select();
 
-      if (error) throw error;
+      console.log('Delete result:', { error, data });
+
+      if (error) {
+        console.error('Delete error details:', error);
+        throw error;
+      }
 
       addNotification({
         type: 'success',
