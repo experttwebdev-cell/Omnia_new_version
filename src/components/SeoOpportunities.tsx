@@ -54,8 +54,60 @@ export function SeoOpportunities() {
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const supportedLangs: ('fr' | 'en')[] = ['fr', 'en'];
-  const templateLang = supportedLangs.includes(language as 'fr' | 'en') ? (language as 'fr' | 'en') : 'en';
+  const templateLang = supportedLangs.includes(language as 'fr' | 'en') ? (language as 'fr' | 'en') : 'fr';
   const templates = opportunityTemplates[templateLang];
+
+  const uiText = {
+    fr: {
+      title: 'Opportunités de Contenu Blog',
+      subtitle: 'Idées de contenu basées sur votre catalogue produits',
+      generating: 'Génération...',
+      generateButton: 'Générer des Opportunités',
+      allTypes: 'Tous les Types',
+      categoryGuides: 'Guides Catégorie',
+      comparisons: 'Comparaisons',
+      howToGuides: 'Guides Pratiques',
+      productSpotlights: 'Produits Vedettes',
+      categoryGuide: 'Guide Catégorie',
+      comparison: 'Comparaison',
+      howTo: 'Guide Pratique',
+      spotlight: 'Produit Vedette',
+      easy: 'facile',
+      medium: 'moyen',
+      hard: 'difficile',
+      products: 'produits',
+      words: 'mots',
+      score: 'Score',
+      targetKeywords: 'Mots-clés Cibles',
+      suggestedStructure: 'Structure Suggérée',
+      createArticle: 'Créer l\'Article'
+    },
+    en: {
+      title: 'Blog Content Opportunities',
+      subtitle: 'AI-powered content ideas based on your product catalog',
+      generating: 'Generating...',
+      generateButton: 'Generate Smart Opportunities',
+      allTypes: 'All Types',
+      categoryGuides: 'Category Guides',
+      comparisons: 'Comparisons',
+      howToGuides: 'How-To Guides',
+      productSpotlights: 'Product Spotlights',
+      categoryGuide: 'Category Guide',
+      comparison: 'Comparison',
+      howTo: 'How-To Guide',
+      spotlight: 'Spotlight',
+      easy: 'easy',
+      medium: 'medium',
+      hard: 'hard',
+      products: 'products',
+      words: 'words',
+      score: 'Score',
+      targetKeywords: 'Target Keywords',
+      suggestedStructure: 'Suggested Structure',
+      createArticle: 'Create Article'
+    }
+  };
+  const ui = uiText[templateLang];
 
   useEffect(() => {
     fetchProducts();
@@ -640,18 +692,14 @@ export function SeoOpportunities() {
   };
 
   const getTypeLabel = (type: Opportunity['type']) => {
-    switch (type) {
-      case 'category-guide':
-        return 'Category Guide';
-      case 'comparison':
-        return 'Comparison';
-      case 'how-to':
-        return 'How-To Guide';
-      case 'product-spotlight':
-        return 'Product Spotlight';
-      case 'seasonal':
-        return 'Seasonal';
-    }
+    const labels = {
+      'category-guide': ui.categoryGuide,
+      'comparison': ui.comparison,
+      'how-to': ui.howTo,
+      'product-spotlight': ui.spotlight,
+      'seasonal': templateLang === 'fr' ? 'Saisonnier' : 'Seasonal'
+    };
+    return labels[type];
   };
 
   const getDifficultyColor = (difficulty: Opportunity['difficulty']) => {
@@ -701,9 +749,9 @@ export function SeoOpportunities() {
 
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Blog Content Opportunities</h2>
+          <h2 className="text-xl font-bold text-gray-900">{ui.title}</h2>
           <p className="text-sm text-gray-600 mt-1">
-            AI-powered content ideas based on your product catalog
+            {ui.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -715,12 +763,12 @@ export function SeoOpportunities() {
             {generatingSmart ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Generating...
+                {ui.generating}
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Generate Smart Opportunities
+                {ui.generateButton}
               </>
             )}
           </button>
@@ -729,11 +777,11 @@ export function SeoOpportunities() {
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           >
-            <option value="all">All Types</option>
-            <option value="category-guide">Category Guides</option>
-            <option value="comparison">Comparisons</option>
-            <option value="how-to">How-To Guides</option>
-            <option value="product-spotlight">Product Spotlights</option>
+            <option value="all">{ui.allTypes}</option>
+            <option value="category-guide">{ui.categoryGuides}</option>
+            <option value="comparison">{ui.comparisons}</option>
+            <option value="how-to">{ui.howToGuides}</option>
+            <option value="product-spotlight">{ui.productSpotlights}</option>
           </select>
           <button
             onClick={fetchProducts}
@@ -748,7 +796,7 @@ export function SeoOpportunities() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <BookOpen className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-blue-900">Category Guides</h3>
+            <h3 className="font-semibold text-blue-900">{ui.categoryGuides}</h3>
           </div>
           <p className="text-2xl font-bold text-blue-900">
             {opportunities.filter((o) => o.type === 'category-guide').length}
@@ -758,7 +806,7 @@ export function SeoOpportunities() {
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <Target className="w-5 h-5 text-green-600" />
-            <h3 className="font-semibold text-green-900">Comparisons</h3>
+            <h3 className="font-semibold text-green-900">{ui.comparisons}</h3>
           </div>
           <p className="text-2xl font-bold text-green-900">
             {opportunities.filter((o) => o.type === 'comparison').length}
@@ -768,7 +816,7 @@ export function SeoOpportunities() {
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <FileText className="w-5 h-5 text-orange-600" />
-            <h3 className="font-semibold text-orange-900">How-To Guides</h3>
+            <h3 className="font-semibold text-orange-900">{ui.howToGuides}</h3>
           </div>
           <p className="text-2xl font-bold text-orange-900">
             {opportunities.filter((o) => o.type === 'how-to').length}
@@ -778,7 +826,7 @@ export function SeoOpportunities() {
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3 mb-2">
             <Package className="w-5 h-5 text-purple-600" />
-            <h3 className="font-semibold text-purple-900">Spotlights</h3>
+            <h3 className="font-semibold text-purple-900">{ui.productSpotlights}</h3>
           </div>
           <p className="text-2xl font-bold text-purple-900">
             {opportunities.filter((o) => o.type === 'product-spotlight').length}
@@ -806,22 +854,22 @@ export function SeoOpportunities() {
                         {getTypeLabel(opportunity.type)}
                       </span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${difficultyClass}`}>
-                        {opportunity.difficulty}
+                        {ui[opportunity.difficulty]}
                       </span>
                       <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
                         <TrendingUp className="w-3 h-3" />
-                        Score: {opportunity.score}
+                        {ui.score}: {opportunity.score}
                       </div>
                     </div>
                     <p className="text-gray-700 mb-3">{opportunity.description}</p>
                     <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Package className="w-4 h-4" />
-                        {opportunity.productCount} products
+                        {opportunity.productCount} {ui.products}
                       </span>
                       <span className="flex items-center gap-1">
                         <FileText className="w-4 h-4" />
-                        ~{opportunity.estimatedWordCount.toLocaleString()} words
+                        ~{opportunity.estimatedWordCount.toLocaleString()} {ui.words}
                       </span>
                     </div>
                   </div>
@@ -846,12 +894,12 @@ export function SeoOpportunities() {
                     {creatingArticle === opportunity.id ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Creating...
+                        {templateLang === 'fr' ? 'Création...' : 'Creating...'}
                       </>
                     ) : (
                       <>
                         <FileEdit className="w-4 h-4" />
-                        Create Article
+                        {ui.createArticle}
                       </>
                     )}
                   </button>
@@ -862,7 +910,7 @@ export function SeoOpportunities() {
                 <div className="mb-3">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <Target className="w-4 h-4" />
-                    Target Keywords
+                    {ui.targetKeywords}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {opportunity.targetKeywords.map((keyword, idx) => (
@@ -877,7 +925,7 @@ export function SeoOpportunities() {
                   <div>
                     <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                       <FileText className="w-4 h-4" />
-                      Suggested Structure
+                      {ui.suggestedStructure}
                     </h4>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {opportunity.suggestedStructure.map((section, idx) => (
