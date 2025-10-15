@@ -28,6 +28,90 @@ interface Campaign {
   frequency: string;
 }
 
+function buildPrompt(campaign: Campaign, languageName: string): string {
+  const tableOfContentsExample = `<div class="table-of-contents"><h2>Table des Matieres</h2><ul><li><a href="#section-1">Titre Section 1</a></li></ul></div>`;
+
+  return `Vous etes un expert en redaction SEO et specialiste de ${campaign.topic_niche}.
+
+OBJECTIF : Generer un article HTML complet, structure, et SEO-friendly.
+
+INFORMATIONS DE BASE:
+- Sujet principal: ${campaign.topic_niche}
+- Public cible: ${campaign.target_audience || "Audience generale interessee par " + campaign.topic_niche}
+- Style d'ecriture: ${campaign.writing_style}
+- Ton: ${campaign.tone}
+- Langue: ${languageName}
+- Nombre de mots: ${campaign.word_count_min}-${campaign.word_count_max} mots
+- Mots-cles principaux: ${campaign.keywords.join(", ")}
+${campaign.content_structure ? `- Structure demandee: ${campaign.content_structure}` : ""}
+
+STRUCTURE HTML ATTENDUE:
+
+1. Introduction engageante dans un paragraphe <p>
+2. Table des matieres interactive (exemple: ${tableOfContentsExample})
+3. Sections principales avec <h2 id="...">
+4. Sous-sections avec <h3> et <h4>
+5. Contenu riche avec listes <ul> et <ol>
+6. Images avec attributs ALT optimises
+7. Conclusion inspirante avec appel a l'action
+8. Hashtags en fin d'article
+
+SECTIONS RECOMMANDEES:
+- Introduction
+- Tendances Actuelles
+- Guide de Selection / Comment Choisir
+- Erreurs a Eviter
+- Idees et Conseils Pratiques
+- Questions Frequentes (FAQ)
+- Conclusion
+
+OPTIMISATION SEO:
+- Integrez naturellement TOUS les mots-cles (3-5 fois chacun)
+- Utilisez des synonymes et expressions associees
+- Creez une meta description captivante de 150-160 caracteres
+- Ajoutez 3-5 images avec ALT descriptifs
+- Structure claire pour le referencement
+
+TONALITE & STYLE:
+- Langage fluide et naturel avec transitions douces
+- Approche conseil expert, inspirant, oriente solutions
+- Questions rhetoriques et exemples concrets
+- Credibilite avec statistiques et expertise sectorielle
+
+ELEMENTS ENRICHISSANTS:
+- Listes a puces et numerotees pour la lisibilite
+- <strong> pour les points importants
+- <em> pour les nuances
+- Citations et statistiques pour la credibilite
+- Appels a l'action en fin de sections
+
+FIN D'ARTICLE:
+- Resumez les points cles en 2-3 phrases
+- Proposez une action concrete au lecteur
+- Ajoutez 4-6 hashtags pertinents
+
+FORMAT DE SORTIE REQUIS - Retournez UNIQUEMENT un objet JSON valide:
+{
+  "title": "Titre SEO-optimise captivant (50-60 caracteres)",
+  "content": "Votre contenu HTML complet ici avec table des matieres, sections, etc.",
+  "meta_description": "Description SEO de 150-160 caracteres avec mot-cle principal",
+  "focus_keyword": "mot-cle principal exact",
+  "keywords": ["mot-cle1", "mot-cle2", "mot-cle3", "mot-cle4", "mot-cle5"]
+}
+
+CRITERES DE QUALITE:
+- Contenu original et informatif
+- ${campaign.word_count_min}-${campaign.word_count_max} mots minimum
+- HTML propre et valide
+- Mots-cles integres naturellement
+- Structure claire avec table des matieres
+- Lisible et engageant
+- Optimise pour le referencement
+- Pret a publier directement
+
+IMPORTANT: Ecrivez ENTIEREMENT en ${languageName}. Le contenu doit etre de haute qualite, apporter une reelle valeur au lecteur, et etablir votre expertise dans le domaine.`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -81,84 +165,7 @@ Deno.serve(async (req: Request) => {
     };
 
     const languageName = languageNames[typedCampaign.language] || "English";
-
-    const prompt = `You are an expert SEO content writer and ${typedCampaign.topic_niche} specialist.
-
-## ARTICLE REQUIREMENTS
-
-### Target Information
-- Topic/Niche: ${typedCampaign.topic_niche}
-- Target Audience: ${typedCampaign.target_audience || "General audience interested in " + typedCampaign.topic_niche}
-- Writing Style: ${typedCampaign.writing_style}
-- Tone: ${typedCampaign.tone}
-- Language: ${languageName}
-- Word Count: ${typedCampaign.word_count_min}-${typedCampaign.word_count_max} words
-- Primary Keywords: ${typedCampaign.keywords.join(", ")}
-${typedCampaign.content_structure ? `- Content Structure: ${typedCampaign.content_structure}` : ""}
-
-### Quality Standards
-Create a comprehensive, high-quality blog article that meets these standards:
-
-1. **Title Requirements:**
-   - Create an SEO-optimized, compelling title (NOT generic)
-   - Include the primary keyword naturally
-   - Make it click-worthy and specific
-   - 50-60 characters ideal length
-
-2. **Content Structure:**
-   - Start with a strong hook in the first paragraph
-   - Use proper HTML heading hierarchy (H1 for title, H2 for main sections, H3 for subsections, H4 for details)
-   - Include 5-8 major sections with H2 headings
-   - Add 2-3 H3 subsections under each H2
-   - Use H4 for specific points or examples
-
-3. **Content Quality:**
-   - Write substantive, original content
-   - Provide industry-specific expertise and insights
-   - Include practical tips and actionable advice
-   - Add real examples and case studies where relevant
-   - Use bullet points and numbered lists for readability
-   - Include relevant statistics or data points
-   - Address common questions and concerns
-
-4. **SEO Optimization:**
-   - Naturally incorporate all keywords throughout the article
-   - Create keyword-rich H2 and H3 headings
-   - Write a compelling meta description (150-160 characters)
-   - Use semantic HTML tags (strong, em, ul, ol, p)
-   - Optimize for featured snippets where possible
-
-5. **Engagement Elements:**
-   - Start with a value proposition in the introduction
-   - Use conversational language that connects with readers
-   - Include call-to-action elements throughout
-   - End with a strong conclusion that summarizes key points
-   - Add a clear final call-to-action
-
-6. **HTML Formatting:**
-   - Use <h2>, <h3>, <h4> tags for headings
-   - Use <p> tags for paragraphs
-   - Use <ul> and <ol> for lists
-   - Use <strong> for emphasis
-   - Use <a> tags for links (we'll add these later)
-   - Ensure proper nesting and closing of all tags
-
-### Output Format
-Return ONLY a valid JSON object with this exact structure:
-{
-  "title": "Your compelling, SEO-optimized title here",
-  "content": "<h2>Introduction</h2><p>Your engaging opening...</p><h2>Section Title</h2><h3>Subsection</h3><p>Content...</p>...",
-  "meta_description": "Compelling 150-160 character description with primary keyword",
-  "focus_keyword": "primary keyword phrase",
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
-}
-
-IMPORTANT: 
-- Write ENTIRELY in ${languageName}
-- The content must be ${typedCampaign.word_count_min}-${typedCampaign.word_count_max} words
-- Ensure the article is informative, engaging, and valuable to readers
-- Make it worth reading, not just keyword-stuffed content
-- Create content that establishes expertise and builds trust`;
+    const prompt = buildPrompt(typedCampaign, languageName);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -169,9 +176,9 @@ IMPORTANT:
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { 
-            role: "system", 
-            content: `You are an expert SEO content writer who creates high-quality, engaging blog articles. You write in ${languageName}. Always return valid JSON with properly formatted HTML content that uses semantic tags and proper heading hierarchy.` 
+          {
+            role: "system",
+            content: `You are an expert SEO content writer who creates high-quality, engaging blog articles. You write in ${languageName}. Always return valid JSON with properly formatted HTML content that uses semantic tags and proper heading hierarchy including an interactive table of contents.`
           },
           { role: "user", content: prompt },
         ],

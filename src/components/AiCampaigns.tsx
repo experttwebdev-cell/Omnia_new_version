@@ -61,6 +61,7 @@ export function AiCampaigns() {
     action: () => void;
   }>({ show: false, title: '', message: '', action: () => {} });
   const [executionLogs, setExecutionLogs] = useState<{ [key: string]: ExecutionLog[] }>({});
+  const [executing, setExecuting] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -148,19 +149,16 @@ export function AiCampaigns() {
     try {
       setError('');
       setSuccess('');
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
+      setExecuting(prev => ({ ...prev, [campaignId]: true }));
 
       const response = await fetch(
         `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/execute-campaign`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json',
+            'apikey': getEnvVar('VITE_SUPABASE_ANON_KEY')
           },
           body: JSON.stringify({ campaign_id: campaignId })
         }
@@ -171,12 +169,16 @@ export function AiCampaigns() {
         throw new Error(errorData.error || 'Failed to execute campaign');
       }
 
-      setSuccess('Campaign execution started!');
-      setTimeout(() => setSuccess(''), 3000);
+      const result = await response.json();
+      setSuccess(`Article generated successfully! "${result.article?.title || 'New article'}"`);
+      setTimeout(() => setSuccess(''), 5000);
       fetchCampaigns();
+      fetchExecutionLogs(campaignId);
     } catch (err) {
       console.error('Error executing campaign:', err);
       setError(err instanceof Error ? err.message : 'Failed to execute campaign');
+    } finally {
+      setExecuting(prev => ({ ...prev, [campaignId]: false }));
     }
   };
 
