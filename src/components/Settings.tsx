@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity, MessageSquare } from 'lucide-react';
 import { Language } from '../lib/translations';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
@@ -9,13 +9,21 @@ import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 interface SettingsData {
   enrichment_mode: 'manual' | 'auto';
   enrichment_frequency: 'on_import' | 'daily' | 'weekly' | 'manual';
+  chat_welcome_message: string;
+  chat_tone: 'professional' | 'friendly' | 'enthusiastic' | 'casual';
+  chat_response_length: 'concise' | 'balanced' | 'detailed';
+  chat_enabled: boolean;
 }
 
 export function Settings() {
   const { language, setLanguage, t } = useLanguage();
   const [settings, setSettings] = useState<SettingsData>({
     enrichment_mode: 'manual',
-    enrichment_frequency: 'manual'
+    enrichment_frequency: 'manual',
+    chat_welcome_message: 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?',
+    chat_tone: 'friendly',
+    chat_response_length: 'balanced',
+    chat_enabled: true
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,14 +39,18 @@ export function Settings() {
       setLoading(true);
       const { data: stores } = await supabase
         .from('shopify_stores')
-        .select('enrichment_mode, enrichment_frequency')
+        .select('enrichment_mode, enrichment_frequency, chat_welcome_message, chat_tone, chat_response_length, chat_enabled')
         .limit(1)
         .maybeSingle();
 
       if (stores) {
         setSettings({
           enrichment_mode: stores.enrichment_mode as 'manual' | 'auto',
-          enrichment_frequency: stores.enrichment_frequency as 'on_import' | 'daily' | 'weekly' | 'manual'
+          enrichment_frequency: stores.enrichment_frequency as 'on_import' | 'daily' | 'weekly' | 'manual',
+          chat_welcome_message: stores.chat_welcome_message || 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?',
+          chat_tone: (stores.chat_tone as any) || 'friendly',
+          chat_response_length: (stores.chat_response_length as any) || 'balanced',
+          chat_enabled: stores.chat_enabled !== false
         });
       }
     } catch (error) {
@@ -63,7 +75,11 @@ export function Settings() {
           .from('shopify_stores')
           .update({
             enrichment_mode: settings.enrichment_mode,
-            enrichment_frequency: settings.enrichment_frequency
+            enrichment_frequency: settings.enrichment_frequency,
+            chat_welcome_message: settings.chat_welcome_message,
+            chat_tone: settings.chat_tone,
+            chat_response_length: settings.chat_response_length,
+            chat_enabled: settings.chat_enabled
           })
           .eq('id', stores[0].id);
 
@@ -185,33 +201,119 @@ export function Settings() {
               </p>
             </div>
           )}
-
-          <div className="flex items-center gap-4 pt-4">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition"
-            >
-              {saving ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  {t.settings.saving}
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  {t.settings.saveSettings}
-                </>
-              )}
-            </button>
-
-            {message && (
-              <span className={`text-sm ${message.includes('succès') ? 'text-green-600' : 'text-red-600'}`}>
-                {message}
-              </span>
-            )}
-          </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <MessageSquare className="w-5 h-5 text-gray-600" />
+          <h2 className="text-lg font-semibold text-gray-800">Paramètres du Chat IA</h2>
+        </div>
+        <p className="text-gray-600 mb-6">
+          Personnalisez le comportement et le style de votre assistant conversationnel
+        </p>
+
+        <div className="space-y-6">
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={settings.chat_enabled}
+                onChange={(e) => setSettings({ ...settings, chat_enabled: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Activer le chat IA</span>
+            </label>
+          </div>
+
+          {settings.chat_enabled && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Message d'accueil
+                </label>
+                <textarea
+                  value={settings.chat_welcome_message}
+                  onChange={(e) => setSettings({ ...settings, chat_welcome_message: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Bonjour ! Comment puis-je vous aider aujourd'hui ?"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Premier message affiché aux visiteurs
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ton de conversation
+                </label>
+                <select
+                  value={settings.chat_tone}
+                  onChange={(e) => setSettings({ ...settings, chat_tone: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="professional">Professionnel</option>
+                  <option value="friendly">Amical</option>
+                  <option value="enthusiastic">Enthousiaste</option>
+                  <option value="casual">Décontracté</option>
+                </select>
+                <p className="text-sm text-gray-500 mt-1">
+                  {settings.chat_tone === 'professional' && 'Ton formel et expert, adapté aux ventes B2B'}
+                  {settings.chat_tone === 'friendly' && 'Ton chaleureux et accessible, équilibré'}
+                  {settings.chat_tone === 'enthusiastic' && 'Ton dynamique et engageant, très expressif'}
+                  {settings.chat_tone === 'casual' && 'Ton décontracté et proche, style conversationnel'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Longueur des réponses
+                </label>
+                <select
+                  value={settings.chat_response_length}
+                  onChange={(e) => setSettings({ ...settings, chat_response_length: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="concise">Concis (10-20 mots)</option>
+                  <option value="balanced">Équilibré (20-40 mots)</option>
+                  <option value="detailed">Détaillé (40-80 mots)</option>
+                </select>
+                <p className="text-sm text-gray-500 mt-1">
+                  {settings.chat_response_length === 'concise' && 'Réponses courtes et directes, idéal pour mobile'}
+                  {settings.chat_response_length === 'balanced' && 'Réponses équilibrées avec contexte'}
+                  {settings.chat_response_length === 'detailed' && 'Réponses complètes et descriptives'}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition"
+        >
+          {saving ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              {t.settings.saving}
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              {t.settings.saveSettings}
+            </>
+          )}
+        </button>
+
+        {message && (
+          <span className={`text-sm ${message.includes('succès') ? 'text-green-600' : 'text-red-600'}`}>
+            {message}
+          </span>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">

@@ -31,33 +31,35 @@ export function AiChat() {
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [chatSettings, setChatSettings] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchStoreId();
-
-    const welcomeMessage: ChatMessage = {
-      role: 'assistant',
-      content: 'Bonjour ! Je suis votre assistant personnel pour trouver les meubles parfaits. Comment puis-je vous aider aujourd\'hui ?',
-      timestamp: new Date().toISOString()
-    };
-    setMessages([welcomeMessage]);
+    fetchStoreSettings();
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchStoreId = async () => {
+  const fetchStoreSettings = async () => {
     try {
       const { data } = await supabase
         .from('shopify_stores')
-        .select('id')
+        .select('id, chat_enabled, chat_welcome_message, chat_tone, chat_response_length')
         .limit(1)
         .maybeSingle();
 
       if (data) {
+        setChatSettings(data);
+
+        const welcomeMessage: ChatMessage = {
+          role: 'assistant',
+          content: data.chat_welcome_message || 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?',
+          timestamp: new Date().toISOString()
+        };
+        setMessages([welcomeMessage]);
         setStoreId(data.id);
       }
     } catch (err) {
@@ -86,7 +88,11 @@ export function AiChat() {
     try {
       console.log('Calling OmnIA Chat...');
       const history = messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
-      const response = await OmnIAChat(currentMessage, history, storeId || undefined);
+      const settings = chatSettings ? {
+        chat_tone: chatSettings.chat_tone,
+        chat_response_length: chatSettings.chat_response_length
+      } : undefined;
+      const response = await OmnIAChat(currentMessage, history, storeId || undefined, settings);
 
       console.log('OmnIA Response:', response);
 

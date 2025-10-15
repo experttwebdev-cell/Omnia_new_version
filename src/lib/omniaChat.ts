@@ -15,6 +15,11 @@ interface ProductAttributes {
   dimensions?: string;
 }
 
+interface ChatSettings {
+  chat_tone?: string;
+  chat_response_length?: string;
+}
+
 interface Product {
   id: string;
   title: string;
@@ -46,17 +51,38 @@ interface Product {
   inventory_quantity?: number;
 }
 
-const intents = {
-  ChatIntent: {
-    name: 'ChatIntent',
-    description: 'Répond de manière naturelle et fluide aux messages généraux sans intention d\'achat directe.',
-    system_prompt: `Tu es OmnIA, assistant commercial intelligent. Réponds en 1-2 phrases courtes et chaleureuses. Maximum 20 mots.`,
-  },
+function buildChatIntent(settings?: ChatSettings) {
+  const toneInstructions = {
+    professional: 'Ton professionnel et formel. Vouvoiement. Style expert et précis.',
+    friendly: 'Ton chaleureux et accessible. Style conversationnel équilibré.',
+    enthusiastic: 'Ton dynamique et expressif ! Utilise des exclamations. Style engageant.',
+    casual: 'Ton décontracté et proche. Tutoiement. Style naturel.'
+  };
 
-  ProductQualificationIntent: {
-    name: 'ProductQualificationIntent',
-    description: 'Qualifie la demande produit de manière conversationnelle avant de chercher.',
-    system_prompt: `Tu es OmnIA, conseiller commercial expert.
+  const lengthInstructions = {
+    concise: 'Maximum 20 mots. Phrases courtes et directes.',
+    balanced: 'Maximum 40 mots. Réponses équilibrées avec contexte.',
+    detailed: 'Maximum 80 mots. Réponses complètes et descriptives.'
+  };
+
+  const tone = settings?.chat_tone || 'friendly';
+  const length = settings?.chat_response_length || 'balanced';
+
+  return `Tu es OmnIA, assistant commercial intelligent.
+${toneInstructions[tone as keyof typeof toneInstructions] || toneInstructions.friendly}
+${lengthInstructions[length as keyof typeof lengthInstructions] || lengthInstructions.balanced}`;
+}
+
+function buildQualificationIntent(settings?: ChatSettings) {
+  const tone = settings?.chat_tone || 'friendly';
+  const toneInstructions = {
+    professional: 'Ton professionnel et courtois.',
+    friendly: 'Ton chaleureux et accessible.',
+    enthusiastic: 'Ton dynamique et enthousiaste !',
+    casual: 'Ton décontracté et sympa.'
+  };
+
+  return `Tu es OmnIA, conseiller commercial expert.
 
 Quand un client mentionne un produit de manière vague, tu DOIS poser des questions de qualification intelligentes pour mieux comprendre ses besoins.
 
@@ -67,9 +93,22 @@ Exemples:
 
 Règles:
 - Pose 2-3 questions précises et pertinentes
-- Ton chaleureux et professionnel
+- ${toneInstructions[tone as keyof typeof toneInstructions]}
 - Maximum 30 mots
-- Adapte les questions au type de produit mentionné`,
+- Adapte les questions au type de produit mentionné`;
+}
+
+const intents = {
+  ChatIntent: {
+    name: 'ChatIntent',
+    description: 'Répond de manière naturelle et fluide aux messages généraux sans intention d\'achat directe.',
+    system_prompt: `Tu es OmnIA, assistant commercial intelligent. Réponds en 1-2 phrases courtes et chaleureuses. Maximum 20 mots.`,
+  },
+
+  ProductQualificationIntent: {
+    name: 'ProductQualificationIntent',
+    description: 'Qualifie la demande produit de manière conversationnelle avant de chercher.',
+    system_prompt: '', // Will be dynamically set
   },
 
   ProductSearchIntent: {
@@ -317,7 +356,7 @@ function getQuickResponse(message: string): string | null {
   return null;
 }
 
-export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
+export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string, settings?: ChatSettings) {
   const intentName = await detectIntent(userMessage, history);
 
   if (intentName === 'ChatIntent') {
@@ -333,13 +372,17 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
       };
     }
 
+    const chatPrompt = buildChatIntent(settings);
+    const maxTokens = settings?.chat_response_length === 'concise' ? 30 :
+                      settings?.chat_response_length === 'detailed' ? 100 : 50;
+
     const messages: ChatMessage[] = [
-      { role: 'system', content: intents.ChatIntent.system_prompt },
+      { role: 'system', content: chatPrompt },
       ...history.slice(-4),
       { role: 'user', content: userMessage },
     ];
 
-    const response = await callDeepSeek(messages, 50);
+    const response = await callDeepSeek(messages, maxTokens);
 
     return {
       role: 'assistant' as const,
@@ -355,8 +398,9 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
 
     // Si la demande est trop vague, qualifier intelligemment
     if (attributes.intent === 'need_qualification' || !attributes.type) {
+      const qualificationPrompt = buildQualificationIntent(settings);
       const messages: ChatMessage[] = [
-        { role: 'system', content: intents.ProductQualificationIntent.system_prompt },
+        { role: 'system', content: qualificationPrompt },
         ...history.slice(-2),
         { role: 'user', content: userMessage },
       ];
