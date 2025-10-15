@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+function normalizeStoreUrl(storeUrl: string): string {
+  let normalized = storeUrl.trim();
+  normalized = normalized.replace(/^https?:\/\//, '');
+  normalized = normalized.replace(/\/$/, '');
+  return normalized;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -46,7 +53,7 @@ Deno.serve(async (req: Request) => {
 
         const { data: store, error: storeError } = await supabase
           .from('shopify_stores')
-          .select('shop_name, api_token')
+          .select('store_name, store_url, api_token')
           .eq('id', product.store_id)
           .maybeSingle();
 
@@ -58,6 +65,8 @@ Deno.serve(async (req: Request) => {
           });
           continue;
         }
+
+        const normalizedStoreUrl = normalizeStoreUrl(store.store_url);
 
         const metafields = [
           {
@@ -158,7 +167,9 @@ Deno.serve(async (req: Request) => {
           });
         }
 
-        const shopifyUrl = `https://${store.shop_name}/admin/api/2024-01/products/${product.shopify_id}/metafields.json`;
+        const shopifyUrl = `https://${normalizedStoreUrl}/admin/api/2024-01/products/${product.shopify_id}/metafields.json`;
+
+        console.log('Syncing Google Shopping data to:', shopifyUrl);
 
         for (const metafield of metafields) {
           const response = await fetch(shopifyUrl, {

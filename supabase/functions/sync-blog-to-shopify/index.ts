@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
+function normalizeStoreUrl(storeUrl: string): string {
+  let normalized = storeUrl.trim();
+  normalized = normalized.replace(/^https?:\/\//, '');
+  normalized = normalized.replace(/\/$/, '');
+  return normalized;
+}
+
 interface RequestBody {
   articleId: string;
 }
@@ -121,7 +128,11 @@ Deno.serve(async (req: Request) => {
       .update({ sync_status: 'syncing' })
       .eq('id', articleId);
 
-    const shopifyUrl = `https://${store.store_url}/admin/api/2024-01/blogs.json`;
+    const normalizedStoreUrl = normalizeStoreUrl(store.store_url);
+    const shopifyUrl = `https://${normalizedStoreUrl}/admin/api/2024-01/blogs.json`;
+
+    console.log('Fetching blogs from:', shopifyUrl);
+
     const blogsResponse = await fetch(shopifyUrl, {
       method: 'GET',
       headers: {
@@ -151,7 +162,10 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    const createArticleUrl = `https://${store.store_url}/admin/api/2024-01/blogs/${blogId}/articles.json`;
+    const createArticleUrl = `https://${normalizedStoreUrl}/admin/api/2024-01/blogs/${blogId}/articles.json`;
+
+    console.log('Creating article at:', createArticleUrl);
+
     const createResponse = await fetch(createArticleUrl, {
       method: 'POST',
       headers: {
@@ -187,8 +201,28 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Error syncing article to Shopify:', error);
 
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    try {
+      const { articleId } = await req.json();
+      if (articleId) {
+        await createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        )
+          .from('blog_articles')
+          .update({
+            sync_status: 'failed',
+            sync_error: errorMessage,
+          })
+          .eq('id', articleId);
+      }
+    } catch (updateError) {
+      console.error('Failed to update article status:', updateError);
+    }
+
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

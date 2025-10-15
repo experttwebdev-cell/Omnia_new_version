@@ -84,7 +84,20 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
     setError('');
 
     try {
-      const cleanStoreName = formData.storeName.trim().replace('.myshopify.com', '');
+      let cleanStoreName = formData.storeName.trim();
+
+      cleanStoreName = cleanStoreName.replace(/^https?:\/\//, '');
+      cleanStoreName = cleanStoreName.replace('.myshopify.com', '');
+      cleanStoreName = cleanStoreName.replace(/\/$/, '');
+
+      if (!cleanStoreName) {
+        throw new Error('Please enter a valid store name');
+      }
+
+      if (!/^[a-zA-Z0-9-]+$/.test(cleanStoreName)) {
+        throw new Error('Store name can only contain letters, numbers, and hyphens');
+      }
+
       const storeUrl = `https://${cleanStoreName}.myshopify.com`;
 
       const { error: insertError } = await supabase
