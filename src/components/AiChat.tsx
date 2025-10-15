@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import { useLanguage } from '../App';
+import { OmnIAChat } from '../lib/omniaChat';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -76,46 +77,22 @@ export function AiChat() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = inputMessage;
     setInputMessage('');
     setLoading(true);
 
     try {
-      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/ai-chat`;
-      console.log('Calling AI Chat API:', apiUrl);
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: inputMessage,
-          history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
-          storeId
-        }),
-      });
+      console.log('Calling OmnIA Chat...');
+      const history = messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
+      const response = await OmnIAChat(currentMessage, history, storeId || undefined);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', response.status, errorText);
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText };
-        }
-        throw new Error(errorData.error || `API Error ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('AI Chat Response:', data);
+      console.log('OmnIA Response:', response);
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: data.message,
-        products: data.products || [],
-        selectedProduct: data.selectedProduct,
-        timestamp: data.timestamp
+        content: response.content,
+        products: response.products || [],
+        timestamp: new Date().toISOString()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -152,8 +129,8 @@ export function AiChat() {
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
           </div>
           <div>
-            <h2 className="text-xl font-bold">Assistant IA Shopping</h2>
-            <p className="text-sm text-blue-100">En ligne - Toujours là pour vous aider</p>
+            <h2 className="text-xl font-bold">OmnIA Shopping</h2>
+            <p className="text-sm text-blue-100">Assistant intelligent - Toujours à votre service</p>
           </div>
         </div>
       </div>
