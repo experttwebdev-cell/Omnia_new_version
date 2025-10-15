@@ -79,17 +79,6 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         });
       }, 500);
 
-      const { data: products } = await supabase
-        .from('shopify_products')
-        .select('id')
-        .eq('category', formData.category)
-        .limit(1)
-        .maybeSingle();
-
-      if (!products) {
-        throw new Error('No products found for this category');
-      }
-
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`;
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -98,11 +87,16 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          productId: products.id,
+          mode: 'manual',
+          category: formData.category,
+          subcategory: formData.subcategory || null,
           keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
-          wordCountMin: formData.wordCountMin,
-          wordCountMax: formData.wordCountMax,
+          word_count_min: formData.wordCountMin,
+          word_count_max: formData.wordCountMax,
           language: formData.language,
+          output_format: 'html',
+          internal_linking: formData.internalLinking,
+          max_internal_links: formData.maxInternalLinks,
         }),
       });
 

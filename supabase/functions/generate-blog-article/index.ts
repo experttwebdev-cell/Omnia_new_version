@@ -118,7 +118,102 @@ Deno.serve(async (req: Request) => {
 
     const productExamples = relatedProducts.map(p => p.title).join('", "');
 
-    const articlePrompt = `Tu es un rédacteur SEO expert spécialisé en décoration d'intérieur et ameublement.\n\nINFORMATIONS:\nTitre de l'article: ${topicData.title || 'Article sur ' + topicData.category}\nCatégorie principale: ${topicData.category}\n${topicData.subcategory ? `Sous-catégorie: ${topicData.subcategory}` : ''}\nMots-clés SEO: ${topicData.keywords.join(', ')}\nLangue: ${requestData.language === 'fr' ? 'Français' : requestData.language}\nLongueur cible: ${requestData.word_count_min}-${requestData.word_count_max} mots\nProduits disponibles: [${productExamples}]\n\nSTRUCTURE REQUISE (HTML):\n1. Introduction engageante (1-2 paragraphes)\n2. Table des matières cliquable avec liens ancres\n3. 4-6 sections principales avec <h2> et <h3>\n   - Conseils pratiques et concrets\n   - Idées d'agencement et décoration\n   - Erreurs à éviter\n   - Tendances actuelles\n4. Intégrer naturellement ${requestData.max_internal_links} liens vers ${storeBaseUrl} avec ancres contextuelles variées\n5. Conclusion (1 paragraphe)\n6. Section FAQ (3-5 questions/réponses en <h3> + <p>)\n7. Liste de tags SEO à la fin\n\nRÈGLES IMPORTANTES:\n- Format HTML sémantique (<h2>, <h3>, <p>, <ul>, <li>)\n- Ton professionnel mais chaleureux et accessible\n- Intégration naturelle des mots-clés (pas de sur-optimisation)\n- Liens internes contextuels avec ancres variées (pas \"cliquez ici\")\n- Exemples concrets et conseils actionnables\n- Maximum 2000 mots\n- Ajouter un lien global vers ${storeBaseUrl} en conclusion\n\nEXEMPLE DE LIENS:\n- \"Découvrez notre sélection de <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a>\"\n- \"Un <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a> peut transformer votre espace\"\n- \"Pour un style moderne, optez pour <a href=\"https://${storeBaseUrl}/products/[handle]\">[nom produit]</a>\"\n\nGénère maintenant l'article complet en HTML:`;
+    const articlePrompt = `Tu es un rédacteur SEO expert spécialisé en décoration d'intérieur et ameublement. Tu crées des articles structurés comme de véritables articles de presse professionnels.
+
+INFORMATIONS OBLIGATOIRES À UTILISER:
+Catégorie principale: ${topicData.category}
+${topicData.subcategory ? `Sous-catégorie: ${topicData.subcategory}` : ''}
+Mots-clés SEO OBLIGATOIRES à intégrer naturellement: ${topicData.keywords.join(', ')}
+Langue: ${requestData.language === 'fr' ? 'Français' : requestData.language}
+Longueur cible: ${requestData.word_count_min}-${requestData.word_count_max} mots
+Produits disponibles: [${productExamples}]
+
+STRUCTURE ARTICLE DE PRESSE PROFESSIONNELLE (HTML):
+
+1. TITRE PRINCIPAL <h1>
+   - Titre accrocheur intégrant les mots-clés principaux
+   - Entre 50-70 caractères optimisé SEO
+
+2. CHAPEAU / INTRODUCTION (2-3 paragraphes)
+   - Résumé captivant de l'article
+   - Intégrer naturellement les mots-clés: ${topicData.keywords.join(', ')}
+   - Style journalistique engageant
+
+3. IMAGE D'EN-TÊTE
+   - <img> avec alt optimisé SEO incluant les mots-clés
+   - src="https://images.pexels.com/photos/[ID]/pexels-photo-[ID].jpeg" (utiliser un ID aléatoire valide)
+   - Légende <figcaption> descriptive
+
+4. TABLE DES MATIÈRES CLIQUABLE
+   <nav class="table-of-contents">
+   <ul>
+     <li><a href="#section-1">Titre Section 1</a></li>
+     ...
+   </ul>
+   </nav>
+
+5. CORPS DE L'ARTICLE (5-7 SECTIONS)
+   Chaque section doit avoir:
+   - <h2 id="section-X"> avec ancre pour navigation
+   - 2-3 paragraphes <p> riches et informatifs
+   - <h3> pour les sous-sections
+   - IMAGE ILLUSTRATIVE avec <img> Pexels + <figcaption>
+   - Listes <ul>/<ol> pour conseils pratiques
+   - Intégrer NATURELLEMENT les mots-clés: ${topicData.keywords.join(', ')}
+   - Citations ou encadrés <blockquote> si pertinent
+
+   THÉMATIQUES SUGGÉRÉES:
+   - Introduction au sujet (contexte catégorie: ${topicData.category})
+   - Tendances actuelles en ${topicData.category}
+   - Guide pratique et conseils d'expert
+   - Erreurs courantes à éviter
+   - Inspiration et idées créatives
+   - Conseils d'achat et critères de sélection
+
+6. IMAGES PEXELS
+   - Utiliser 3-5 images pertinentes de Pexels
+   - Format: <figure><img src="https://images.pexels.com/photos/[ID]/pexels-photo-[ID].jpeg" alt="description avec mots-clés" /><figcaption>Légende descriptive</figcaption></figure>
+   - Alt text optimisé avec mots-clés naturels
+
+7. LIENS INTERNES PRODUITS (${requestData.max_internal_links} liens)
+   Intégrer naturellement avec ancres variées:
+   - "Découvrez notre collection de <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a>"
+   - "Un <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a> apporte élégance et fonctionnalité"
+   - "Explorez nos <a href="https://${storeBaseUrl}/products/[handle]">[nom produit]</a> pour un style unique"
+
+8. SECTION FAQ <h2>
+   Questions/réponses format journalistique:
+   <div class="faq-item">
+     <h3>Question pratique ?</h3>
+     <p>Réponse détaillée et utile</p>
+   </div>
+   (4-6 questions pertinentes)
+
+9. CONCLUSION PROFESSIONNELLE
+   - Résumé des points clés
+   - Call-to-action subtil vers ${storeBaseUrl}
+   - Encouragement à l'action
+
+10. TAGS SEO
+    <div class="tags">
+    <span class="tag">#tag1</span>
+    <span class="tag">#tag2</span>
+    ...
+    </div>
+
+RÈGLES STRICTES:
+✓ UTILISER OBLIGATOIREMENT les mots-clés: ${topicData.keywords.join(', ')}
+✓ RESPECTER la catégorie: ${topicData.category}
+${topicData.subcategory ? `✓ MENTIONNER la sous-catégorie: ${topicData.subcategory}` : ''}
+✓ HTML sémantique professionnel (<article>, <section>, <figure>, <nav>)
+✓ Ton journalistique: informatif, expert, engageant, accessible
+✓ Intégration naturelle des mots-clés (densité 1-2%, pas de keyword stuffing)
+✓ 3-5 images Pexels avec alt optimisés
+✓ Structure hiérarchique claire H1 > H2 > H3
+✓ Paragraphes riches (80-150 mots)
+✓ Exemples concrets, données, conseils actionnables
+
+Génère maintenant l'article complet en HTML avec toutes les sections, images Pexels et liens internes:`;
 
     const articleResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -131,12 +226,12 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "system",
-            content: "Tu es un rédacteur SEO expert en décoration d'intérieur. Tu crées du contenu HTML structuré, optimisé SEO, engageant et de haute qualité. Tu intègres naturellement les liens vers les produits dans le contenu."
+            content: "Tu es un rédacteur SEO expert et journaliste spécialisé en décoration d'intérieur. Tu crées des articles de presse professionnels en HTML, structurés avec titres, sous-titres, images Pexels, et liens internes. Tu respectes STRICTEMENT les mots-clés, catégories et sous-catégories fournis."
           },
           { role: "user", content: articlePrompt }
         ],
         temperature: 0.7,
-        max_tokens: 4000
+        max_tokens: 4500
       }),
     });
 
