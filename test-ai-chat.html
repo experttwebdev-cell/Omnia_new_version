@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Chat API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .config-section h2 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .response-section {
+            margin-top: 30px;
+        }
+        .response-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            border-left-color: #e74c3c;
+            background: #fee;
+            color: #c0392b;
+        }
+        .success {
+            border-left-color: #27ae60;
+            background: #efffef;
+            color: #27ae60;
+        }
+        .info {
+            border-left-color: #3498db;
+            background: #eff8ff;
+            color: #2980b9;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.active {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Test AI Chat API</h1>
+        <p class="subtitle">Testez directement la fonction Supabase Edge Function</p>
+
+        <div class="config-section">
+            <h2>⚙️ Configuration</h2>
+            <div class="input-group">
+                <label for="supabaseUrl">Supabase URL</label>
+                <input type="text" id="supabaseUrl" value="https://ufdhzgqrubbnornjdvgv.supabase.co" placeholder="https://xxx.supabase.co">
+            </div>
+            <div class="input-group">
+                <label for="anonKey">Anon Key</label>
+                <input type="text" id="anonKey" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms" placeholder="eyJhbGc...">
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h2>💬 Message de Test</h2>
+            <div class="input-group">
+                <label for="message">Message</label>
+                <textarea id="message" placeholder="Tapez votre message ici...">bonjour</textarea>
+            </div>
+            <button id="sendBtn" onclick="testAPI()">
+                <span id="btnText">Envoyer le Message</span>
+            </button>
+        </div>
+
+        <div class="response-section" id="responseSection" style="display: none;">
+            <h2>📡 Réponse de l'API</h2>
+            <div id="responseBox" class="response-box"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testAPI() {
+            const supabaseUrl = document.getElementById('supabaseUrl').value.trim();
+            const anonKey = document.getElementById('anonKey').value.trim();
+            const message = document.getElementById('message').value.trim();
+            const sendBtn = document.getElementById('sendBtn');
+            const btnText = document.getElementById('btnText');
+            const responseSection = document.getElementById('responseSection');
+            const responseBox = document.getElementById('responseBox');
+
+            if (!supabaseUrl || !anonKey || !message) {
+                alert('⚠️ Veuillez remplir tous les champs');
+                return;
+            }
+
+            // Disable button and show loading
+            sendBtn.disabled = true;
+            btnText.innerHTML = '<span class="loading"></span> Envoi en cours...';
+            responseSection.style.display = 'block';
+            responseBox.className = 'response-box info';
+            responseBox.textContent = '⏳ Envoi de la requête à l\'API...\n\nURL: ' + supabaseUrl + '/functions/v1/ai-chat\nMessage: ' + message;
+
+            try {
+                const apiUrl = `${supabaseUrl}/functions/v1/ai-chat`;
+
+                console.log('📤 Envoi de la requête:', {
+                    url: apiUrl,
+                    message: message
+                });
+
+                const startTime = performance.now();
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${anonKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: [],
+                        storeId: null
+                    })
+                });
+
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(0);
+
+                const responseText = await response.text();
+
+                console.log('📥 Réponse reçue:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body: responseText
+                });
+
+                if (!response.ok) {
+                    // Erreur
+                    responseBox.className = 'response-box error';
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch {
+                        errorData = { error: responseText };
+                    }
+                    responseBox.textContent = `❌ ERREUR ${response.status} - ${response.statusText}\n\nDurée: ${duration}ms\n\n${JSON.stringify(errorData, null, 2)}`;
+                } else {
+                    // Succès
+                    responseBox.className = 'response-box success';
+                    let data;
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch {
+                        data = responseText;
+                    }
+
+                    responseBox.textContent = `✅ SUCCÈS (${duration}ms)\n\nStatut: ${response.status} ${response.statusText}\n\n` +
+                        (typeof data === 'object' ? JSON.stringify(data, null, 2) : data);
+                }
+
+            } catch (error) {
+                console.error('💥 Erreur:', error);
+                responseBox.className = 'response-box error';
+                responseBox.textContent = `💥 ERREUR RÉSEAU\n\n${error.message}\n\nVérifiez:\n- Que l'URL Supabase est correcte\n- Que vous avez une connexion internet\n- Que la fonction edge est déployée`;
+            } finally {
+                // Re-enable button
+                sendBtn.disabled = false;
+                btnText.textContent = 'Envoyer le Message';
+            }
+        }
+
+        // Allow Enter key to send
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                testAPI();
+            }
+        });
+
+        // Test on page load
+        window.addEventListener('load', function() {
+            console.log('🚀 Page de test chargée et prête!');
+            console.log('📍 URL de l\'API:', document.getElementById('supabaseUrl').value + '/functions/v1/ai-chat');
+        });
+    </script>
+</body>
+</html>
