@@ -385,6 +385,59 @@ export function SeoAltImage() {
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
 
       <div className="animate-fadeIn">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <ImageIcon className="w-7 h-7 text-blue-600" />
+          ALT Image Optimization
+        </h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const imagesToGenerate = allImages.filter(img => !img.alt_text || img.alt_text.trim() === '');
+              if (imagesToGenerate.length === 0) {
+                addNotification({
+                  type: 'info',
+                  title: 'No Action Needed',
+                  message: 'All images already have ALT text',
+                  duration: 3000
+                });
+                return;
+              }
+              setSelectedImages(new Set(imagesToGenerate.map(img => img.id)));
+              setConfirmAction('generate');
+              setShowConfirm(true);
+            }}
+            disabled={generatingSelected || imagesNeedingAlt === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg transition shadow-md"
+          >
+            <Sparkles className="w-5 h-5" />
+            Generate All ALT Text
+          </button>
+          <button
+            onClick={() => {
+              const imagesToSync = allImages.filter(img => img.alt_text && img.alt_text.trim() !== '');
+              if (imagesToSync.length === 0) {
+                addNotification({
+                  type: 'info',
+                  title: 'No Images to Sync',
+                  message: 'No images with ALT text to sync',
+                  duration: 3000
+                });
+                return;
+              }
+              setSelectedImages(new Set(imagesToSync.map(img => img.id)));
+              setConfirmAction('sync');
+              setShowConfirm(true);
+            }}
+            disabled={syncingSelected || imagesWithAlt === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition shadow-md"
+          >
+            <Upload className="w-5 h-5" />
+            Sync All to Shopify
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
         {tabs.map((tab) => (
           <button

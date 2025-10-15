@@ -318,7 +318,7 @@ function App() {
           {activeView === 'seo-tags' && <SeoTag />}
           {activeView === 'seo-opportunities' && <SeoOpportunities />}
           {activeView === 'seo-articles' && <BlogArticles />}
-          {activeView === 'seo-ai-blog' && <AiBlogWriter />}
+          {activeView === 'seo-ai-blog' && <AiBlogWriter onNavigateToCampaigns={() => setActiveView('seo-ai-campaigns')} />}
           {activeView === 'seo-ai-campaigns' && <AiCampaigns />}
           {activeView === 'ai-chat' && <AiChat />}
           {activeView === 'settings' && <SettingsComponent />}

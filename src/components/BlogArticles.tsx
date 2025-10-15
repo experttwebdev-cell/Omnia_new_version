@@ -19,13 +19,17 @@ import {
   Twitter,
   Linkedin,
   Copy,
-  Check
+  Check,
+  Plus,
+  Grid,
+  List
 } from 'lucide-react';
 import { getArticleThumbnail } from '../lib/imageUtils';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { ConfirmDialog } from './ConfirmDialog';
 import { LoadingAnimation } from './LoadingAnimation';
 import { BlogArticleModal } from './BlogArticleModal';
+import { BlogWizard } from './BlogWizard';
 
 interface BlogArticle {
   id: string;
@@ -62,6 +66,9 @@ export function BlogArticles() {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [showShareMenu, setShowShareMenu] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [categories, setCategories] = useState<string[]>([]);
 
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
@@ -77,6 +84,13 @@ export function BlogArticles() {
       if (error) throw error;
 
       setArticles((data || []) as BlogArticle[]);
+
+      const { data: products } = await supabase
+        .from('shopify_products')
+        .select('category');
+
+      const uniqueCategories = [...new Set(products?.map(p => p.category).filter(Boolean))].sort();
+      setCategories(uniqueCategories as string[]);
     } catch (err) {
       console.error('Error fetching articles:', err);
       addNotification({
@@ -267,7 +281,31 @@ export function BlogArticles() {
         />
       )}
 
+      {showWizard && (
+        <BlogWizard
+          onClose={() => {
+            setShowWizard(false);
+            fetchArticles();
+          }}
+          categories={categories}
+        />
+      )}
+
       <div className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <BookOpen className="w-7 h-7 text-blue-600" />
+            Blog Articles
+          </h2>
+          <button
+            onClick={() => setShowWizard(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            Create Article
+          </button>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex-1 w-full sm:w-auto flex gap-2">
             <div className="flex-1 relative">
@@ -291,12 +329,38 @@ export function BlogArticles() {
               <option value="error">Error</option>
             </select>
           </div>
-          <button
-            onClick={fetchArticles}
-            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <RefreshCw className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 transition ${
+                  viewMode === 'grid'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+                title="Grid view"
+              >
+                <Grid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 transition ${
+                  viewMode === 'list'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+                title="List view"
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+            <button
+              onClick={fetchArticles}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <RefreshCw className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -339,9 +403,98 @@ export function BlogArticles() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
           {filteredArticles.map((article) => {
             const thumbnail = getArticleThumbnail(article.content, article.category || undefined);
+
+            if (viewMode === 'list') {
+              return (
+                <div key={article.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex gap-4">
+                    <img
+                      src={thumbnail}
+                      alt={article.title}
+                      className="w-32 h-32 object-cover rounded flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <h3 className="text-lg font-bold text-gray-900 truncate">{article.title}</h3>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {getStatusBadge(article.sync_status)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                      </div>
+                      {article.meta_description && (
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{article.meta_description}</p>
+                      )}
+                      {article.target_keywords && article.target_keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {article.target_keywords.slice(0, 5).map((keyword, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedArticleId(article.id)}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedArticleId(article.id)}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setConfirmAction({ type: 'delete', articleId: article.id });
+                            setShowConfirm(true);
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setConfirmAction({ type: 'sync', articleId: article.id });
+                            setShowConfirm(true);
+                          }}
+                          disabled={syncing === article.id || article.sync_status === 'synced'}
+                          className="ml-auto flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {syncing === article.id ? (
+                            <>
+                              <Clock className="w-4 h-4 animate-spin" />
+                              Syncing...
+                            </>
+                          ) : article.sync_status === 'synced' ? (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Synced
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              Sync to Shopify
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div key={article.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">

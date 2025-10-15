@@ -33,7 +33,11 @@ interface BlogSettings {
   max_internal_links: number;
 }
 
-export function AiBlogWriter() {
+interface AiBlogWriterProps {
+  onNavigateToCampaigns?: () => void;
+}
+
+export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -250,14 +254,15 @@ export function AiBlogWriter() {
             <div className="grid grid-cols-2 gap-6">
               <button
                 onClick={() => {
-                  setSettings({ ...settings, mode: 'automatic' });
-                  setShowWizard(true);
+                  if (onNavigateToCampaigns) {
+                    onNavigateToCampaigns();
+                  }
                 }}
                 className="p-8 rounded-lg border-2 border-gray-200 bg-white text-gray-700 hover:border-blue-500 hover:bg-blue-50 transition group"
               >
                 <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-600 group-hover:text-blue-600" />
                 <div className="font-semibold text-lg">Automatic</div>
-                <div className="text-sm mt-2 text-gray-600">AI chooses topics</div>
+                <div className="text-sm mt-2 text-gray-600">Create AI campaigns</div>
               </button>
               <button
                 onClick={() => {
