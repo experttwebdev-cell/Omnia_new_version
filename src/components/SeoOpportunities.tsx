@@ -229,12 +229,19 @@ export function SeoOpportunities() {
       if (categoryProducts.length >= 3) {
         const avgPrice = categoryProducts.reduce((sum, p) => sum + p.price, 0) / categoryProducts.length;
 
+        const extractedKeywords = [...new Set(
+          categoryProducts.slice(0, 15).flatMap(p => {
+            const words = p.title.toLowerCase().split(/\s+/);
+            return words.filter(w => w.length > 3 && !['the', 'and', 'with', 'for', 'dans', 'avec', 'pour', 'this', 'that'].includes(w));
+          })
+        )].slice(0, 8);
+
         opps.push({
           id: `cat-guide-${category}`,
           type: 'category-guide',
           title: templates.categoryGuide.title(category),
           description: templates.categoryGuide.description(category, categoryProducts.length),
-          targetKeywords: templates.categoryGuide.keywords(category),
+          targetKeywords: [...templates.categoryGuide.keywords(category), ...extractedKeywords],
           productCount: categoryProducts.length,
           relatedProducts: categoryProducts.map((p) => p.title).slice(0, 10),
           score: Math.min(100, categoryProducts.length * 12),
@@ -249,7 +256,7 @@ export function SeoOpportunities() {
             type: 'comparison',
             title: templates.comparison.title(category, categoryProducts.length),
             description: templates.comparison.description(category),
-            targetKeywords: templates.comparison.keywords(category),
+            targetKeywords: [...templates.comparison.keywords(category), ...extractedKeywords.slice(0, 5)],
             productCount: categoryProducts.length,
             relatedProducts: categoryProducts.map((p) => p.title).slice(0, 10),
             score: Math.min(95, categoryProducts.length * 10),
@@ -264,12 +271,19 @@ export function SeoOpportunities() {
     subCategoryMap.forEach((subCatProducts, key) => {
       const [category, subCategory] = key.split(':');
       if (subCatProducts.length >= 3) {
+        const extractedKeywords = [...new Set(
+          subCatProducts.slice(0, 10).flatMap(p => {
+            const words = p.title.toLowerCase().split(/\s+/);
+            return words.filter(w => w.length > 3 && !['the', 'and', 'with', 'for', 'dans', 'avec', 'pour'].includes(w));
+          })
+        )].slice(0, 6);
+
         opps.push({
           id: `subcat-${key}`,
           type: 'category-guide',
           title: templates.subcategory.title(subCategory, category),
           description: templates.subcategory.description(subCategory, category, subCatProducts.length),
-          targetKeywords: templates.subcategory.keywords(subCategory, category),
+          targetKeywords: [...templates.subcategory.keywords(subCategory, category), ...extractedKeywords],
           productCount: subCatProducts.length,
           relatedProducts: subCatProducts.map((p) => p.title),
           score: Math.min(90, subCatProducts.length * 11),
@@ -299,12 +313,19 @@ export function SeoOpportunities() {
     colorMap.forEach((colorProducts, key) => {
       const [category, color] = key.split(':');
       if (colorProducts.length >= 3) {
+        const extractedKeywords = [...new Set(
+          colorProducts.flatMap(p => {
+            const words = p.title.toLowerCase().split(/\s+/);
+            return words.filter(w => w.length > 3 && !['the', 'and', 'with', 'for'].includes(w));
+          })
+        )].slice(0, 5);
+
         opps.push({
           id: `color-${key}`,
           type: 'product-spotlight',
           title: templates.color.title(color, category),
           description: templates.color.description(color, category),
-          targetKeywords: templates.color.keywords(color, category),
+          targetKeywords: [...templates.color.keywords(color, category), ...extractedKeywords],
           productCount: colorProducts.length,
           relatedProducts: colorProducts.map((p) => p.title),
           score: Math.min(85, colorProducts.length * 9),
@@ -334,12 +355,19 @@ export function SeoOpportunities() {
     materialMap.forEach((materialProducts, key) => {
       const [category, material] = key.split(':');
       if (materialProducts.length >= 3) {
+        const extractedKeywords = [...new Set(
+          materialProducts.flatMap(p => {
+            const words = p.title.toLowerCase().split(/\s+/);
+            return words.filter(w => w.length > 3 && !['the', 'and', 'with', 'for', 'dans', 'avec', 'pour'].includes(w));
+          })
+        )].slice(0, 5);
+
         opps.push({
           id: `material-${key}`,
           type: 'how-to',
           title: templates.material.title(material, category),
           description: templates.material.description(material, category),
-          targetKeywords: templates.material.keywords(material, category),
+          targetKeywords: [...templates.material.keywords(material, category), ...extractedKeywords],
           productCount: materialProducts.length,
           relatedProducts: materialProducts.map((p) => p.title),
           score: Math.min(88, materialProducts.length * 10),
@@ -356,47 +384,6 @@ export function SeoOpportunities() {
       }
     });
 
-    const vendorMap = new Map<string, Product[]>();
-    products.forEach((product) => {
-      if (product.vendor) {
-        if (!vendorMap.has(product.vendor)) {
-          vendorMap.set(product.vendor, []);
-        }
-        vendorMap.get(product.vendor)!.push(product);
-      }
-    });
-
-    vendorMap.forEach((vendorProducts, vendor) => {
-      if (vendorProducts.length >= 5) {
-        opps.push({
-          id: `vendor-${vendor}`,
-          type: 'product-spotlight',
-          title: language === 'fr'
-            ? `${vendor} : Produits Phares et Avis`
-            : `${vendor} Brand Spotlight: Top Products & Reviews`,
-          description: language === 'fr'
-            ? `Découverte approfondie de la gamme ${vendor}. Présentation de ${vendorProducts.length} produits avec avis détaillés et histoire de la marque.`
-            : `In-depth look at ${vendor}'s product line. Feature ${vendorProducts.length} items with detailed reviews and brand story.`,
-          targetKeywords: [
-            `${vendor.toLowerCase()} ${language === 'fr' ? 'produits' : 'products'}`,
-            `${vendor.toLowerCase()} ${language === 'fr' ? 'avis' : 'review'}`,
-            `${language === 'fr' ? 'meilleur' : 'best'} ${vendor.toLowerCase()}`
-          ],
-          productCount: vendorProducts.length,
-          relatedProducts: vendorProducts.map((p) => p.title).slice(0, 10),
-          score: Math.min(82, vendorProducts.length * 7),
-          estimatedWordCount: 1800 + (vendorProducts.length * 80),
-          difficulty: 'medium',
-          suggestedStructure: [
-            `${language === 'fr' ? 'À propos de' : 'About'} ${vendor}`,
-            language === 'fr' ? 'Philosophie de la marque' : 'Brand Philosophy',
-            language === 'fr' ? 'Produits en vedette' : 'Featured Products',
-            language === 'fr' ? 'Avis clients' : 'Customer Reviews',
-            language === 'fr' ? 'Où acheter' : 'Where to Buy'
-          ]
-        });
-      }
-    });
 
     const priceRanges = [
       { min: 0, max: 50, label: language === 'fr' ? 'Économique' : 'Budget-Friendly' },

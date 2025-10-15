@@ -56,6 +56,9 @@ Deno.serve(async (req: Request) => {
 
     const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
     const subCategories = [...new Set(products.map(p => p.sub_category).filter(Boolean))];
+    const sampleTitles = products.slice(0, 10).map(p => p.title);
+    const colors = [...new Set(products.map(p => p.ai_color).filter(Boolean))].slice(0, 8);
+    const materials = [...new Set(products.map(p => p.ai_material).filter(Boolean))].slice(0, 8);
 
     const analysisPrompt = `Tu es un expert SEO e-commerce. Analyse ces données et génère 5-10 opportunités d'articles de blog à fort potentiel SEO.
 
@@ -63,14 +66,25 @@ Données du catalogue:
 - ${products.length} produits
 - Catégories: ${categories.join(', ')}
 - Sous-catégories: ${subCategories.slice(0, 10).join(', ')}${subCategories.length > 10 ? '...' : ''}
+- Exemples de titres de produits: ${sampleTitles.join(', ')}
+- Couleurs disponibles: ${colors.length > 0 ? colors.join(', ') : 'N/A'}
+- Matériaux disponibles: ${materials.length > 0 ? materials.join(', ') : 'N/A'}
+
+IMPORTANT: Base tes opportunités UNIQUEMENT sur:
+- Les catégories et sous-catégories
+- Les titres de produits réels
+- Les couleurs et matériaux
+- Les caractéristiques des produits
+
+N'utilise JAMAIS les noms de marques, vendeurs ou fabricants.
 
 Pour chaque opportunité, fournis:
-1. article_title: Titre SEO-optimisé
+1. article_title: Titre SEO-optimisé basé sur catégorie/caractéristiques produits
 2. meta_description: Meta description (150-160 caractères)
 3. intro_excerpt: Extrait d'introduction (2-3 phrases)
 4. type: Type d'article ('category-guide', 'comparison', 'how-to', 'product-spotlight', 'seasonal')
-5. primary_keywords: Array de 3-5 mots-clés principaux
-6. secondary_keywords: Array de 5-10 mots-clés secondaires
+5. primary_keywords: Array de 3-5 mots-clés basés sur catégories et caractéristiques produits
+6. secondary_keywords: Array de 5-10 mots-clés extraits des titres de produits
 7. product_count: Nombre estimé de produits liés
 8. estimated_word_count: Nombre de mots recommandé (1500-3000)
 9. seo_opportunity_score: Score SEO sur 100 (potentiel de trafic)

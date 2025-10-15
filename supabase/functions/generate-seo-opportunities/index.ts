@@ -116,6 +116,10 @@ Deno.serve(async (req: Request) => {
             .filter(Boolean)
         )].slice(0, 10);
 
+        const productTitles = sampleProducts.map(p => p.title);
+        const colors = [...new Set(categoryProducts.map(p => p.ai_color).filter(Boolean))].slice(0, 5);
+        const materials = [...new Set(categoryProducts.map(p => p.ai_material).filter(Boolean))].slice(0, 5);
+
         const langInstr = languageInstructions[language] || languageInstructions['en'];
 
         const prompt = `${langInstr.expertRole}
@@ -123,9 +127,13 @@ Deno.serve(async (req: Request) => {
 ${langInstr.analyzeText}:
 - ${language === 'fr' ? 'Catégorie' : language === 'es' ? 'Categoría' : language === 'de' ? 'Kategorie' : language === 'it' ? 'Categoria' : 'Category'}: ${category}
 - ${language === 'fr' ? 'Nombre de produits' : language === 'es' ? 'Número de productos' : language === 'de' ? 'Anzahl der Produkte' : language === 'it' ? 'Numero di prodotti' : 'Number of products'}: ${categoryProducts.length}
-- ${language === 'fr' ? 'Exemples de produits' : language === 'es' ? 'Ejemplos de productos' : language === 'de' ? 'Produktbeispiele' : language === 'it' ? 'Esempi di prodotti' : 'Product examples'}: ${sampleProducts.map(p => p.title).join(', ')}
-- ${language === 'fr' ? 'Mots-clés disponibles' : language === 'es' ? 'Palabras clave disponibles' : language === 'de' ? 'Verfügbare Schlüsselwörter' : language === 'it' ? 'Parole chiave disponibili' : 'Available keywords'}: ${keywords.join(', ')}
+- ${language === 'fr' ? 'Titres de produits' : language === 'es' ? 'Títulos de productos' : language === 'de' ? 'Produkttitel' : language === 'it' ? 'Titoli dei prodotti' : 'Product titles'}: ${productTitles.join(', ')}
+- ${language === 'fr' ? 'Couleurs' : language === 'es' ? 'Colores' : language === 'de' ? 'Farben' : language === 'it' ? 'Colori' : 'Colors'}: ${colors.length > 0 ? colors.join(', ') : 'N/A'}
+- ${language === 'fr' ? 'Matériaux' : language === 'es' ? 'Materiales' : language === 'de' ? 'Materialien' : language === 'it' ? 'Materiali' : 'Materials'}: ${materials.length > 0 ? materials.join(', ') : 'N/A'}
+- ${language === 'fr' ? 'Tags disponibles' : language === 'es' ? 'Etiquetas disponibles' : language === 'de' ? 'Verfügbare Tags' : language === 'it' ? 'Tag disponibili' : 'Available tags'}: ${keywords.length > 0 ? keywords.join(', ') : 'N/A'}
 - ${language === 'fr' ? 'Langue cible' : language === 'es' ? 'Idioma objetivo' : language === 'de' ? 'Zielsprache' : language === 'it' ? 'Lingua di destinazione' : 'Target language'}: ${language}
+
+${language === 'fr' ? 'IMPORTANT: Base tes opportunités UNIQUEMENT sur la catégorie, les titres de produits réels, couleurs et matériaux. N\'utilise PAS les noms de marques ou vendeurs.' : language === 'es' ? 'IMPORTANTE: Basa tus oportunidades SOLO en la categoría, títulos de productos reales, colores y materiales. NO uses nombres de marcas o vendedores.' : language === 'de' ? 'WICHTIG: Basieren Sie Ihre Möglichkeiten NUR auf der Kategorie, echten Produkttiteln, Farben und Materialien. Verwenden Sie KEINE Marken- oder Händlernamen.' : language === 'it' ? 'IMPORTANTE: Basa le tue opportunità SOLO sulla categoria, titoli di prodotti reali, colori e materiali. NON utilizzare nomi di marchi o venditori.' : 'IMPORTANT: Base your opportunities ONLY on the category, real product titles, colors and materials. Do NOT use brand names or vendor names.'}
 
 ${langInstr.generateText}
 
@@ -133,8 +141,8 @@ ${language === 'fr' ? 'Pour chaque article, fournis' : language === 'es' ? 'Para
 1. **${language === 'fr' ? 'Titre SEO optimisé' : language === 'es' ? 'Título SEO optimizado' : language === 'de' ? 'SEO-optimierter Titel' : language === 'it' ? 'Titolo SEO ottimizzato' : 'SEO-optimized title'}** (${language === 'fr' ? 'moins de' : language === 'es' ? 'menos de' : language === 'de' ? 'weniger als' : language === 'it' ? 'meno di' : 'less than'} 65 ${language === 'fr' ? 'caractères' : language === 'es' ? 'caracteres' : language === 'de' ? 'Zeichen' : language === 'it' ? 'caratteri' : 'characters'})
 2. **Meta description** (150-160 ${language === 'fr' ? 'caractères' : language === 'es' ? 'caracteres' : language === 'de' ? 'Zeichen' : language === 'it' ? 'caratteri' : 'characters'})
 3. **${language === 'fr' ? 'Type d\'article' : language === 'es' ? 'Tipo de artículo' : language === 'de' ? 'Artikeltyp' : language === 'it' ? 'Tipo di articolo' : 'Article type'}**: "category-guide", "comparison", "how-to", "product-spotlight", "seasonal"
-4. **${language === 'fr' ? 'Mots-clés principaux' : language === 'es' ? 'Palabras clave principales' : language === 'de' ? 'Hauptschlüsselwörter' : language === 'it' ? 'Parole chiave principali' : 'Primary keywords'}** (3-5 keywords)
-5. **${language === 'fr' ? 'Mots-clés secondaires' : language === 'es' ? 'Palabras clave secundarias' : language === 'de' ? 'Sekundäre Schlüsselwörter' : language === 'it' ? 'Parole chiave secondarie' : 'Secondary keywords'}** (3-5 keywords)
+4. **${language === 'fr' ? 'Mots-clés principaux' : language === 'es' ? 'Palabras clave principales' : language === 'de' ? 'Hauptschlüsselwörter' : language === 'it' ? 'Parole chiave principali' : 'Primary keywords'}** (3-5 ${language === 'fr' ? 'mots-clés basés sur la catégorie et les caractéristiques des produits' : language === 'es' ? 'palabras clave basadas en categoría y características de productos' : language === 'de' ? 'Schlüsselwörter basierend auf Kategorie und Produktmerkmalen' : language === 'it' ? 'parole chiave basate su categoria e caratteristiche dei prodotti' : 'keywords based on category and product features'})
+5. **${language === 'fr' ? 'Mots-clés secondaires' : language === 'es' ? 'Palabras clave secundarias' : language === 'de' ? 'Sekundäre Schlüsselwörter' : language === 'it' ? 'Parole chiave secondarie' : 'Secondary keywords'}** (3-5 ${language === 'fr' ? 'mots-clés extraits des titres de produits et caractéristiques' : language === 'es' ? 'palabras clave extraídas de títulos de productos y características' : language === 'de' ? 'Schlüsselwörter aus Produkttiteln und Merkmalen extrahiert' : language === 'it' ? 'parole chiave estratte da titoli di prodotti e caratteristiche' : 'keywords extracted from product titles and features'})
 6. **${language === 'fr' ? 'Structure de l\'article' : language === 'es' ? 'Estructura del artículo' : language === 'de' ? 'Artikelstruktur' : language === 'it' ? 'Struttura dell\'articolo' : 'Article structure'}** (4-6 ${language === 'fr' ? 'sections' : language === 'es' ? 'secciones' : language === 'de' ? 'Abschnitte' : language === 'it' ? 'sezioni' : 'sections'} H2)
 7. **${language === 'fr' ? 'Appel à l\'action' : language === 'es' ? 'Llamada a la acción' : language === 'de' ? 'Call-to-Action' : language === 'it' ? 'Invito all\'azione' : 'Call to action'}** (CTA)
 8. **${language === 'fr' ? 'Niveau d\'opportunité SEO' : language === 'es' ? 'Nivel de oportunidad SEO' : language === 'de' ? 'SEO-Opportunitätsniveau' : language === 'it' ? 'Livello di opportunità SEO' : 'SEO opportunity level'}**: score 0-100
@@ -243,6 +251,10 @@ ${langInstr.toneText}`;
             .filter(Boolean)
         )].slice(0, 8);
 
+        const productTitles = sampleProducts.map(p => p.title);
+        const colors = [...new Set(subCatProducts.map(p => p.ai_color).filter(Boolean))].slice(0, 3);
+        const materials = [...new Set(subCatProducts.map(p => p.ai_material).filter(Boolean))].slice(0, 3);
+
         const langInstr = languageInstructions[language] || languageInstructions['en'];
 
         const prompt = `${langInstr.expertRole}
@@ -251,9 +263,13 @@ ${langInstr.analyzeText}:
 - ${language === 'fr' ? 'Catégorie' : language === 'es' ? 'Categoría' : language === 'de' ? 'Kategorie' : language === 'it' ? 'Categoria' : 'Category'}: ${category}
 - ${language === 'fr' ? 'Sous-catégorie' : language === 'es' ? 'Subcategoría' : language === 'de' ? 'Unterkategorie' : language === 'it' ? 'Sottocategoria' : 'Subcategory'}: ${subCategory}
 - ${language === 'fr' ? 'Nombre de produits' : language === 'es' ? 'Número de productos' : language === 'de' ? 'Anzahl der Produkte' : language === 'it' ? 'Numero di prodotti' : 'Number of products'}: ${subCatProducts.length}
-- ${language === 'fr' ? 'Exemples' : language === 'es' ? 'Ejemplos' : language === 'de' ? 'Beispiele' : language === 'it' ? 'Esempi' : 'Examples'}: ${sampleProducts.map(p => p.title).join(', ')}
-- ${language === 'fr' ? 'Mots-clés' : language === 'es' ? 'Palabras clave' : language === 'de' ? 'Schlüsselwörter' : language === 'it' ? 'Parole chiave' : 'Keywords'}: ${keywords.join(', ')}
+- ${language === 'fr' ? 'Titres de produits' : language === 'es' ? 'Títulos de productos' : language === 'de' ? 'Produkttitel' : language === 'it' ? 'Titoli dei prodotti' : 'Product titles'}: ${productTitles.join(', ')}
+- ${language === 'fr' ? 'Couleurs' : language === 'es' ? 'Colores' : language === 'de' ? 'Farben' : language === 'it' ? 'Colori' : 'Colors'}: ${colors.length > 0 ? colors.join(', ') : 'N/A'}
+- ${language === 'fr' ? 'Matériaux' : language === 'es' ? 'Materiales' : language === 'de' ? 'Materialien' : language === 'it' ? 'Materiali' : 'Materials'}: ${materials.length > 0 ? materials.join(', ') : 'N/A'}
+- ${language === 'fr' ? 'Tags' : language === 'es' ? 'Etiquetas' : language === 'de' ? 'Tags' : language === 'it' ? 'Tag' : 'Tags'}: ${keywords.length > 0 ? keywords.join(', ') : 'N/A'}
 - ${language === 'fr' ? 'Langue' : language === 'es' ? 'Idioma' : language === 'de' ? 'Sprache' : language === 'it' ? 'Lingua' : 'Language'}: ${language}
+
+${language === 'fr' ? 'IMPORTANT: Base ton opportunité UNIQUEMENT sur la catégorie, sous-catégorie, titres de produits réels, couleurs et matériaux. N\'utilise PAS de noms de marques ou vendeurs.' : language === 'es' ? 'IMPORTANTE: Basa tu oportunidad SOLO en categoría, subcategoría, títulos de productos reales, colores y materiales. NO uses nombres de marcas o vendedores.' : language === 'de' ? 'WICHTIG: Basieren Sie Ihre Möglichkeit NUR auf Kategorie, Unterkategorie, echten Produkttiteln, Farben und Materialien. Verwenden Sie KEINE Marken- oder Händlernamen.' : language === 'it' ? 'IMPORTANTE: Basa la tua opportunità SOLO su categoria, sottocategoria, titoli di prodotti reali, colori e materiali. NON utilizzare nomi di marchi o venditori.' : 'IMPORTANT: Base your opportunity ONLY on category, subcategory, real product titles, colors and materials. Do NOT use brand names or vendor names.'}
 
 ${language === 'fr' ? 'Génère 1 idée d\'article de blog SEO optimisé spécifiquement pour cette sous-catégorie.' : language === 'es' ? 'Genera 1 idea de artículo de blog optimizado para SEO específicamente para esta subcategoría.' : language === 'de' ? 'Generieren Sie 1 SEO-optimierte Blog-Artikel-Idee speziell für diese Unterkategorie.' : language === 'it' ? 'Genera 1 idea per un articolo di blog ottimizzato per SEO specificamente per questa sottocategoria.' : 'Generate 1 SEO-optimized blog article idea specifically for this subcategory.'}
 
