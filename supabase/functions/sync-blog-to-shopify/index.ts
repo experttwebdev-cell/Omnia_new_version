@@ -12,6 +12,8 @@ interface RequestBody {
 
 interface BlogArticle {
   id: string;
+  store_id?: string;
+  campaign_id?: string;
   title: string;
   content: string;
   excerpt: string;
@@ -55,15 +57,48 @@ Deno.serve(async (req: Request) => {
 
     const typedArticle = article as unknown as BlogArticle;
 
-    const { data: products } = await supabase
-      .from('shopify_products')
-      .select('store_id')
-      .eq('id', typedArticle.related_product_ids[0] || '')
-      .maybeSingle();
+    let storeId = typedArticle.store_id;
 
-    if (!products?.store_id) {
+    if (!storeId) {
+      const { data: campaign } = await supabase
+        .from('blog_campaigns')
+        .select('store_id')
+        .eq('id', typedArticle.campaign_id || '')
+        .maybeSingle();
+
+      if (campaign?.store_id) {
+        storeId = campaign.store_id;
+      }
+    }
+
+    if (!storeId && typedArticle.related_product_ids && typedArticle.related_product_ids.length > 0) {
+      const { data: product } = await supabase
+        .from('shopify_products')
+        .select('store_id')
+        .eq('id', typedArticle.related_product_ids[0])
+        .maybeSingle();
+
+      if (product?.store_id) {
+        storeId = product.store_id;
+      }
+    }
+
+    if (!storeId) {
+      const { data: stores } = await supabase
+        .from('shopify_stores')
+        .select('id')
+        .limit(1);
+
+      if (stores && stores.length > 0) {
+        storeId = stores[0].id;
+      }
+    }
+
+    if (!storeId) {
       return new Response(
-        JSON.stringify({ error: 'No store found for this article' }),
+        JSON.stringify({
+          error: 'No store found for this article. Please configure a Shopify store first.'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -71,7 +106,7 @@ Deno.serve(async (req: Request) => {
     const { data: store, error: storeError } = await supabase
       .from('shopify_stores')
       .select('*')
-      .eq('id', products.store_id)
+      .eq('id', storeId)
       .single();
 
     if (storeError || !store) {
@@ -151,25 +186,6 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error) {
     console.error('Error syncing article to Shopify:', error);
-
-    if (req.json) {
-      try {
-        const { articleId } = await req.json();
-        if (articleId) {
-          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-          const supabase = createClient(supabaseUrl, supabaseKey);
-
-          await supabase
-            .from('blog_articles')
-            .update({
-              sync_status: 'error',
-              sync_error: error instanceof Error ? error.message : 'Unknown error',
-            })
-            .eq('id', articleId);
-        }
-      } catch {}
-    }
 
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),

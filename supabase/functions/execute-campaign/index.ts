@@ -28,12 +28,49 @@ interface Campaign {
   frequency: string;
 }
 
-function buildPrompt(campaign: Campaign, languageName: string): string {
-  const tableOfContentsExample = `<div class="table-of-contents"><h2>Table des Matieres</h2><ul><li><a href="#section-1">Titre Section 1</a></li></ul></div>`;
+interface Product {
+  id: string;
+  shopify_id: string;
+  title: string;
+  handle: string;
+  category: string;
+  sub_category: string;
+  price: number;
+  seo_title: string;
+  seo_description: string;
+}
+
+function buildPrompt(
+  campaign: Campaign,
+  languageName: string,
+  products: Product[],
+  storeUrl: string
+): string {
+  const isShowcaseKeyword = campaign.keywords.some(k =>
+    k.toLowerCase().includes('vitrine') ||
+    k.toLowerCase().includes('showcase') ||
+    k.toLowerCase().includes('collection')
+  );
+
+  const productList = products.length > 0
+    ? products.map(p => `- ${p.title} (${p.category}${p.sub_category ? ' - ' + p.sub_category : ''})`).join('\n')
+    : '';
+
+  const productLinksInstructions = campaign.product_links_enabled && products.length > 0
+    ? `\n\nPRODUITS DISPONIBLES A INTEGRER:\n${productList}\n\nVous DEVEZ integrer naturellement ${Math.min(campaign.max_internal_links, products.length)} liens vers ces produits dans l'article.\nFormat des liens: <a href="https://${storeUrl}/products/[product-handle]" class="product-link">[product-title]</a>\nIntegrez les liens de maniere contextuelle dans le contenu, pas seulement en liste.`
+    : '';
+
+  const imageInstructions = campaign.image_integration_enabled
+    ? `\n\nIMAGES:\nAjoutez 3-5 images pertinentes avec des URLs Unsplash basees sur le sujet de l'article.\nFormat: <img src="https://images.unsplash.com/photo-[ID]?w=800" alt="[description avec mots-cles]" class="article-image" />\nLes images doivent etre DIRECTEMENT liees au sujet: ${campaign.topic_niche} et aux mots-cles: ${campaign.keywords.join(', ')}\nPour les meubles, montrez des meubles. Pour la decoration, montrez de la decoration.`
+    : '';
+
+  const titleGuidance = isShowcaseKeyword
+    ? `\nATTENTION TITRE: Le sujet contient un mot-cle de type "vitrine/showcase". Creez un titre ATTRACTIF et CAPTIVANT qui donne envie de decouvrir la collection, PAS un titre de guide generique.\nExemples de bons titres:\n- "Decouvrez Notre Collection Exclusive de ${campaign.topic_niche}"\n- "${campaign.topic_niche}: Les Plus Belles Pieces de l'Annee"\n- "Inspiration ${campaign.topic_niche}: Trouvez Votre Style Ideal"\nEVITEZ les titres qui commencent par "Guide", "Comment", "Le Guide Complet".`
+    : `\nCREEZ un titre accrocheur et varie. N'utilisez PAS toujours le meme format. Variez entre questions, declarations, promesses de valeur.`;
 
   return `Vous etes un expert en redaction SEO et specialiste de ${campaign.topic_niche}.
 
-OBJECTIF : Generer un article HTML complet, structure, et SEO-friendly.
+OBJECTIF : Generer un article HTML complet, structure, et SEO-friendly avec integration de produits.
 
 INFORMATIONS DE BASE:
 - Sujet principal: ${campaign.topic_niche}
@@ -42,74 +79,75 @@ INFORMATIONS DE BASE:
 - Ton: ${campaign.tone}
 - Langue: ${languageName}
 - Nombre de mots: ${campaign.word_count_min}-${campaign.word_count_max} mots
-- Mots-cles principaux: ${campaign.keywords.join(", ")}
-${campaign.content_structure ? `- Structure demandee: ${campaign.content_structure}` : ""}
+- Mots-cles principaux OBLIGATOIRES: ${campaign.keywords.join(", ")}
+${campaign.content_structure ? `- Structure demandee: ${campaign.content_structure}` : ''}${titleGuidance}${productLinksInstructions}${imageInstructions}
 
 STRUCTURE HTML ATTENDUE:
 
-1. Introduction engageante dans un paragraphe <p>
-2. Table des matieres interactive (exemple: ${tableOfContentsExample})
-3. Sections principales avec <h2 id="...">
+1. Titre H1 captivant et unique
+2. Introduction engageante (2-3 paragraphes)
+3. Sections principales avec <h2 id="section-X"> (IDs pour ancres)
 4. Sous-sections avec <h3> et <h4>
-5. Contenu riche avec listes <ul> et <ol>
-6. Images avec attributs ALT optimises
-7. Conclusion inspirante avec appel a l'action
-8. Hashtags en fin d'article
+5. Integration naturelle des produits dans le contenu
+6. Images contextuelles et pertinentes
+7. Listes a puces et numerotees
+8. Conclusion avec call-to-action
+9. Section FAQ (4-6 questions)
 
-SECTIONS RECOMMANDEES:
-- Introduction
-- Tendances Actuelles
-- Guide de Selection / Comment Choisir
-- Erreurs a Eviter
-- Idees et Conseils Pratiques
+SECTIONS RECOMMANDEES (VARIEZ selon le sujet):
+${isShowcaseKeyword
+  ? `- Presentation de la Collection
+- Pieces Phares et Coups de Coeur
+- Tendances et Styles
+- Comment Choisir le Parfait ${campaign.topic_niche}
+- Inspiration et Idees d'Amenagement`
+  : `- Introduction au Sujet
+- Avantages et Benefices
+- Guide de Selection
+- Conseils Pratiques
+- Erreurs a Eviter`}
 - Questions Frequentes (FAQ)
 - Conclusion
 
+INTEGRATION DES MOTS-CLES:
+- Utilisez TOUS les mots-cles: ${campaign.keywords.join(", ")}
+- Densite naturelle: 2-3% par mot-cle principal
+- Variez les formulations et synonymes
+- Integrez dans les titres, premiers paragraphes, et naturellement dans le contenu
+
 OPTIMISATION SEO:
-- Integrez naturellement TOUS les mots-cles (3-5 fois chacun)
-- Utilisez des synonymes et expressions associees
-- Creez une meta description captivante de 150-160 caracteres
-- Ajoutez 3-5 images avec ALT descriptifs
-- Structure claire pour le referencement
+- Meta description captivante avec mot-cle principal
+- Structure semantique claire (H1 > H2 > H3)
+- Alt text optimise sur toutes les images
+- Liens internes contextuels
+- Contenu unique et informatif
 
 TONALITE & STYLE:
-- Langage fluide et naturel avec transitions douces
-- Approche conseil expert, inspirant, oriente solutions
-- Questions rhetoriques et exemples concrets
-- Credibilite avec statistiques et expertise sectorielle
-
-ELEMENTS ENRICHISSANTS:
-- Listes a puces et numerotees pour la lisibilite
-- <strong> pour les points importants
-- <em> pour les nuances
-- Citations et statistiques pour la credibilite
-- Appels a l'action en fin de sections
-
-FIN D'ARTICLE:
-- Resumez les points cles en 2-3 phrases
-- Proposez une action concrete au lecteur
-- Ajoutez 4-6 hashtags pertinents
+- ${campaign.writing_style} et ${campaign.tone}
+- Langage fluide et naturel
+- Approche conseil expert
+- Exemples concrets
+- Credibilite et autorite
 
 FORMAT DE SORTIE REQUIS - Retournez UNIQUEMENT un objet JSON valide:
 {
-  "title": "Titre SEO-optimise captivant (50-60 caracteres)",
-  "content": "Votre contenu HTML complet ici avec table des matieres, sections, etc.",
-  "meta_description": "Description SEO de 150-160 caracteres avec mot-cle principal",
-  "focus_keyword": "mot-cle principal exact",
-  "keywords": ["mot-cle1", "mot-cle2", "mot-cle3", "mot-cle4", "mot-cle5"]
+  "title": "Titre unique et captivant (50-70 caracteres) - VARIEZ LE FORMAT",
+  "content": "Contenu HTML complet avec produits integres et images pertinentes",
+  "meta_description": "Description SEO engageante de 150-160 caracteres",
+  "focus_keyword": "${campaign.keywords[0]}",
+  "keywords": ${JSON.stringify(campaign.keywords)}
 }
 
-CRITERES DE QUALITE:
-- Contenu original et informatif
-- ${campaign.word_count_min}-${campaign.word_count_max} mots minimum
-- HTML propre et valide
-- Mots-cles integres naturellement
-- Structure claire avec table des matieres
-- Lisible et engageant
-- Optimise pour le referencement
-- Pret a publier directement
+CRITERES DE QUALITE OBLIGATOIRES:
+- Titre UNIQUE qui ne ressemble pas a tous les autres articles
+- ${campaign.word_count_min}-${campaign.word_count_max} mots
+- TOUS les mots-cles integres naturellement
+- ${campaign.product_links_enabled ? campaign.max_internal_links + ' liens produits integres' : 'Pas de liens produits'}
+- ${campaign.image_integration_enabled ? '3-5 images pertinentes au sujet' : 'Pas d\'images'}
+- HTML valide et bien structure
+- Contenu original et de haute qualite
 
-IMPORTANT: Ecrivez ENTIEREMENT en ${languageName}. Le contenu doit etre de haute qualite, apporter une reelle valeur au lecteur, et etablir votre expertise dans le domaine.`;
+IMPORTANT: Ecrivez ENTIEREMENT en ${languageName}. Le contenu doit etre pertinent, engage le lecteur, et respecte EXACTEMENT les mots-cles fournis.`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -151,11 +189,51 @@ Deno.serve(async (req: Request) => {
 
     const { data: store } = await supabase
       .from("shopify_stores")
-      .select("openai_api_key")
+      .select("*")
       .eq("id", typedCampaign.store_id)
       .single();
 
-    const apiKey = store?.openai_api_key || openaiApiKey;
+    if (!store) {
+      throw new Error("Store configuration not found");
+    }
+
+    const apiKey = store.openai_api_key || openaiApiKey;
+    const storeUrl = store.shopify_store_url || store.store_url || '';
+
+    let relatedProducts: Product[] = [];
+
+    if (typedCampaign.product_links_enabled) {
+      const { data: productsData } = await supabase
+        .from("shopify_products")
+        .select("id, shopify_id, title, handle, category, sub_category, price, seo_title, seo_description")
+        .eq("store_id", typedCampaign.store_id)
+        .limit(typedCampaign.max_internal_links * 3);
+
+      if (productsData && productsData.length > 0) {
+        const keywords = typedCampaign.keywords.map(k => k.toLowerCase());
+        const topicWords = typedCampaign.topic_niche.toLowerCase().split(' ');
+
+        const scoredProducts = productsData.map(p => {
+          let score = 0;
+          const productText = `${p.title} ${p.category} ${p.sub_category} ${p.seo_title}`.toLowerCase();
+
+          keywords.forEach(keyword => {
+            if (productText.includes(keyword)) score += 3;
+          });
+
+          topicWords.forEach(word => {
+            if (word.length > 3 && productText.includes(word)) score += 1;
+          });
+
+          return { product: p as Product, score };
+        });
+
+        scoredProducts.sort((a, b) => b.score - a.score);
+        relatedProducts = scoredProducts
+          .slice(0, typedCampaign.max_internal_links)
+          .map(sp => sp.product);
+      }
+    }
 
     const languageNames: { [key: string]: string } = {
       fr: "French",
@@ -165,7 +243,7 @@ Deno.serve(async (req: Request) => {
     };
 
     const languageName = languageNames[typedCampaign.language] || "English";
-    const prompt = buildPrompt(typedCampaign, languageName);
+    const prompt = buildPrompt(typedCampaign, languageName, relatedProducts, storeUrl);
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -178,7 +256,7 @@ Deno.serve(async (req: Request) => {
         messages: [
           {
             role: "system",
-            content: `You are an expert SEO content writer who creates high-quality, engaging blog articles. You write in ${languageName}. Always return valid JSON with properly formatted HTML content that uses semantic tags and proper heading hierarchy including an interactive table of contents.`
+            content: `You are an expert SEO content writer who creates high-quality, engaging blog articles. You write in ${languageName}. Always return valid JSON with properly formatted HTML content that uses semantic tags and proper heading hierarchy.`
           },
           { role: "user", content: prompt },
         ],
@@ -197,24 +275,80 @@ Deno.serve(async (req: Request) => {
     const content = data.choices[0].message.content;
     const articleData = JSON.parse(content);
 
+    let finalContent = articleData.content;
+    const productLinks: Array<{ product_id: string; shopify_id: string; title: string; handle: string }> = [];
+
+    if (relatedProducts.length > 0) {
+      relatedProducts.forEach(product => {
+        const productUrl = `https://${storeUrl}/products/${product.handle}`;
+        const placeholderPattern = new RegExp(`\\[product-handle\\]`, 'g');
+        const titlePattern = new RegExp(`\\[product-title\\]`, 'g');
+
+        if (finalContent.includes('[product-handle]') && productLinks.length < typedCampaign.max_internal_links) {
+          finalContent = finalContent.replace(placeholderPattern, product.handle).replace(titlePattern, product.title);
+
+          productLinks.push({
+            product_id: product.id,
+            shopify_id: product.shopify_id,
+            title: product.title,
+            handle: product.handle
+          });
+        }
+      });
+    }
+
+    const wordCount = finalContent.replace(/<[^>]*>/g, '').split(/\s+/).filter(w => w.length > 0).length;
+
     const { data: newArticle, error: insertError } = await supabase
       .from("blog_articles")
       .insert({
         store_id: typedCampaign.store_id,
         campaign_id: campaign_id,
         title: articleData.title,
-        content: articleData.content,
+        content: finalContent,
         meta_description: articleData.meta_description,
         focus_keyword: articleData.focus_keyword,
         keywords: articleData.keywords,
+        target_keywords: typedCampaign.keywords,
         status: "draft",
         language: typedCampaign.language,
+        word_count: wordCount,
+        format: 'html',
+        product_links: productLinks,
+        category: relatedProducts[0]?.category || '',
+        subcategory: relatedProducts[0]?.sub_category || '',
+        author: 'AI Campaign',
+        tags: typedCampaign.keywords.slice(0, 5).join(', ')
       })
       .select()
       .single();
 
     if (insertError) {
       throw insertError;
+    }
+
+    if (typedCampaign.auto_publish && newArticle) {
+      try {
+        const syncResponse = await fetch(`${supabaseUrl}/functions/v1/sync-blog-to-shopify`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ articleId: newArticle.id }),
+        });
+
+        if (syncResponse.ok) {
+          await supabase
+            .from("blog_campaigns")
+            .update({
+              articles_published: (campaign.articles_published || 0) + 1,
+            })
+            .eq("id", campaign_id);
+        }
+      } catch (syncError) {
+        console.error('Auto-publish failed:', syncError);
+      }
     }
 
     const now = new Date();

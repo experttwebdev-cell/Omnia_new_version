@@ -53,6 +53,7 @@ export function AiCampaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showWizard, setShowWizard] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [showMenu, setShowMenu] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
@@ -266,6 +267,16 @@ export function AiCampaigns() {
         />
       )}
 
+      {editingCampaign && (
+        <CampaignWizard
+          campaign={editingCampaign}
+          onClose={() => {
+            setEditingCampaign(null);
+            fetchCampaigns();
+          }}
+        />
+      )}
+
       {confirmDialog.show && (
         <ConfirmDialog
           title={confirmDialog.title}
@@ -329,6 +340,16 @@ export function AiCampaigns() {
 
                     {showMenu === campaign.id && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        <button
+                          onClick={() => {
+                            setEditingCampaign(campaign);
+                            setShowMenu(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit Campaign
+                        </button>
                         {campaign.status === 'active' && (
                           <button
                             onClick={() => {

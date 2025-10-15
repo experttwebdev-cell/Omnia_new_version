@@ -18,7 +18,34 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  topic_niche: string;
+  target_audience: string;
+  frequency: 'daily' | 'weekly' | 'bi-weekly' | 'monthly';
+  schedule_time: string;
+  schedule_day: number;
+  start_date: string;
+  end_date: string | null;
+  word_count_min: number;
+  word_count_max: number;
+  writing_style: 'professional' | 'casual' | 'technical' | 'conversational';
+  tone: 'formal' | 'informal' | 'friendly' | 'authoritative';
+  keywords: string[];
+  content_structure: string;
+  internal_linking_enabled: boolean;
+  max_internal_links: number;
+  image_integration_enabled: boolean;
+  product_links_enabled: boolean;
+  seo_optimization_enabled: boolean;
+  auto_publish: boolean;
+  language: string;
+}
+
 interface CampaignWizardProps {
+  campaign?: Campaign;
   onClose: () => void;
 }
 
@@ -51,36 +78,37 @@ interface ValidationErrors {
   [key: string]: string;
 }
 
-export function CampaignWizard({ onClose }: CampaignWizardProps) {
+export function CampaignWizard({ campaign, onClose }: CampaignWizardProps) {
   const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [keywordInput, setKeywordInput] = useState('');
+  const isEditMode = !!campaign;
   const [campaignData, setCampaignData] = useState<CampaignData>({
-    name: '',
-    description: '',
-    topic_niche: '',
-    target_audience: '',
-    frequency: 'weekly',
-    schedule_time: '09:00',
-    schedule_day: 1,
-    start_date: new Date().toISOString().split('T')[0],
-    end_date: '',
-    word_count_min: 1500,
-    word_count_max: 2000,
-    writing_style: 'professional',
-    tone: 'formal',
-    keywords: [],
-    content_structure: '',
-    internal_linking_enabled: true,
-    max_internal_links: 5,
-    image_integration_enabled: true,
-    product_links_enabled: true,
-    seo_optimization_enabled: true,
-    auto_publish: false,
-    language: 'fr'
+    name: campaign?.name || '',
+    description: campaign?.description || '',
+    topic_niche: campaign?.topic_niche || '',
+    target_audience: campaign?.target_audience || '',
+    frequency: campaign?.frequency || 'weekly',
+    schedule_time: campaign?.schedule_time || '09:00',
+    schedule_day: campaign?.schedule_day || 1,
+    start_date: campaign?.start_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+    end_date: campaign?.end_date?.split('T')[0] || '',
+    word_count_min: campaign?.word_count_min || 1500,
+    word_count_max: campaign?.word_count_max || 2000,
+    writing_style: campaign?.writing_style || 'professional',
+    tone: campaign?.tone || 'formal',
+    keywords: campaign?.keywords || [],
+    content_structure: campaign?.content_structure || '',
+    internal_linking_enabled: campaign?.internal_linking_enabled ?? true,
+    max_internal_links: campaign?.max_internal_links || 5,
+    image_integration_enabled: campaign?.image_integration_enabled ?? true,
+    product_links_enabled: campaign?.product_links_enabled ?? true,
+    seo_optimization_enabled: campaign?.seo_optimization_enabled ?? true,
+    auto_publish: campaign?.auto_publish || false,
+    language: campaign?.language || 'fr'
   });
 
   const totalSteps = 4;
@@ -192,59 +220,100 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         return;
       }
 
-      const { data: stores } = await supabase
-        .from('shopify_stores')
-        .select('id')
-        .limit(1);
+      if (isEditMode && campaign) {
+        const nextExecution = calculateNextExecution(
+          campaignData.start_date,
+          campaignData.frequency,
+          campaignData.schedule_time,
+          campaignData.schedule_day
+        );
 
-      if (!stores || stores.length === 0) {
-        throw new Error('No store found. Please configure your store first.');
-      }
+        const { error: updateError } = await supabase
+          .from('blog_campaigns')
+          .update({
+            name: campaignData.name,
+            description: campaignData.description,
+            topic_niche: campaignData.topic_niche,
+            target_audience: campaignData.target_audience,
+            frequency: campaignData.frequency,
+            start_date: campaignData.start_date,
+            end_date: campaignData.end_date || null,
+            word_count_min: campaignData.word_count_min,
+            word_count_max: campaignData.word_count_max,
+            writing_style: campaignData.writing_style,
+            tone: campaignData.tone,
+            keywords: campaignData.keywords,
+            content_structure: campaignData.content_structure,
+            internal_linking_enabled: campaignData.internal_linking_enabled,
+            max_internal_links: campaignData.max_internal_links,
+            image_integration_enabled: campaignData.image_integration_enabled,
+            product_links_enabled: campaignData.product_links_enabled,
+            seo_optimization_enabled: campaignData.seo_optimization_enabled,
+            auto_publish: campaignData.auto_publish,
+            language: campaignData.language,
+            next_execution: nextExecution
+          })
+          .eq('id', campaign.id);
 
-      const nextExecution = calculateNextExecution(
-        campaignData.start_date,
-        campaignData.frequency,
-        campaignData.schedule_time,
-        campaignData.schedule_day
-      );
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw new Error(`Failed to update campaign: ${updateError.message}`);
+        }
+      } else {
+        const { data: stores } = await supabase
+          .from('shopify_stores')
+          .select('id')
+          .limit(1);
 
-      const { error: insertError } = await supabase
-        .from('blog_campaigns')
-        .insert({
-          store_id: stores[0].id,
-          name: campaignData.name,
-          description: campaignData.description,
-          status: 'active',
-          topic_niche: campaignData.topic_niche,
-          target_audience: campaignData.target_audience,
-          frequency: campaignData.frequency,
-          start_date: campaignData.start_date,
-          end_date: campaignData.end_date || null,
-          word_count_min: campaignData.word_count_min,
-          word_count_max: campaignData.word_count_max,
-          writing_style: campaignData.writing_style,
-          tone: campaignData.tone,
-          keywords: campaignData.keywords,
-          content_structure: campaignData.content_structure,
-          internal_linking_enabled: campaignData.internal_linking_enabled,
-          max_internal_links: campaignData.max_internal_links,
-          image_integration_enabled: campaignData.image_integration_enabled,
-          product_links_enabled: campaignData.product_links_enabled,
-          seo_optimization_enabled: campaignData.seo_optimization_enabled,
-          auto_publish: campaignData.auto_publish,
-          language: campaignData.language,
-          next_execution: nextExecution
-        });
+        if (!stores || stores.length === 0) {
+          throw new Error('No store found. Please configure your store first.');
+        }
 
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw new Error(`Failed to create campaign: ${insertError.message}`);
+        const nextExecution = calculateNextExecution(
+          campaignData.start_date,
+          campaignData.frequency,
+          campaignData.schedule_time,
+          campaignData.schedule_day
+        );
+
+        const { error: insertError } = await supabase
+          .from('blog_campaigns')
+          .insert({
+            store_id: stores[0].id,
+            name: campaignData.name,
+            description: campaignData.description,
+            status: 'active',
+            topic_niche: campaignData.topic_niche,
+            target_audience: campaignData.target_audience,
+            frequency: campaignData.frequency,
+            start_date: campaignData.start_date,
+            end_date: campaignData.end_date || null,
+            word_count_min: campaignData.word_count_min,
+            word_count_max: campaignData.word_count_max,
+            writing_style: campaignData.writing_style,
+            tone: campaignData.tone,
+            keywords: campaignData.keywords,
+            content_structure: campaignData.content_structure,
+            internal_linking_enabled: campaignData.internal_linking_enabled,
+            max_internal_links: campaignData.max_internal_links,
+            image_integration_enabled: campaignData.image_integration_enabled,
+            product_links_enabled: campaignData.product_links_enabled,
+            seo_optimization_enabled: campaignData.seo_optimization_enabled,
+            auto_publish: campaignData.auto_publish,
+            language: campaignData.language,
+            next_execution: nextExecution
+          });
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw new Error(`Failed to create campaign: ${insertError.message}`);
+        }
       }
 
       onClose();
     } catch (err) {
-      console.error('Error creating campaign:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create campaign. Please try again.');
+      console.error('Error saving campaign:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save campaign. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -777,7 +846,9 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <Sparkles className="w-7 h-7 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-800">{t.campaigns.createCampaign}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {isEditMode ? 'Edit Campaign' : t.campaigns.createCampaign}
+            </h2>
           </div>
           <button
             onClick={onClose}
