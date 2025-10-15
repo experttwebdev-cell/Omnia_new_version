@@ -71,7 +71,7 @@ Sois concis mais descriptif.`,
   },
 };
 
-async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
+async function callDeepSeek(messages: ChatMessage[], maxTokens = 400): Promise<string> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
   const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
@@ -82,8 +82,8 @@ async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
     body: JSON.stringify({
       messages,
       model: 'deepseek-chat',
-      temperature: 0.8,
-      max_tokens: 800,
+      temperature: 0.7,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -112,25 +112,80 @@ export async function detectIntent(userMessage: string): Promise<string> {
   return hasProductIntent ? 'ProductChatIntent' : 'ChatIntent';
 }
 
-async function extractProductAttributes(userMessage: string): Promise<ProductAttributes> {
-  try {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: intents.ProductChatIntent.system_prompt },
-      { role: 'user', content: userMessage },
-    ];
+function extractProductAttributesSimple(userMessage: string): ProductAttributes {
+  const lowerMessage = userMessage.toLowerCase();
+  const attributes: ProductAttributes = { intent: 'product_search' };
 
-    const response = await callDeepSeek(messages);
+  const typeMap: { [key: string]: string } = {
+    'canapé': 'canapé', 'sofa': 'canapé',
+    'table': 'table',
+    'chaise': 'chaise',
+    'lit': 'lit',
+    'buffet': 'buffet',
+    'fauteuil': 'fauteuil',
+    'commode': 'commode',
+    'armoire': 'armoire',
+    'étagère': 'étagère',
+    'lampe': 'lampe',
+    'bureau': 'bureau',
+    'tapis': 'tapis',
+  };
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+  for (const [keyword, type] of Object.entries(typeMap)) {
+    if (lowerMessage.includes(keyword)) {
+      attributes.type = type;
+      break;
     }
-
-    return { intent: 'product_search' };
-  } catch (error) {
-    console.error('Error extracting product attributes:', error);
-    return { intent: 'product_search' };
   }
+
+  const styleMap: { [key: string]: string } = {
+    'scandinave': 'Scandinave',
+    'moderne': 'Moderne',
+    'industriel': 'Industriel',
+    'rustique': 'Rustique',
+    'vintage': 'Vintage',
+    'contemporain': 'Contemporain',
+  };
+
+  for (const [keyword, style] of Object.entries(styleMap)) {
+    if (lowerMessage.includes(keyword)) {
+      attributes.style = style;
+      break;
+    }
+  }
+
+  const roomMap: { [key: string]: string } = {
+    'salon': 'Salon',
+    'chambre': 'Chambre',
+    'cuisine': 'Cuisine',
+    'bureau': 'Bureau',
+    'salle': 'Salle à manger',
+  };
+
+  for (const [keyword, room] of Object.entries(roomMap)) {
+    if (lowerMessage.includes(keyword)) {
+      attributes.room = room;
+      break;
+    }
+  }
+
+  const colors = ['blanc', 'noir', 'gris', 'beige', 'bleu', 'vert', 'rouge', 'jaune', 'marron'];
+  for (const color of colors) {
+    if (lowerMessage.includes(color)) {
+      attributes.color = color;
+      break;
+    }
+  }
+
+  const materials = ['bois', 'métal', 'tissu', 'cuir', 'verre', 'plastique'];
+  for (const material of materials) {
+    if (lowerMessage.includes(material)) {
+      attributes.material = material;
+      break;
+    }
+  }
+
+  return attributes;
 }
 
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
@@ -174,32 +229,32 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   return data || [];
 }
 
-async function generateProductPresentation(products: Product[], userMessage: string): Promise<string> {
+function generateProductPresentationSimple(products: Product[], userMessage: string, filters: ProductAttributes): string {
   if (products.length === 0) {
-    const messages: ChatMessage[] = [
-      { role: 'system', content: intents.ProductShowIntent.system_prompt },
-      {
-        role: 'user',
-        content: `Le client a demandé: "${userMessage}". Aucun produit exact n'a été trouvé. Réponds de manière positive et propose des alternatives ou demande plus de précisions.`
-      },
-    ];
+    const filterDesc = [];
+    if (filters.type) filterDesc.push(`${filters.type}s`);
+    if (filters.style) filterDesc.push(`de style ${filters.style}`);
+    if (filters.room) filterDesc.push(`pour ${filters.room}`);
 
-    return await callDeepSeek(messages);
+    const search = filterDesc.length > 0 ? filterDesc.join(' ') : 'ce type de produit';
+    return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Par exemple :\n- Quel style préférez-vous ? (scandinave, moderne, industriel...)\n- Quelle pièce souhaitez-vous aménager ?\n- Avez-vous des préférences de couleur ou matériau ?`;
   }
 
-  const productsList = products.map((p, index) =>
-    `${index + 1}. ${p.title} - ${p.price} € - ${p.style || ''} ${p.material || ''} ${p.color || ''} (ID: ${p.id})`
-  ).join('\n');
+  const intro = products.length === 1
+    ? `J'ai trouvé ce produit qui pourrait vous intéresser :`
+    : `J'ai trouvé ${products.length} produits qui correspondent à votre recherche :`;
 
-  const messages: ChatMessage[] = [
-    { role: 'system', content: intents.ProductShowIntent.system_prompt },
-    {
-      role: 'user',
-      content: `Le client a demandé: "${userMessage}". Voici les produits trouvés:\n\n${productsList}\n\nPrésente ces produits de manière engageante et professionnelle.`
-    },
-  ];
+  const productsList = products.map((p, index) => {
+    const details = [];
+    if (p.style) details.push(p.style);
+    if (p.material) details.push(p.material);
+    if (p.color) details.push(p.color);
 
-  return await callDeepSeek(messages);
+    const detailsStr = details.length > 0 ? ` - ${details.join(', ')}` : '';
+    return `\n${index + 1}. **${p.title}**${detailsStr}\n   Prix: ${p.price} €`;
+  }).join('\n');
+
+  return `${intro}\n${productsList}\n\nSouhaitez-vous plus d'informations sur l'un de ces produits ? 😊`;
 }
 
 export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
@@ -208,11 +263,11 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
   if (intentName === 'ChatIntent') {
     const messages: ChatMessage[] = [
       { role: 'system', content: intents.ChatIntent.system_prompt },
-      ...history.slice(-6),
+      ...history.slice(-4),
       { role: 'user', content: userMessage },
     ];
 
-    const response = await callDeepSeek(messages);
+    const response = await callDeepSeek(messages, 300);
 
     return {
       role: 'assistant' as const,
@@ -223,9 +278,9 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
   }
 
   if (intentName === 'ProductChatIntent') {
-    const attributes = await extractProductAttributes(userMessage);
+    const attributes = extractProductAttributesSimple(userMessage);
     const products = await searchProducts(attributes, storeId);
-    const presentation = await generateProductPresentation(products, userMessage);
+    const presentation = generateProductPresentationSimple(products, userMessage, attributes);
 
     return {
       role: 'assistant' as const,
