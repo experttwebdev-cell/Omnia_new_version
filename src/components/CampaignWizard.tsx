@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { useLanguage } from '../App';
 import {
   X,
   ChevronRight,
@@ -51,6 +52,7 @@ interface ValidationErrors {
 }
 
 export function CampaignWizard({ onClose }: CampaignWizardProps) {
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,25 +90,25 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
     if (stepNumber === 1) {
       if (!campaignData.name.trim()) {
-        errors.name = 'Campaign name is required';
+        errors.name = t.campaigns.validation.nameRequired;
       }
       if (!campaignData.topic_niche.trim()) {
-        errors.topic_niche = 'Content topic/niche is required';
+        errors.topic_niche = t.campaigns.validation.topicRequired;
       }
       if (!campaignData.start_date) {
-        errors.start_date = 'Start date is required';
+        errors.start_date = t.campaigns.validation.startDateRequired;
       }
     }
 
     if (stepNumber === 3) {
       if (campaignData.word_count_min < 300) {
-        errors.word_count_min = 'Minimum word count must be at least 300';
+        errors.word_count_min = t.campaigns.validation.minWordCount;
       }
       if (campaignData.word_count_max < campaignData.word_count_min) {
-        errors.word_count_max = 'Maximum must be greater than minimum';
+        errors.word_count_max = t.campaigns.validation.maxWordCount;
       }
       if (campaignData.keywords.length === 0) {
-        errors.keywords = 'At least one keyword is required';
+        errors.keywords = t.campaigns.validation.keywordsRequired;
       }
     }
 
@@ -279,12 +281,12 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <Target className="w-6 h-6 text-blue-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Campaign Configuration</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t.campaigns.campaignConfig}</h3>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Campaign Name <span className="text-red-600">*</span>
+          {t.campaigns.campaignName} <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
@@ -305,7 +307,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description
+          {t.campaigns.description}
         </label>
         <textarea
           value={campaignData.description}
@@ -318,7 +320,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Content Topic/Niche <span className="text-red-600">*</span>
+          {t.campaigns.topicNiche} <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
@@ -339,7 +341,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Target Audience
+          {t.campaigns.targetAudience}
         </label>
         <input
           type="text"
@@ -353,23 +355,23 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Frequency <span className="text-red-600">*</span>
+            {t.blog.frequency} <span className="text-red-600">*</span>
           </label>
           <select
             value={campaignData.frequency}
             onChange={(e) => setCampaignData({ ...campaignData, frequency: e.target.value as any })}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="bi-weekly">Bi-weekly</option>
-            <option value="monthly">Monthly</option>
+            <option value="daily">{t.campaigns.frequency.daily}</option>
+            <option value="weekly">{t.campaigns.frequency.weekly}</option>
+            <option value="bi-weekly">{t.campaigns.frequency.biWeekly}</option>
+            <option value="monthly">{t.campaigns.frequency.monthly}</option>
           </select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Schedule Time <span className="text-red-600">*</span>
+            {t.blog.scheduleTime} <span className="text-red-600">*</span>
           </label>
           <input
             type="time"
@@ -383,7 +385,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       {(campaignData.frequency === 'weekly' || campaignData.frequency === 'bi-weekly') && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Day of Week <span className="text-red-600">*</span>
+            {t.blog.dayOfWeek} <span className="text-red-600">*</span>
           </label>
           <select
             value={campaignData.schedule_day}
@@ -404,7 +406,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       {campaignData.frequency === 'monthly' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Day of Month <span className="text-red-600">*</span>
+            {t.blog.dayOfMonth} <span className="text-red-600">*</span>
           </label>
           <select
             value={campaignData.schedule_day}
@@ -421,7 +423,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Start Date <span className="text-red-600">*</span>
+            {t.campaigns.startDate} <span className="text-red-600">*</span>
           </label>
           <input
             type="date"
@@ -441,7 +443,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            End Date (Optional)
+            {t.campaigns.endDate}
           </label>
           <input
             type="date"
@@ -458,7 +460,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <Settings className="w-6 h-6 text-blue-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Content Enhancement</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t.campaigns.contentEnhancement}</h3>
       </div>
 
       <div className="space-y-4">
@@ -561,13 +563,13 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <FileText className="w-6 h-6 text-blue-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Article Generation Parameters</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t.campaigns.articleParams}</h3>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Min Word Count <span className="text-red-600">*</span>
+            {t.campaigns.minWordCount} <span className="text-red-600">*</span>
           </label>
           <input
             type="number"
@@ -588,7 +590,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Max Word Count <span className="text-red-600">*</span>
+            {t.campaigns.maxWordCount} <span className="text-red-600">*</span>
           </label>
           <input
             type="number"
@@ -610,39 +612,39 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Writing Style <span className="text-red-600">*</span>
+          {t.campaigns.writingStyle} <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.writing_style}
           onChange={(e) => setCampaignData({ ...campaignData, writing_style: e.target.value as any })}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
         >
-          <option value="professional">Professional</option>
-          <option value="casual">Casual</option>
-          <option value="technical">Technical</option>
-          <option value="conversational">Conversational</option>
+          <option value="professional">{t.campaigns.writingStyles.professional}</option>
+          <option value="casual">{t.campaigns.writingStyles.casual}</option>
+          <option value="technical">{t.campaigns.writingStyles.technical}</option>
+          <option value="conversational">{t.campaigns.writingStyles.conversational}</option>
         </select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tone <span className="text-red-600">*</span>
+          {t.campaigns.tone} <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.tone}
           onChange={(e) => setCampaignData({ ...campaignData, tone: e.target.value as any })}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
         >
-          <option value="formal">Formal</option>
-          <option value="informal">Informal</option>
-          <option value="friendly">Friendly</option>
-          <option value="authoritative">Authoritative</option>
+          <option value="formal">{t.campaigns.tones.formal}</option>
+          <option value="informal">{t.campaigns.tones.informal}</option>
+          <option value="friendly">{t.campaigns.tones.friendly}</option>
+          <option value="authoritative">{t.campaigns.tones.authoritative}</option>
         </select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Target Keywords <span className="text-red-600">*</span>
+          {t.campaigns.targetKeywords} <span className="text-red-600">*</span>
         </label>
         <div className="flex gap-2 mb-2">
           <input
@@ -660,7 +662,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
             className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
-            Add
+            {t.campaigns.addKeyword}
           </button>
         </div>
         {validationErrors.keywords && (
@@ -691,7 +693,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Content Structure Preferences
+          {t.campaigns.contentStructure}
         </label>
         <textarea
           value={campaignData.content_structure}
@@ -704,7 +706,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Language <span className="text-red-600">*</span>
+          {t.campaigns.language} <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.language}
@@ -724,12 +726,12 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <CheckCircle className="w-6 h-6 text-green-600" />
-        <h3 className="text-xl font-semibold text-gray-800">Review & Launch</h3>
+        <h3 className="text-xl font-semibold text-gray-800">{t.campaigns.reviewLaunch}</h3>
       </div>
 
       <div className="bg-gray-50 rounded-lg p-6 space-y-4">
         <div>
-          <h4 className="font-semibold text-gray-700 mb-2">Campaign Details</h4>
+          <h4 className="font-semibold text-gray-700 mb-2">{t.campaigns.campaignDetails}</h4>
           <div className="space-y-1 text-sm">
             <p><span className="font-medium">Name:</span> {campaignData.name}</p>
             <p><span className="font-medium">Topic:</span> {campaignData.topic_niche}</p>
@@ -739,7 +741,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-700 mb-2">Content Settings</h4>
+          <h4 className="font-semibold text-gray-700 mb-2">{t.campaigns.contentSettings}</h4>
           <div className="space-y-1 text-sm">
             <p><span className="font-medium">Word Count:</span> {campaignData.word_count_min} - {campaignData.word_count_max}</p>
             <p><span className="font-medium">Style:</span> {campaignData.writing_style}</p>
@@ -749,7 +751,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-700 mb-2">Enhancement Features</h4>
+          <h4 className="font-semibold text-gray-700 mb-2">{t.campaigns.enhancementFeatures}</h4>
           <div className="space-y-1 text-sm">
             <p>✓ Internal Linking: {campaignData.internal_linking_enabled ? 'Enabled' : 'Disabled'}</p>
             <p>✓ Image Integration: {campaignData.image_integration_enabled ? 'Enabled' : 'Disabled'}</p>
@@ -762,7 +764,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>Ready to launch!</strong> Your campaign will start generating content on {campaignData.start_date} at {campaignData.schedule_time}.
+          <strong>{t.campaigns.readyToLaunch}</strong> Your campaign will start generating content on {campaignData.start_date} at {campaignData.schedule_time}.
           The first article will be created automatically based on your settings.
         </p>
       </div>
@@ -775,7 +777,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <Sparkles className="w-7 h-7 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-800">Create AI Campaign</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t.campaigns.createCampaign}</h2>
           </div>
           <button
             onClick={onClose}
@@ -808,7 +810,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
             className="flex items-center gap-2 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="w-5 h-5" />
-            Previous
+            {t.common.previous}
           </button>
 
           <div className="text-sm text-gray-600">
@@ -820,7 +822,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
               onClick={handleNext}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              Next
+              {t.common.next}
               <ChevronRight className="w-5 h-5" />
             </button>
           ) : (
@@ -832,12 +834,12 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Creating...
+                  {t.campaigns.creating}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  Launch Campaign
+                  {t.campaigns.launchCampaign}
                 </>
               )}
             </button>

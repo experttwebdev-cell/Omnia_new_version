@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
+import { useLanguage } from '../App';
 import {
   Sparkles,
   Plus,
@@ -47,6 +48,7 @@ interface ExecutionLog {
 }
 
 export function AiCampaigns() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showWizard, setShowWizard] = useState(false);
@@ -224,7 +226,7 @@ export function AiCampaigns() {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <Sparkles className="w-7 h-7 text-blue-600" />
-            AI Campaigns
+            {t.campaigns.title}
           </h2>
           <p className="text-gray-600 mt-1">
             Manage your automated blog content campaigns
@@ -235,7 +237,7 @@ export function AiCampaigns() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-md"
         >
           <Plus className="w-5 h-5" />
-          Create Campaign
+          {t.campaigns.createCampaign}
         </button>
       </div>
 
@@ -277,9 +279,9 @@ export function AiCampaigns() {
       {campaigns.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
           <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">No campaigns yet</h3>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">{t.campaigns.noCampaigns}</h3>
           <p className="text-gray-600 mb-6">
-            Create your first AI campaign to start generating automated blog content
+            {t.campaigns.createFirst}
           </p>
           <button
             onClick={() => setShowWizard(true)}

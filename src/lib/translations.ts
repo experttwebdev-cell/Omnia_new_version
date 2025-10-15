@@ -137,6 +137,82 @@ export interface Translations {
     dayOfWeek: string;
     dayOfMonth: string;
   };
+  campaigns: {
+    title: string;
+    createCampaign: string;
+    campaignName: string;
+    description: string;
+    topicNiche: string;
+    targetAudience: string;
+    startDate: string;
+    endDate: string;
+    noCampaigns: string;
+    createFirst: string;
+    campaignConfig: string;
+    contentEnhancement: string;
+    articleParams: string;
+    reviewLaunch: string;
+    minWordCount: string;
+    maxWordCount: string;
+    writingStyle: string;
+    tone: string;
+    targetKeywords: string;
+    addKeyword: string;
+    contentStructure: string;
+    language: string;
+    launchCampaign: string;
+    creating: string;
+    campaignDetails: string;
+    contentSettings: string;
+    enhancementFeatures: string;
+    readyToLaunch: string;
+    generated: string;
+    published: string;
+    lastRun: string;
+    nextRun: string;
+    recentExecutions: string;
+    articlesGenerated: string;
+    pauseCampaign: string;
+    resumeCampaign: string;
+    runNow: string;
+    stopCampaign: string;
+    deleteCampaign: string;
+    stopConfirm: string;
+    deleteConfirm: string;
+    status: {
+      draft: string;
+      active: string;
+      paused: string;
+      stopped: string;
+      completed: string;
+    };
+    frequency: {
+      daily: string;
+      weekly: string;
+      biWeekly: string;
+      monthly: string;
+    };
+    writingStyles: {
+      professional: string;
+      casual: string;
+      technical: string;
+      conversational: string;
+    };
+    tones: {
+      formal: string;
+      informal: string;
+      friendly: string;
+      authoritative: string;
+    };
+    validation: {
+      nameRequired: string;
+      topicRequired: string;
+      startDateRequired: string;
+      minWordCount: string;
+      maxWordCount: string;
+      keywordsRequired: string;
+    };
+  };
 }
 
 export const translations: Record<Language, Translations> = {
@@ -276,6 +352,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Heure planifiée',
       dayOfWeek: 'Jour de la semaine',
       dayOfMonth: 'Jour du mois'
+    },
+    campaigns: {
+      title: 'Campagnes IA',
+      createCampaign: 'Créer une campagne',
+      campaignName: 'Nom de la campagne',
+      description: 'Description',
+      topicNiche: 'Sujet/Niche du contenu',
+      targetAudience: 'Public cible',
+      startDate: 'Date de début',
+      endDate: 'Date de fin (Optionnel)',
+      noCampaigns: 'Aucune campagne pour le moment',
+      createFirst: 'Créez votre première campagne IA pour commencer à générer du contenu de blog automatiquement',
+      campaignConfig: 'Configuration de la campagne',
+      contentEnhancement: 'Amélioration du contenu',
+      articleParams: 'Paramètres de génération d\'articles',
+      reviewLaunch: 'Révision et lancement',
+      minWordCount: 'Nombre de mots minimum',
+      maxWordCount: 'Nombre de mots maximum',
+      writingStyle: 'Style d\'écriture',
+      tone: 'Ton',
+      targetKeywords: 'Mots-clés cibles',
+      addKeyword: 'Ajouter',
+      contentStructure: 'Préférences de structure du contenu',
+      language: 'Langue',
+      launchCampaign: 'Lancer la campagne',
+      creating: 'Création...',
+      campaignDetails: 'Détails de la campagne',
+      contentSettings: 'Paramètres de contenu',
+      enhancementFeatures: 'Fonctionnalités d\'amélioration',
+      readyToLaunch: 'Prêt à lancer !',
+      generated: 'Générés',
+      published: 'Publiés',
+      lastRun: 'Dernière exécution',
+      nextRun: 'Prochaine exécution',
+      recentExecutions: 'Exécutions récentes',
+      articlesGenerated: 'article(s) généré(s)',
+      pauseCampaign: 'Mettre en pause',
+      resumeCampaign: 'Reprendre',
+      runNow: 'Exécuter maintenant',
+      stopCampaign: 'Arrêter la campagne',
+      deleteCampaign: 'Supprimer la campagne',
+      stopConfirm: 'Êtes-vous sûr de vouloir arrêter cette campagne ? Cette action ne peut pas être annulée.',
+      deleteConfirm: 'Êtes-vous sûr de vouloir supprimer cette campagne ? Toutes les données seront perdues.',
+      status: {
+        draft: 'Brouillon',
+        active: 'Active',
+        paused: 'En pause',
+        stopped: 'Arrêtée',
+        completed: 'Terminée'
+      },
+      frequency: {
+        daily: 'Quotidien',
+        weekly: 'Hebdomadaire',
+        biWeekly: 'Bihebdomadaire',
+        monthly: 'Mensuel'
+      },
+      writingStyles: {
+        professional: 'Professionnel',
+        casual: 'Décontracté',
+        technical: 'Technique',
+        conversational: 'Conversationnel'
+      },
+      tones: {
+        formal: 'Formel',
+        informal: 'Informel',
+        friendly: 'Amical',
+        authoritative: 'Autoritaire'
+      },
+      validation: {
+        nameRequired: 'Le nom de la campagne est requis',
+        topicRequired: 'Le sujet/niche est requis',
+        startDateRequired: 'La date de début est requise',
+        minWordCount: 'Le nombre minimum de mots doit être d\'au moins 300',
+        maxWordCount: 'Le maximum doit être supérieur au minimum',
+        keywordsRequired: 'Au moins un mot-clé est requis'
+      }
     }
   },
   en: {
@@ -414,6 +566,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Schedule Time',
       dayOfWeek: 'Day of Week',
       dayOfMonth: 'Day of Month'
+    },
+    campaigns: {
+      title: 'AI Campaigns',
+      createCampaign: 'Create Campaign',
+      campaignName: 'Campaign Name',
+      description: 'Description',
+      topicNiche: 'Content Topic/Niche',
+      targetAudience: 'Target Audience',
+      startDate: 'Start Date',
+      endDate: 'End Date (Optional)',
+      noCampaigns: 'No campaigns yet',
+      createFirst: 'Create your first AI campaign to start generating automated blog content',
+      campaignConfig: 'Campaign Configuration',
+      contentEnhancement: 'Content Enhancement',
+      articleParams: 'Article Generation Parameters',
+      reviewLaunch: 'Review & Launch',
+      minWordCount: 'Min Word Count',
+      maxWordCount: 'Max Word Count',
+      writingStyle: 'Writing Style',
+      tone: 'Tone',
+      targetKeywords: 'Target Keywords',
+      addKeyword: 'Add',
+      contentStructure: 'Content Structure Preferences',
+      language: 'Language',
+      launchCampaign: 'Launch Campaign',
+      creating: 'Creating...',
+      campaignDetails: 'Campaign Details',
+      contentSettings: 'Content Settings',
+      enhancementFeatures: 'Enhancement Features',
+      readyToLaunch: 'Ready to launch!',
+      generated: 'Generated',
+      published: 'Published',
+      lastRun: 'Last Run',
+      nextRun: 'Next Run',
+      recentExecutions: 'Recent Executions',
+      articlesGenerated: 'article(s) generated',
+      pauseCampaign: 'Pause Campaign',
+      resumeCampaign: 'Resume Campaign',
+      runNow: 'Run Now',
+      stopCampaign: 'Stop Campaign',
+      deleteCampaign: 'Delete Campaign',
+      stopConfirm: 'Are you sure you want to stop this campaign? This action cannot be undone.',
+      deleteConfirm: 'Are you sure you want to delete this campaign? All data will be lost.',
+      status: {
+        draft: 'Draft',
+        active: 'Active',
+        paused: 'Paused',
+        stopped: 'Stopped',
+        completed: 'Completed'
+      },
+      frequency: {
+        daily: 'Daily',
+        weekly: 'Weekly',
+        biWeekly: 'Bi-weekly',
+        monthly: 'Monthly'
+      },
+      writingStyles: {
+        professional: 'Professional',
+        casual: 'Casual',
+        technical: 'Technical',
+        conversational: 'Conversational'
+      },
+      tones: {
+        formal: 'Formal',
+        informal: 'Informal',
+        friendly: 'Friendly',
+        authoritative: 'Authoritative'
+      },
+      validation: {
+        nameRequired: 'Campaign name is required',
+        topicRequired: 'Content topic/niche is required',
+        startDateRequired: 'Start date is required',
+        minWordCount: 'Minimum word count must be at least 300',
+        maxWordCount: 'Maximum must be greater than minimum',
+        keywordsRequired: 'At least one keyword is required'
+      }
     }
   },
   es: {
