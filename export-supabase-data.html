@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Supabase Data</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .progress {
+      margin-top: 20px;
+    }
+
+    .table-item {
+      background: #f8f9fa;
+      padding: 12px 20px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .table-item:hover {
+      background: #e9ecef;
+    }
+
+    .table-name {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .status {
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .summary {
+      background: #e7f3ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+
+    .summary h3 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .summary p {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗄️ Export des données Supabase</h1>
+    <p class="subtitle">Exportez toutes vos tables en fichiers JSON</p>
+
+    <button class="btn" id="exportBtn" onclick="exportAllTables()">
+      📥 Exporter toutes les tables
+    </button>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="summary" id="summary" style="display: none;">
+      <h3>✅ Export terminé</h3>
+      <p id="summaryText"></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabase = createClient(
+      "https://ufdhzgqrubbnornjdvgv.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms"
+    );
+
+    const tables = [
+      "shopify_stores",
+      "shopify_products",
+      "product_variants",
+      "product_images",
+      "smart_ai_products",
+      "blog_opportunities",
+      "blog_articles",
+      "auto_blogs",
+      "store_update_schedules",
+      "sync_logs",
+      "seo_sync_logs",
+      "app_settings"
+    ];
+
+    window.exportAllTables = async function() {
+      const btn = document.getElementById("exportBtn");
+      const progress = document.getElementById("progress");
+      const summary = document.getElementById("summary");
+      const summaryText = document.getElementById("summaryText");
+
+      btn.disabled = true;
+      btn.textContent = "⏳ Export en cours...";
+      progress.innerHTML = "";
+      summary.style.display = "none";
+
+      let totalRecords = 0;
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const table of tables) {
+        const itemDiv = document.createElement("div");
+        itemDiv.className = "table-item";
+        itemDiv.innerHTML = `
+          <span class="table-name">${table}</span>
+          <span class="status pending">En cours...</span>
+        `;
+        progress.appendChild(itemDiv);
+
+        try {
+          const { data, error } = await supabase.from(table).select("*");
+
+          if (error) throw error;
+
+          const statusSpan = itemDiv.querySelector(".status");
+          statusSpan.className = "status success";
+          statusSpan.textContent = `✅ ${data.length} lignes`;
+
+          totalRecords += data.length;
+          successCount++;
+
+          const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: "application/json"
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `${table}.json`;
+          a.click();
+
+          await new Promise(resolve => setTimeout(resolve, 300));
+
+        } catch (error) {
+          const statusSpan = itemDiv.querySelector(".status");
+          statusSpan.className = "status error";
+          statusSpan.textContent = "❌ Erreur";
+          errorCount++;
+          console.error(`Erreur sur ${table}:`, error);
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = "✅ Export terminé";
+
+      summary.style.display = "block";
+      summaryText.textContent = `${successCount} tables exportées avec succès, ${totalRecords} lignes au total. ${errorCount > 0 ? `${errorCount} erreurs.` : ""}`;
+    };
+  </script>
+</body>
+</html>
