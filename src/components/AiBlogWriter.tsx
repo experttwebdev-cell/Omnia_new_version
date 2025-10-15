@@ -102,7 +102,7 @@ export function AiBlogWriter() {
         .limit(1);
 
       if (!stores || stores.length === 0) {
-        throw new Error('No store found. Please connect a Shopify store first.');
+        throw new Error('No store found');
       }
 
       const { error: updateError } = await supabase
@@ -122,21 +122,25 @@ export function AiBlogWriter() {
     }
   };
 
-  const handleGenerateBlog = async () => {
+  const handleGenerateNow = async () => {
     try {
       setGenerating(true);
       setError('');
       setSuccess('');
 
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || getEnvVar('VITE_SUPABASE_ANON_KEY');
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const token = session.access_token;
 
       const payload = settings.mode === 'manual'
         ? {
             mode: 'manual',
             category: manualInputs.category,
-            subcategory: manualInputs.subcategory,
-            keywords: manualInputs.keywords.split(',').map(k => k.trim()),
+            subcategory: manualInputs.subcategory || null,
+            keywords: manualInputs.keywords.split(',').map(k => k.trim()).filter(Boolean),
             language: settings.language,
             word_count_min: settings.word_count_min,
             word_count_max: settings.word_count_max,
@@ -196,9 +200,9 @@ export function AiBlogWriter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+      <div className="flex items-center justify-center mb-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2 justify-center">
             <Sparkles className="w-7 h-7 text-purple-600" />
             AI Blog Auto Writer
           </h2>
@@ -206,13 +210,6 @@ export function AiBlogWriter() {
             Automatic blog article generation with SEO optimization and internal linking
           </p>
         </div>
-        <button
-          onClick={() => setShowWizard(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition shadow-md"
-        >
-          <Wand2 className="w-5 h-5" />
-          Create with Wizard
-        </button>
       </div>
 
       {error && (
@@ -239,359 +236,44 @@ export function AiBlogWriter() {
         />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <SettingsIcon className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-800">Generation Mode</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mode
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setSettings({ ...settings, mode: 'automatic' })}
-                  className={`p-4 rounded-lg border-2 transition ${
-                    settings.mode === 'automatic'
-                      ? 'border-blue-600 bg-blue-50 text-blue-900'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Sparkles className="w-6 h-6 mx-auto mb-2" />
-                  <div className="font-semibold">Automatic</div>
-                  <div className="text-xs mt-1">AI chooses topics</div>
-                </button>
-                <button
-                  onClick={() => setSettings({ ...settings, mode: 'manual' })}
-                  className={`p-4 rounded-lg border-2 transition ${
-                    settings.mode === 'manual'
-                      ? 'border-blue-600 bg-blue-50 text-blue-900'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <FileText className="w-6 h-6 mx-auto mb-2" />
-                  <div className="font-semibold">Manual</div>
-                  <div className="text-xs mt-1">You choose topics</div>
-                </button>
-              </div>
-            </div>
-
-            {settings.mode === 'manual' && (
-              <div className="space-y-3 pt-3 border-t border-gray-200">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={manualInputs.category}
-                    onChange={(e) => setManualInputs({ ...manualInputs, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subcategory (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={manualInputs.subcategory}
-                    onChange={(e) => setManualInputs({ ...manualInputs, subcategory: e.target.value })}
-                    placeholder="e.g., Tables rondes"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Keywords (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={manualInputs.keywords}
-                    onChange={(e) => setManualInputs({ ...manualInputs, keywords: e.target.value })}
-                    placeholder="e.g., table design, mobilier moderne"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 max-w-3xl mx-auto">
+        <div className="flex items-center gap-2 mb-6 justify-center">
+          <SettingsIcon className="w-6 h-6 text-gray-700" />
+          <h3 className="text-xl font-semibold text-gray-800">Generation Mode</h3>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-800">Scheduling</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Frequency
-              </label>
-              <select
-                value={settings.frequency}
-                onChange={(e) => setSettings({ ...settings, frequency: e.target.value as BlogSettings['frequency'] })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                {frequencyOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.icon} {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Schedule Time
-              </label>
-              <select
-                value={settings.schedule_hour}
-                onChange={(e) => setSettings({ ...settings, schedule_hour: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {i.toString().padStart(2, '0')}:00
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {(settings.frequency === 'weekly' || settings.frequency === 'bi-weekly') && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Day of Week
-                </label>
-                <select
-                  value={settings.schedule_day || 1}
-                  onChange={(e) => setSettings({ ...settings, schedule_day: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value={1}>Monday</option>
-                  <option value={2}>Tuesday</option>
-                  <option value={3}>Wednesday</option>
-                  <option value={4}>Thursday</option>
-                  <option value={5}>Friday</option>
-                  <option value={6}>Saturday</option>
-                  <option value={0}>Sunday</option>
-                </select>
-              </div>
-            )}
-
-            {settings.frequency === 'monthly' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Day of Month
-                </label>
-                <select
-                  value={settings.schedule_day || 1}
-                  onChange={(e) => setSettings({ ...settings, schedule_day: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  {Array.from({ length: 28 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-800">Content Settings</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Word Count Range
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <input
-                    type="number"
-                    value={settings.word_count_min}
-                    onChange={(e) => setSettings({ ...settings, word_count_min: parseInt(e.target.value) })}
-                    placeholder="Min"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <span className="text-xs text-gray-500 mt-1 block">Minimum</span>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    value={settings.word_count_max}
-                    onChange={(e) => setSettings({ ...settings, word_count_max: parseInt(e.target.value) })}
-                    placeholder="Max"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <span className="text-xs text-gray-500 mt-1 block">Maximum</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Output Format
-              </label>
-              <select
-                value={settings.output_format}
-                onChange={(e) => setSettings({ ...settings, output_format: e.target.value as 'markdown' | 'html' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="html">HTML</option>
-                <option value="markdown">Markdown</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Language
-              </label>
-              <select
-                value={settings.language}
-                onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="de">Deutsch</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <LinkIcon className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-800">Internal Linking</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-800">Enable Internal Linking</div>
-                <div className="text-sm text-gray-600">Add links to related products</div>
-              </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
+              Mode
+            </label>
+            <div className="grid grid-cols-2 gap-6">
               <button
-                onClick={() => setSettings({ ...settings, internal_linking: !settings.internal_linking })}
-                className={`relative w-12 h-6 rounded-full transition ${
-                  settings.internal_linking ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
+                onClick={() => {
+                  setSettings({ ...settings, mode: 'automatic' });
+                  setShowWizard(true);
+                }}
+                className="p-8 rounded-lg border-2 border-gray-200 bg-white text-gray-700 hover:border-blue-500 hover:bg-blue-50 transition group"
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition transform ${
-                    settings.internal_linking ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-600 group-hover:text-blue-600" />
+                <div className="font-semibold text-lg">Automatic</div>
+                <div className="text-sm mt-2 text-gray-600">AI chooses topics</div>
               </button>
-            </div>
-
-            {settings.internal_linking && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Internal Links per Article
-                </label>
-                <input
-                  type="number"
-                  value={settings.max_internal_links}
-                  onChange={(e) => setSettings({ ...settings, max_internal_links: parseInt(e.target.value) })}
-                  min="1"
-                  max="10"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            )}
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <div className="font-medium text-gray-800">Auto-publish to Shopify</div>
-                <div className="text-sm text-gray-600">Automatically publish generated articles</div>
-              </div>
               <button
-                onClick={() => setSettings({ ...settings, auto_publish: !settings.auto_publish })}
-                className={`relative w-12 h-6 rounded-full transition ${
-                  settings.auto_publish ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
+                onClick={() => {
+                  setSettings({ ...settings, mode: 'manual' });
+                  setShowWizard(true);
+                }}
+                className="p-8 rounded-lg border-2 border-gray-200 bg-white text-gray-700 hover:border-blue-500 hover:bg-blue-50 transition group"
               >
-                <div
-                  className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition transform ${
-                    settings.auto_publish ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-                />
+                <FileText className="w-12 h-12 mx-auto mb-3 text-blue-600 group-hover:text-blue-700" />
+                <div className="font-semibold text-lg">Manual</div>
+                <div className="text-sm mt-2 text-gray-600">You choose topics</div>
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-        {settings.mode === 'manual' && (
-          <button
-            onClick={() => setShowWizard(true)}
-            disabled={generating}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-medium rounded-lg transition shadow-lg"
-          >
-            <Wand2 className="w-5 h-5" />
-            Open Article Wizard
-          </button>
-        )}
-
-        <button
-          onClick={handleGenerateBlog}
-          disabled={generating || (settings.mode === 'manual' && !manualInputs.category)}
-          className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Play className="w-5 h-5" />
-              Quick Generate
-            </>
-          )}
-        </button>
-
-        <button
-          onClick={handleSaveSettings}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="w-5 h-5" />
-              Save Settings
-            </>
-          )}
-        </button>
-      </div>
-
-      {showWizard && (
-        <BlogWizard
-          onClose={() => setShowWizard(false)}
-          categories={categories}
-        />
-      )}
     </div>
   );
 }
