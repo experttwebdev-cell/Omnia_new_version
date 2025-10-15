@@ -37,7 +37,7 @@ export function SeoAltImage() {
   const fetchQuickStats = async () => {
     try {
       const { data, error: statsError } = await supabase
-        .from('quick_filter_stats_cache')
+        .from('seo_tabs_aggregate_stats')
         .select('*')
         .limit(1)
         .maybeSingle();
@@ -55,29 +55,41 @@ export function SeoAltImage() {
       setLoading(true);
       setError('');
 
-      const { data: productsData, error: productsError } = await supabase
-        .from('shopify_products')
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('alt_image_tab_cache')
         .select('*')
-        .order('imported_at', { ascending: false });
+        .order('product_imported_at', { ascending: false });
 
-      if (productsError) throw productsError;
+      if (imagesError) throw imagesError;
 
-      const productsWithImages = await Promise.all(
-        (productsData || []).map(async (product) => {
-          const { data: images } = await supabase
-            .from('product_images')
-            .select('*')
-            .eq('product_id', product.id)
-            .order('position', { ascending: true });
+      const productMap = new Map<string, ProductWithImages>();
 
-          return {
-            ...product,
-            images: images || []
-          };
-        })
-      );
+      (imagesData || []).forEach((img) => {
+        if (!productMap.has(img.product_id)) {
+          productMap.set(img.product_id, {
+            id: img.product_id,
+            title: img.product_title,
+            vendor: img.product_vendor,
+            category: img.product_category,
+            shop_name: img.shop_name,
+            imported_at: img.product_imported_at,
+            images: []
+          } as ProductWithImages);
+        }
 
-      setProducts(productsWithImages.filter((p) => p.images.length > 0));
+        const product = productMap.get(img.product_id)!;
+        product.images.push({
+          id: img.image_id,
+          product_id: img.product_id,
+          src: img.image_url,
+          position: img.image_position,
+          alt_text: img.alt_text,
+          width: img.width,
+          height: img.height
+        } as ProductImage);
+      });
+
+      setProducts(Array.from(productMap.values()));
       await fetchQuickStats();
     } catch (err) {
       console.error('Error fetching products with images:', err);
@@ -329,9 +341,9 @@ export function SeoAltImage() {
     );
   }
 
-  const totalImages = quickStats?.total_images_count || allImages.length;
-  const imagesWithAlt = quickStats?.images_with_alt_count || allImages.filter(img => img.alt_text && img.alt_text.trim() !== '').length;
-  const imagesNeedingAlt = quickStats?.images_without_alt_count || allImages.filter(img => !img.alt_text || img.alt_text.trim() === '').length;
+  const totalImages = quickStats?.total_images || allImages.length;
+  const imagesWithAlt = quickStats?.images_with_alt || allImages.filter(img => img.alt_text && img.alt_text.trim() !== '').length;
+  const imagesNeedingAlt = quickStats?.images_needing_alt || allImages.filter(img => !img.alt_text || img.alt_text.trim() === '').length;
 
   const tabs = [
     { id: 'all' as AltImageTab, label: 'Toutes les images', count: totalImages },

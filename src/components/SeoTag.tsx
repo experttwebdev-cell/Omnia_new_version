@@ -42,7 +42,7 @@ export function SeoTag() {
   const fetchQuickStats = async () => {
     try {
       const { data, error: statsError } = await supabase
-        .from('quick_filter_stats_cache')
+        .from('seo_tabs_aggregate_stats')
         .select('*')
         .limit(1)
         .maybeSingle();
@@ -61,7 +61,7 @@ export function SeoTag() {
       setError('');
 
       const { data, error: fetchError } = await supabase
-        .from('shopify_products')
+        .from('tags_tab_cache')
         .select('*')
         .order('imported_at', { ascending: false });
 
@@ -301,9 +301,9 @@ export function SeoTag() {
     );
   }
 
-  const productsWithoutTags = quickStats?.products_without_tags_count || products.filter(p => !p.tags || p.tags.trim() === '').length;
-  const productsWithTags = quickStats?.products_with_tags_count || products.filter(p => p.tags && p.tags.trim() !== '').length;
-  const productsNeedingSync = quickStats?.products_tags_pending_sync_count || products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
+  const productsWithoutTags = quickStats?.products_without_tags || products.filter(p => !p.tags || p.tags.trim() === '').length;
+  const productsWithTags = quickStats?.products_with_tags || products.filter(p => p.tags && p.tags.trim() !== '').length;
+  const productsNeedingSync = quickStats?.tags_pending_sync || products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
 
   const tabs = [
     { id: 'all' as TagTab, label: 'Tous les produits', count: products.length },

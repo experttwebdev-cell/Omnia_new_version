@@ -39,15 +39,33 @@ Deno.serve(async (req: Request) => {
 
     console.log("Starting cache refresh at", new Date().toISOString());
 
-    // Call the database function to refresh all caches
-    const { data, error } = await supabaseClient.rpc("refresh_all_caches");
+    // Refresh all legacy caches
+    const { data: legacyData, error: legacyError } = await supabaseClient.rpc("refresh_all_caches");
 
-    if (error) {
-      console.error("Error refreshing caches:", error);
+    if (legacyError) {
+      console.warn("Legacy cache refresh error:", legacyError.message);
+    } else {
+      console.log("Legacy caches refreshed");
+    }
+
+    // Refresh quick filter stats cache
+    const { error: quickStatsError } = await supabaseClient.rpc("refresh_quick_filter_stats");
+
+    if (quickStatsError) {
+      console.warn("Quick filter stats error:", quickStatsError.message);
+    } else {
+      console.log("Quick filter stats cache refreshed");
+    }
+
+    // Refresh new SEO-optimized caches
+    const { data: seoData, error: seoError } = await supabaseClient.rpc("refresh_all_seo_caches");
+
+    if (seoError) {
+      console.error("Error refreshing SEO caches:", seoError);
       return new Response(
         JSON.stringify({
           success: false,
-          error: error.message,
+          error: seoError.message,
           timestamp: new Date().toISOString(),
         }),
         {
@@ -57,19 +75,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Also refresh the quick filter stats cache
-    const { error: quickStatsError } = await supabaseClient.rpc("refresh_quick_filter_stats");
-
-    if (quickStatsError) {
-      console.error("Error refreshing quick filter stats:", quickStatsError);
-    } else {
-      console.log("Quick filter stats cache refreshed successfully");
-    }
-
     const endTime = Date.now();
     const totalDuration = endTime - startTime;
 
-    console.log("Cache refresh completed in", totalDuration, "ms");
+    console.log("All caches refreshed in", totalDuration, "ms");
 
     // Return success response with detailed information
     return new Response(
@@ -78,14 +87,17 @@ Deno.serve(async (req: Request) => {
         timestamp: new Date().toISOString(),
         duration_ms: totalDuration,
         caches_refreshed: [
-          ...(data.caches_refreshed || [
-            "fast_dashboard_cache",
-            "fast_products_list_cache",
-            "product_type_statistics_cache",
-          ]),
-          "quick_filter_stats_cache"
+          ...(legacyData?.caches_refreshed || []),
+          "quick_filter_stats_cache",
+          ...(seoData?.refreshed_views || [
+            "seo_optimization_tab_cache",
+            "alt_image_tab_cache",
+            "tags_tab_cache",
+            "opportunities_cache",
+            "seo_tabs_aggregate_stats"
+          ])
         ],
-        message: "All dashboard caches refreshed successfully",
+        message: "All dashboard and SEO caches refreshed successfully",
       }),
       {
         status: 200,

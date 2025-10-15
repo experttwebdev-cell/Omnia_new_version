@@ -49,7 +49,7 @@ export function SeoOptimization() {
   const fetchQuickStats = async () => {
     try {
       const { data, error: statsError } = await supabase
-        .from('quick_filter_stats_cache')
+        .from('seo_tabs_aggregate_stats')
         .select('*')
         .limit(1)
         .maybeSingle();
@@ -68,7 +68,7 @@ export function SeoOptimization() {
       setError('');
 
       const { data, error: fetchError } = await supabase
-        .from('fast_products_view')
+        .from('seo_optimization_tab_cache')
         .select('*')
         .order('imported_at', { ascending: false });
 
@@ -294,10 +294,10 @@ export function SeoOptimization() {
 
   const tabs = [
     { id: 'all' as QuickFilterTab, label: 'Tous', count: products.length },
-    { id: 'not-optimized' as QuickFilterTab, label: 'Non optimisés', count: quickStats?.products_not_optimized_count || 0 },
-    { id: 'optimized' as QuickFilterTab, label: 'Optimisés', count: products.filter(p => p.enrichment_status === 'enriched').length },
-    { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.products_pending_sync_count || 0 },
-    { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.products_synced_count || 0 }
+    { id: 'not-optimized' as QuickFilterTab, label: 'Non optimisés', count: quickStats?.not_optimized_count || 0 },
+    { id: 'optimized' as QuickFilterTab, label: 'Optimisés', count: quickStats?.optimized_count || 0 },
+    { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.pending_sync_count || 0 },
+    { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.synced_count || 0 }
   ];
 
   return (
