@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
+import { useNotifications, NotificationSystem } from './NotificationSystem';
 import {
   Search,
   Filter,
@@ -43,6 +44,7 @@ export function SeoOptimization() {
   const [pushingToShopify, setPushingToShopify] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [pushProgress, setPushProgress] = useState({ current: 0, total: 0 });
+  const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const ITEMS_PER_PAGE = 50;
 
@@ -180,7 +182,12 @@ export function SeoOptimization() {
       : products.filter(p => !p.seo_title && !p.seo_description);
 
     if (productsToGenerate.length === 0) {
-      alert('No products need SEO generation. All products already have SEO titles and descriptions.');
+      addNotification({
+        type: 'info',
+        title: 'No Action Needed',
+        message: 'All products already have SEO titles and descriptions',
+        duration: 3000
+      });
       return;
     }
 
@@ -241,7 +248,12 @@ export function SeoOptimization() {
     );
 
     if (productsToSync.length === 0) {
-      alert('No enriched products selected to sync');
+      addNotification({
+        type: 'info',
+        title: 'No Products Selected',
+        message: 'No enriched products selected to sync',
+        duration: 3000
+      });
       return;
     }
 
@@ -320,16 +332,21 @@ export function SeoOptimization() {
   const optimizedProducts = products.filter(p => p.enrichment_status === 'enriched' && (p.seo_title || p.seo_description)).length;
   const pendingSyncProducts = products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length;
 
+  const notEnrichedCount = quickStats?.not_optimized_count || products.filter(p => p.enrichment_status !== 'enriched').length;
+  const enrichedCount = quickStats?.optimized_count || products.filter(p => p.enrichment_status === 'enriched').length;
+
   const tabs = [
     { id: 'all' as QuickFilterTab, label: 'Tous', count: products.length },
-    { id: 'not-enriched' as QuickFilterTab, label: 'Produits non enrichis', count: quickStats?.not_optimized_count || 0 },
-    { id: 'enriched' as QuickFilterTab, label: 'Produits enrichis', count: quickStats?.optimized_count || 0 },
+    { id: 'not-enriched' as QuickFilterTab, label: 'Produits non enrichis', count: notEnrichedCount },
+    { id: 'enriched' as QuickFilterTab, label: 'Produits enrichis', count: enrichedCount },
     { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.pending_sync_count || 0 },
     { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.synced_count || 0 }
   ];
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <>
+      <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
+      <div className="space-y-6 animate-fadeIn">
       <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
         {tabs.map((tab) => (
           <button
@@ -544,8 +561,8 @@ export function SeoOptimization() {
       )}
 
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto max-w-full">
+          <table className="min-w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left">
@@ -682,5 +699,6 @@ export function SeoOptimization() {
         </div>
       )}
     </div>
+    </>
   );
 }
