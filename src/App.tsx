@@ -9,6 +9,7 @@ import { SeoTag } from './components/SeoTag';
 import { SeoOpportunities } from './components/SeoOpportunities';
 import { BlogArticles } from './components/BlogArticles';
 import { AiBlogWriter } from './components/AiBlogWriter';
+import { AiCampaigns } from './components/AiCampaigns';
 import { GoogleShopping } from './components/GoogleShopping';
 import { Settings as SettingsComponent } from './components/Settings';
 import { CacheProvider } from './lib/cache';
@@ -33,7 +34,7 @@ import {
   Settings
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -136,6 +137,7 @@ function App() {
     { id: 'seo-opportunities' as ViewType, name: t.nav.seoOpportunities, icon: Lightbulb },
     { id: 'seo-articles' as ViewType, name: t.nav.blogArticles, icon: BookOpen },
     { id: 'seo-ai-blog' as ViewType, name: t.nav.aiBlog, icon: Sparkles },
+    { id: 'seo-ai-campaigns' as ViewType, name: 'AI Campaigns', icon: Sparkles },
   ];
 
   const isSeoView = activeView.startsWith('seo-');
@@ -297,6 +299,7 @@ function App() {
           {activeView === 'seo-opportunities' && <SeoOpportunities />}
           {activeView === 'seo-articles' && <BlogArticles />}
           {activeView === 'seo-ai-blog' && <AiBlogWriter />}
+          {activeView === 'seo-ai-campaigns' && <AiCampaigns />}
           {activeView === 'settings' && <SettingsComponent />}
         </div>
       </main>
