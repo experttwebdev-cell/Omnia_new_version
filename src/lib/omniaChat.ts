@@ -185,6 +185,9 @@ export async function detectIntent(userMessage: string, history: ChatMessage[] =
 }
 
 async function extractProductAttributesWithAI(userMessage: string, history: ChatMessage[] = []): Promise<ProductAttributes> {
+  console.log('🧠 [EXTRACT] Starting attribute extraction for:', userMessage);
+  const extractStart = performance.now();
+
   try {
     // Extraction rapide avec regex pour les cas simples
     const msg = userMessage.toLowerCase();
@@ -202,6 +205,7 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
 
     // Si on a détecté un type simple, retourner directement
     if (detectedType) {
+      console.log('⚡ [EXTRACT] Quick detection found:', detectedType);
       const attributes: ProductAttributes = {
         intent: 'product_search',
         type: detectedType
@@ -212,6 +216,7 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
       for (const style of styles) {
         if (msg.includes(style)) {
           attributes.style = style;
+          console.log('✅ [EXTRACT] Detected style:', style);
           break;
         }
       }
@@ -221,6 +226,7 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
       for (const color of colors) {
         if (msg.includes(color)) {
           attributes.color = color;
+          console.log('✅ [EXTRACT] Detected color:', color);
           break;
         }
       }
@@ -230,9 +236,14 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
       for (const material of materials) {
         if (msg.includes(material)) {
           attributes.material = material;
+          console.log('✅ [EXTRACT] Detected material:', material);
           break;
         }
       }
+
+      const extractTime = performance.now() - extractStart;
+      console.log('🏁 [EXTRACT] Quick extraction completed in', extractTime.toFixed(0), 'ms');
+      console.log('📋 [EXTRACT] Final attributes:', attributes);
 
       return attributes;
     }
@@ -261,6 +272,9 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
 }
 
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
+  console.log('🔍 [SEARCH] Starting search with filters:', filters);
+  const searchStart = performance.now();
+
   let query = supabase
     .from('shopify_products')
     .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_vision_analysis, handle, shopify_id, currency, shop_name, category, sub_category, tags, length, width, height, length_unit, width_unit, height_unit, inventory_quantity')
@@ -274,6 +288,7 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   // Recherche principale par type de produit (plus large et rapide)
   if (filters.type) {
     const searchTerms = filters.type.toLowerCase().split(' ');
+    console.log('🔎 [SEARCH] Search terms:', searchTerms);
     const orConditions = [];
 
     for (const term of searchTerms) {
@@ -283,10 +298,15 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
       orConditions.push(`tags.ilike.%${term}%`);
     }
 
+    console.log('🔎 [SEARCH] OR conditions:', orConditions.length);
     query = query.or(orConditions.join(','));
   }
 
+  console.log('🗄️ [SEARCH] Querying Supabase...');
+  const dbStart = performance.now();
   const { data, error } = await query;
+  const dbTime = performance.now() - dbStart;
+  console.log('✅ [SEARCH] Database query completed in', dbTime.toFixed(0), 'ms');
 
   if (error) {
     console.error('Error searching products:', error);
@@ -294,38 +314,58 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   }
 
   let results = data || [];
+  console.log('📊 [SEARCH] Initial results:', results.length, 'products');
 
   // Filtrage secondaire côté client pour style, couleur, matériau
   if (filters.style && results.length > 0) {
+    console.log('🎨 [SEARCH] Applying style filter:', filters.style);
     const styleFiltered = results.filter(p =>
       p.style?.toLowerCase().includes(filters.style!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.style!.toLowerCase())
     );
-    if (styleFiltered.length > 0) results = styleFiltered;
+    if (styleFiltered.length > 0) {
+      console.log('✅ [SEARCH] Style filtered:', styleFiltered.length, 'products');
+      results = styleFiltered;
+    }
   }
 
   if (filters.color && results.length > 0) {
+    console.log('🌈 [SEARCH] Applying color filter:', filters.color);
     const colorFiltered = results.filter(p =>
       p.color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
       p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
     );
-    if (colorFiltered.length > 0) results = colorFiltered;
+    if (colorFiltered.length > 0) {
+      console.log('✅ [SEARCH] Color filtered:', colorFiltered.length, 'products');
+      results = colorFiltered;
+    }
   }
 
   if (filters.material && results.length > 0) {
+    console.log('🪵 [SEARCH] Applying material filter:', filters.material);
     const materialFiltered = results.filter(p =>
       p.material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
     );
-    if (materialFiltered.length > 0) results = materialFiltered;
+    if (materialFiltered.length > 0) {
+      console.log('✅ [SEARCH] Material filtered:', materialFiltered.length, 'products');
+      results = materialFiltered;
+    }
   }
 
-  return results.slice(0, 8);
+  const finalResults = results.slice(0, 8);
+  const searchTime = performance.now() - searchStart;
+  console.log('🏁 [SEARCH] Returning', finalResults.length, 'products in', searchTime.toFixed(0), 'ms');
+
+  return finalResults;
 }
 
 async function generateSmartProductPresentation(products: Product[], userMessage: string, filters: ProductAttributes): Promise<string> {
+  console.log('🎨 [PRESENTATION] Starting with', products.length, 'products');
+  const startTime = performance.now();
+
   if (products.length === 0) {
     const filterDesc = [];
     if (filters.type) filterDesc.push(`${filters.type}s`);
@@ -336,35 +376,80 @@ async function generateSmartProductPresentation(products: Product[], userMessage
     return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Par exemple :\n- Quel style préférez-vous ? (scandinave, moderne, industriel...)\n- Quelle pièce souhaitez-vous aménager ?\n- Avez-vous des préférences de couleur ou matériau ?`;
   }
 
-  // Génération rapide sans IA pour la présentation
-  const intro = products.length === 1
-    ? `Voici ce que j'ai trouvé pour vous :`
-    : `J'ai trouvé ${products.length} ${filters.type || 'produits'} qui pourraient vous intéresser :`;
+  // Construire les données enrichies pour l'IA
+  const productsData = products.map((p, idx) => {
+    const hasPromo = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
+    const discount = hasPromo ? Math.round((1 - Number(p.price) / Number(p.compare_at_price!)) * 100) : 0;
 
-  // Détection des promotions
-  const promos = products.filter(p => p.compare_at_price && Number(p.compare_at_price) > Number(p.price));
-  let promoText = '';
-  if (promos.length > 0) {
-    const bestPromo = promos.reduce((best, current) => {
-      const currentDiscount = Math.round((1 - Number(current.price) / Number(current.compare_at_price!)) * 100);
-      const bestDiscount = Math.round((1 - Number(best.price) / Number(best.compare_at_price!)) * 100);
-      return currentDiscount > bestDiscount ? current : best;
-    });
-    const discount = Math.round((1 - Number(bestPromo.price) / Number(bestPromo.compare_at_price!)) * 100);
-    promoText = `\n\n✨ Bonne nouvelle ! ${promos.length} article${promos.length > 1 ? 's sont' : ' est'} en promotion jusqu'à -${discount}% !`;
+    const dimensions = [];
+    if (p.width) dimensions.push(`L${p.width}${p.width_unit || 'cm'}`);
+    if (p.height) dimensions.push(`H${p.height}${p.height_unit || 'cm'}`);
+    if (p.length) dimensions.push(`P${p.length}${p.length_unit || 'cm'}`);
+
+    return {
+      index: idx + 1,
+      titre: p.title,
+      prix: `${p.price}${p.currency || '€'}`,
+      prix_barre: hasPromo ? `${p.compare_at_price}${p.currency || '€'}` : null,
+      reduction: hasPromo ? `${discount}%` : null,
+      categorie: p.category,
+      sous_categorie: p.sub_category,
+      style: p.style,
+      couleur: p.ai_color || p.color,
+      materiau: p.ai_material || p.material,
+      piece: p.room,
+      dimensions: dimensions.join(' x '),
+      description: p.description?.replace(/<[^>]*>/g, '').substring(0, 200),
+      tags: p.tags,
+      stock: p.inventory_quantity || 'Disponible'
+    };
+  });
+
+  console.log('📦 [PRESENTATION] Product data prepared:', productsData.length, 'items');
+
+  const systemPrompt = `Tu es OmnIA, expert conseil en ameublement et décoration.
+Analyse la demande du client et présente les produits de manière personnalisée et engageante.
+
+Règles importantes:
+- Réponds en français naturel et chaleureux
+- Mets en avant les caractéristiques qui correspondent à la demande du client
+- Mentionne les promotions s'il y en a (prix barré, réduction)
+- Cite les dimensions si pertinent
+- Sois concis mais informatif (maximum 150 mots)
+- Termine par une question ouverte pour continuer la conversation
+- N'invente rien, utilise uniquement les données fournies`;
+
+  const userPrompt = `Demande client: "${userMessage}"
+
+Produits trouvés:
+${JSON.stringify(productsData, null, 2)}
+
+Présente ces produits au client de manière engageante.`;
+
+  try {
+    console.log('🤖 [PRESENTATION] Calling DeepSeek for presentation...');
+    const deepseekStart = performance.now();
+
+    const response = await callDeepSeek([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], 300);
+
+    const deepseekTime = performance.now() - deepseekStart;
+    console.log('✅ [PRESENTATION] DeepSeek response received in', deepseekTime.toFixed(0), 'ms');
+    console.log('📝 [PRESENTATION] Response:', response);
+
+    const totalTime = performance.now() - startTime;
+    console.log('🏁 [PRESENTATION] Total time:', totalTime.toFixed(0), 'ms');
+
+    return response;
+  } catch (error) {
+    console.error('❌ [PRESENTATION] Error generating smart presentation:', error);
+    const intro = products.length === 1
+      ? `J'ai trouvé ce produit qui pourrait vous intéresser :`
+      : `J'ai trouvé ${products.length} produits correspondants :`;
+    return `${intro}\n\nSouhaitez-vous plus de détails ? 😊`;
   }
-
-  // Mise en avant des caractéristiques pertinentes
-  const features = [];
-  if (filters.style) features.push(`style ${filters.style}`);
-  if (filters.color) features.push(`couleur ${filters.color}`);
-  if (filters.material) features.push(`en ${filters.material}`);
-
-  const featureText = features.length > 0
-    ? `\n\nCaractéristiques : ${features.join(', ')}`
-    : '';
-
-  return `${intro}${promoText}${featureText}\n\nVous pouvez cliquer sur les produits ci-dessous pour plus de détails. Besoin d'aide pour choisir ? 😊`;
 }
 
 export async function processOmniaMessage(userMessage: string, history: ChatMessage[] = [], storeId?: string) {
@@ -373,7 +458,14 @@ export async function processOmniaMessage(userMessage: string, history: ChatMess
 
 
 export async function OmnIAChat(userMessage: string, history: ChatMessage[] = [], storeId?: string, settings?: ChatSettings) {
+  console.log('🚀 [OMNIA] Starting OmnIAChat for message:', userMessage);
+  const totalStart = performance.now();
+
+  console.log('🎯 [OMNIA] Step 1: Detecting intent...');
+  const intentStart = performance.now();
   const intentName = await detectIntent(userMessage, history);
+  const intentTime = performance.now() - intentStart;
+  console.log('✅ [OMNIA] Intent detected:', intentName, 'in', intentTime.toFixed(0), 'ms');
 
   if (intentName === 'ChatIntent') {
     const chatPrompt = buildChatIntent(settings);
@@ -398,7 +490,11 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
   }
 
   if (intentName === 'ProductSearchIntent') {
+    console.log('🔍 [OMNIA] Step 2: Extracting product attributes...');
+    const extractStart = performance.now();
     const attributes = await extractProductAttributesWithAI(userMessage, history);
+    const extractTime = performance.now() - extractStart;
+    console.log('✅ [OMNIA] Attributes extracted in', extractTime.toFixed(0), 'ms:', attributes);
 
     // Si la demande est trop vague, qualifier intelligemment
     if (attributes.intent === 'need_qualification' || !attributes.type) {
@@ -421,8 +517,17 @@ export async function OmnIAChat(userMessage: string, history: ChatMessage[] = []
     }
 
     // Sinon, lancer la recherche
+    console.log('📦 [OMNIA] Step 3: Searching products...');
+    const searchStart = performance.now();
     const products = await searchProducts(attributes, storeId);
+    const searchTime = performance.now() - searchStart;
+    console.log('✅ [OMNIA] Found', products.length, 'products in', searchTime.toFixed(0), 'ms');
+
+    console.log('💬 [OMNIA] Step 4: Generating presentation...');
     const presentation = await generateSmartProductPresentation(products, userMessage, attributes);
+
+    const totalTime = performance.now() - totalStart;
+    console.log('🏁 [OMNIA] Total OmnIAChat time:', totalTime.toFixed(0), 'ms');
 
     return {
       role: 'assistant' as const,
