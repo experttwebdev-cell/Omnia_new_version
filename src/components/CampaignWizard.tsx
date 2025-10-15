@@ -11,7 +11,10 @@ import {
   Settings,
   FileText,
   CheckCircle,
-  Loader2
+  Loader2,
+  Plus,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 
 interface CampaignWizardProps {
@@ -24,13 +27,15 @@ interface CampaignData {
   topic_niche: string;
   target_audience: string;
   frequency: 'daily' | 'weekly' | 'bi-weekly' | 'monthly';
+  schedule_time: string;
+  schedule_day: number;
   start_date: string;
   end_date: string;
   word_count_min: number;
   word_count_max: number;
   writing_style: 'professional' | 'casual' | 'technical' | 'conversational';
   tone: 'formal' | 'informal' | 'friendly' | 'authoritative';
-  keywords: string;
+  keywords: string[];
   content_structure: string;
   internal_linking_enabled: boolean;
   max_internal_links: number;
@@ -41,23 +46,31 @@ interface CampaignData {
   language: string;
 }
 
+interface ValidationErrors {
+  [key: string]: string;
+}
+
 export function CampaignWizard({ onClose }: CampaignWizardProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [keywordInput, setKeywordInput] = useState('');
   const [campaignData, setCampaignData] = useState<CampaignData>({
     name: '',
     description: '',
     topic_niche: '',
     target_audience: '',
     frequency: 'weekly',
+    schedule_time: '09:00',
+    schedule_day: 1,
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
-    word_count_min: 700,
-    word_count_max: 900,
+    word_count_min: 1500,
+    word_count_max: 2000,
     writing_style: 'professional',
     tone: 'formal',
-    keywords: '',
+    keywords: [],
     content_structure: '',
     internal_linking_enabled: true,
     max_internal_links: 5,
@@ -70,20 +83,99 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
   const totalSteps = 4;
 
+  const validateStep = (stepNumber: number): boolean => {
+    const errors: ValidationErrors = {};
+
+    if (stepNumber === 1) {
+      if (!campaignData.name.trim()) {
+        errors.name = 'Campaign name is required';
+      }
+      if (!campaignData.topic_niche.trim()) {
+        errors.topic_niche = 'Content topic/niche is required';
+      }
+      if (!campaignData.start_date) {
+        errors.start_date = 'Start date is required';
+      }
+    }
+
+    if (stepNumber === 3) {
+      if (campaignData.word_count_min < 300) {
+        errors.word_count_min = 'Minimum word count must be at least 300';
+      }
+      if (campaignData.word_count_max < campaignData.word_count_min) {
+        errors.word_count_max = 'Maximum must be greater than minimum';
+      }
+      if (campaignData.keywords.length === 0) {
+        errors.keywords = 'At least one keyword is required';
+      }
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleNext = () => {
-    if (step < totalSteps) {
-      setStep(step + 1);
+    if (validateStep(step)) {
+      if (step < totalSteps) {
+        setStep(step + 1);
+        setValidationErrors({});
+      }
     }
   };
 
   const handlePrevious = () => {
     if (step > 1) {
       setStep(step - 1);
+      setValidationErrors({});
     }
   };
 
-  const calculateNextExecution = (startDate: string, frequency: string): string => {
+  const addKeyword = () => {
+    const trimmedKeyword = keywordInput.trim();
+    if (trimmedKeyword && !campaignData.keywords.includes(trimmedKeyword)) {
+      setCampaignData({
+        ...campaignData,
+        keywords: [...campaignData.keywords, trimmedKeyword]
+      });
+      setKeywordInput('');
+    }
+  };
+
+  const removeKeyword = (keyword: string) => {
+    setCampaignData({
+      ...campaignData,
+      keywords: campaignData.keywords.filter(k => k !== keyword)
+    });
+  };
+
+  const handleKeywordInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addKeyword();
+    }
+  };
+
+  const calculateNextExecution = (startDate: string, frequency: string, scheduleTime: string, scheduleDay: number): string => {
+    const [hours, minutes] = scheduleTime.split(':').map(Number);
     const start = new Date(startDate);
+    start.setHours(hours, minutes, 0, 0);
+
+    switch (frequency) {
+      case 'weekly':
+        while (start.getDay() !== scheduleDay) {
+          start.setDate(start.getDate() + 1);
+        }
+        break;
+      case 'bi-weekly':
+        while (start.getDay() !== scheduleDay) {
+          start.setDate(start.getDate() + 1);
+        }
+        break;
+      case 'monthly':
+        start.setDate(scheduleDay);
+        break;
+    }
+
     return start.toISOString();
   };
 
@@ -92,21 +184,27 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       setLoading(true);
       setError('');
 
+      if (!validateStep(1) || !validateStep(3)) {
+        setError('Please fill in all required fields');
+        setLoading(false);
+        return;
+      }
+
       const { data: stores } = await supabase
         .from('shopify_stores')
         .select('id')
         .limit(1);
 
       if (!stores || stores.length === 0) {
-        throw new Error('No store found');
+        throw new Error('No store found. Please configure your store first.');
       }
 
-      const keywordsArray = campaignData.keywords
-        .split(',')
-        .map(k => k.trim())
-        .filter(Boolean);
-
-      const nextExecution = calculateNextExecution(campaignData.start_date, campaignData.frequency);
+      const nextExecution = calculateNextExecution(
+        campaignData.start_date,
+        campaignData.frequency,
+        campaignData.schedule_time,
+        campaignData.schedule_day
+      );
 
       const { error: insertError } = await supabase
         .from('blog_campaigns')
@@ -124,7 +222,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
           word_count_max: campaignData.word_count_max,
           writing_style: campaignData.writing_style,
           tone: campaignData.tone,
-          keywords: keywordsArray,
+          keywords: campaignData.keywords,
           content_structure: campaignData.content_structure,
           internal_linking_enabled: campaignData.internal_linking_enabled,
           max_internal_links: campaignData.max_internal_links,
@@ -136,12 +234,15 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
           next_execution: nextExecution
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw new Error(`Failed to create campaign: ${insertError.message}`);
+      }
 
       onClose();
     } catch (err) {
       console.error('Error creating campaign:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create campaign');
+      setError(err instanceof Error ? err.message : 'Failed to create campaign. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -183,15 +284,23 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Campaign Name *
+          Campaign Name <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
           value={campaignData.name}
           onChange={(e) => setCampaignData({ ...campaignData, name: e.target.value })}
           placeholder="e.g., Spring Furniture Collection 2025"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+            validationErrors.name ? 'border-red-500' : 'border-gray-300'
+          }`}
         />
+        {validationErrors.name && (
+          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+            <AlertCircle className="w-4 h-4" />
+            {validationErrors.name}
+          </p>
+        )}
       </div>
 
       <div>
@@ -209,15 +318,23 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Content Topic/Niche *
+          Content Topic/Niche <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
           value={campaignData.topic_niche}
           onChange={(e) => setCampaignData({ ...campaignData, topic_niche: e.target.value })}
           placeholder="e.g., Modern Furniture Design, Home Decor Tips"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+            validationErrors.topic_niche ? 'border-red-500' : 'border-gray-300'
+          }`}
         />
+        {validationErrors.topic_niche && (
+          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+            <AlertCircle className="w-4 h-4" />
+            {validationErrors.topic_niche}
+          </p>
+        )}
       </div>
 
       <div>
@@ -233,10 +350,10 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Frequency *
+            Frequency <span className="text-red-600">*</span>
           </label>
           <select
             value={campaignData.frequency}
@@ -252,14 +369,74 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Start Date *
+            Schedule Time <span className="text-red-600">*</span>
+          </label>
+          <input
+            type="time"
+            value={campaignData.schedule_time}
+            onChange={(e) => setCampaignData({ ...campaignData, schedule_time: e.target.value })}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+      </div>
+
+      {(campaignData.frequency === 'weekly' || campaignData.frequency === 'bi-weekly') && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Day of Week <span className="text-red-600">*</span>
+          </label>
+          <select
+            value={campaignData.schedule_day}
+            onChange={(e) => setCampaignData({ ...campaignData, schedule_day: parseInt(e.target.value) })}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value={1}>Monday</option>
+            <option value={2}>Tuesday</option>
+            <option value={3}>Wednesday</option>
+            <option value={4}>Thursday</option>
+            <option value={5}>Friday</option>
+            <option value={6}>Saturday</option>
+            <option value={0}>Sunday</option>
+          </select>
+        </div>
+      )}
+
+      {campaignData.frequency === 'monthly' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Day of Month <span className="text-red-600">*</span>
+          </label>
+          <select
+            value={campaignData.schedule_day}
+            onChange={(e) => setCampaignData({ ...campaignData, schedule_day: parseInt(e.target.value) })}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            {Array.from({ length: 28 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>{i + 1}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Start Date <span className="text-red-600">*</span>
           </label>
           <input
             type="date"
             value={campaignData.start_date}
             onChange={(e) => setCampaignData({ ...campaignData, start_date: e.target.value })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+              validationErrors.start_date ? 'border-red-500' : 'border-gray-300'
+            }`}
           />
+          {validationErrors.start_date && (
+            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {validationErrors.start_date}
+            </p>
+          )}
         </div>
 
         <div>
@@ -390,34 +567,50 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Min Word Count *
+            Min Word Count <span className="text-red-600">*</span>
           </label>
           <input
             type="number"
             value={campaignData.word_count_min}
             onChange={(e) => setCampaignData({ ...campaignData, word_count_min: parseInt(e.target.value) })}
             min="300"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+              validationErrors.word_count_min ? 'border-red-500' : 'border-gray-300'
+            }`}
           />
+          {validationErrors.word_count_min && (
+            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {validationErrors.word_count_min}
+            </p>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Max Word Count *
+            Max Word Count <span className="text-red-600">*</span>
           </label>
           <input
             type="number"
             value={campaignData.word_count_max}
             onChange={(e) => setCampaignData({ ...campaignData, word_count_max: parseInt(e.target.value) })}
             min="300"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+              validationErrors.word_count_max ? 'border-red-500' : 'border-gray-300'
+            }`}
           />
+          {validationErrors.word_count_max && (
+            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" />
+              {validationErrors.word_count_max}
+            </p>
+          )}
         </div>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Writing Style *
+          Writing Style <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.writing_style}
@@ -433,7 +626,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tone *
+          Tone <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.tone}
@@ -449,15 +642,51 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Target Keywords (comma-separated) *
+          Target Keywords <span className="text-red-600">*</span>
         </label>
-        <input
-          type="text"
-          value={campaignData.keywords}
-          onChange={(e) => setCampaignData({ ...campaignData, keywords: e.target.value })}
-          placeholder="e.g., modern furniture, home decor, interior design"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+        <div className="flex gap-2 mb-2">
+          <input
+            type="text"
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
+            onKeyPress={handleKeywordInputKeyPress}
+            placeholder="Add a keyword and press Enter"
+            className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+              validationErrors.keywords ? 'border-red-500' : 'border-gray-300'
+            }`}
+          />
+          <button
+            onClick={addKeyword}
+            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add
+          </button>
+        </div>
+        {validationErrors.keywords && (
+          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+            <AlertCircle className="w-4 h-4" />
+            {validationErrors.keywords}
+          </p>
+        )}
+        {campaignData.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {campaignData.keywords.map((keyword, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+              >
+                {keyword}
+                <button
+                  onClick={() => removeKeyword(keyword)}
+                  className="hover:bg-blue-200 rounded-full p-0.5 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -475,7 +704,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Language *
+          Language <span className="text-red-600">*</span>
         </label>
         <select
           value={campaignData.language}
@@ -504,7 +733,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
           <div className="space-y-1 text-sm">
             <p><span className="font-medium">Name:</span> {campaignData.name}</p>
             <p><span className="font-medium">Topic:</span> {campaignData.topic_niche}</p>
-            <p><span className="font-medium">Frequency:</span> {campaignData.frequency}</p>
+            <p><span className="font-medium">Frequency:</span> {campaignData.frequency} at {campaignData.schedule_time}</p>
             <p><span className="font-medium">Start Date:</span> {campaignData.start_date}</p>
           </div>
         </div>
@@ -515,7 +744,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
             <p><span className="font-medium">Word Count:</span> {campaignData.word_count_min} - {campaignData.word_count_max}</p>
             <p><span className="font-medium">Style:</span> {campaignData.writing_style}</p>
             <p><span className="font-medium">Tone:</span> {campaignData.tone}</p>
-            <p><span className="font-medium">Keywords:</span> {campaignData.keywords}</p>
+            <p><span className="font-medium">Keywords:</span> {campaignData.keywords.join(', ')}</p>
           </div>
         </div>
 
@@ -533,7 +762,7 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>Ready to launch!</strong> Your campaign will start generating content on {campaignData.start_date}.
+          <strong>Ready to launch!</strong> Your campaign will start generating content on {campaignData.start_date} at {campaignData.schedule_time}.
           The first article will be created automatically based on your settings.
         </p>
       </div>
@@ -560,7 +789,8 @@ export function CampaignWizard({ onClose }: CampaignWizardProps) {
           {renderStepIndicator()}
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
