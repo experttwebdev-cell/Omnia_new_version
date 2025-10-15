@@ -57,6 +57,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Also refresh the quick filter stats cache
+    const { error: quickStatsError } = await supabaseClient.rpc("refresh_quick_filter_stats");
+
+    if (quickStatsError) {
+      console.error("Error refreshing quick filter stats:", quickStatsError);
+    } else {
+      console.log("Quick filter stats cache refreshed successfully");
+    }
+
     const endTime = Date.now();
     const totalDuration = endTime - startTime;
 
@@ -68,10 +77,13 @@ Deno.serve(async (req: Request) => {
         success: true,
         timestamp: new Date().toISOString(),
         duration_ms: totalDuration,
-        caches_refreshed: data.caches_refreshed || [
-          "fast_dashboard_cache",
-          "fast_products_list_cache",
-          "product_type_statistics_cache",
+        caches_refreshed: [
+          ...(data.caches_refreshed || [
+            "fast_dashboard_cache",
+            "fast_products_list_cache",
+            "product_type_statistics_cache",
+          ]),
+          "quick_filter_stats_cache"
         ],
         message: "All dashboard caches refreshed successfully",
       }),

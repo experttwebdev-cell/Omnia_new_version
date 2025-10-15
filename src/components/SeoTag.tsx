@@ -18,12 +18,16 @@ import { useNotifications, NotificationSystem } from './NotificationSystem';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
+type TagTab = 'all' | 'without-tags' | 'with-tags' | 'to-sync';
+
 export function SeoTag() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<TagTab>('all');
+  const [quickStats, setQuickStats] = useState<any>(null);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentItem: '' });
@@ -34,6 +38,22 @@ export function SeoTag() {
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const ITEMS_PER_PAGE = 50;
+
+  const fetchQuickStats = async () => {
+    try {
+      const { data, error: statsError } = await supabase
+        .from('quick_filter_stats_cache')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!statsError && data) {
+        setQuickStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching quick stats:', err);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -47,6 +67,7 @@ export function SeoTag() {
 
       if (fetchError) throw fetchError;
       setProducts(data || []);
+      await fetchQuickStats();
     } catch (err) {
       console.error('Error fetching products:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -60,8 +81,13 @@ export function SeoTag() {
   }, []);
 
   const filteredProducts = products.filter((product) => {
-    if (!searchTerm) return true;
-    return product.title.toLowerCase().includes(searchTerm.toLowerCase());
+    if (searchTerm && !product.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+    if (activeTab === 'without-tags' && product.tags && product.tags.trim() !== '') return false;
+    if (activeTab === 'with-tags' && (!product.tags || product.tags.trim() === '')) return false;
+    if (activeTab === 'to-sync' && (!product.tags || product.tags.trim() === '' || product.seo_synced_to_shopify)) return false;
+
+    return true;
   });
 
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
@@ -275,8 +301,16 @@ export function SeoTag() {
     );
   }
 
-  const productsWithoutTags = products.filter(p => !p.tags || p.tags.trim() === '').length;
-  const productsNeedingSync = products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
+  const productsWithoutTags = quickStats?.products_without_tags_count || products.filter(p => !p.tags || p.tags.trim() === '').length;
+  const productsWithTags = quickStats?.products_with_tags_count || products.filter(p => p.tags && p.tags.trim() !== '').length;
+  const productsNeedingSync = quickStats?.products_tags_pending_sync_count || products.filter(p => p.tags && !p.seo_synced_to_shopify).length;
+
+  const tabs = [
+    { id: 'all' as TagTab, label: 'Tous les produits', count: products.length },
+    { id: 'without-tags' as TagTab, label: 'Sans tags', count: productsWithoutTags },
+    { id: 'with-tags' as TagTab, label: 'Avec tags', count: productsWithTags },
+    { id: 'to-sync' as TagTab, label: 'À synchroniser', count: productsNeedingSync }
+  ];
 
   return (
     <>
@@ -324,6 +358,32 @@ export function SeoTag() {
       />
 
       <div className="space-y-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {tab.label}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                activeTab === tab.id
+                  ? 'bg-white bg-opacity-20 text-white'
+                  : 'bg-gray-200 text-gray-700'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 w-full sm:w-auto">
           <div className="relative">

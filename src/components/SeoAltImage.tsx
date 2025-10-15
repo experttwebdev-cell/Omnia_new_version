@@ -13,12 +13,16 @@ interface ProductWithImages extends Product {
   images: ProductImage[];
 }
 
+type AltImageTab = 'all' | 'needs-alt' | 'has-alt' | 'to-sync';
+
 export function SeoAltImage() {
   const [products, setProducts] = useState<ProductWithImages[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<AltImageTab>('all');
+  const [quickStats, setQuickStats] = useState<any>(null);
   const [generatingSelected, setGeneratingSelected] = useState(false);
   const [syncingSelected, setSyncingSelected] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentItem: '' });
@@ -29,6 +33,22 @@ export function SeoAltImage() {
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const IMAGES_PER_PAGE = 50;
+
+  const fetchQuickStats = async () => {
+    try {
+      const { data, error: statsError } = await supabase
+        .from('quick_filter_stats_cache')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!statsError && data) {
+        setQuickStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching quick stats:', err);
+    }
+  };
 
   const fetchProductsWithImages = async () => {
     try {
@@ -58,6 +78,7 @@ export function SeoAltImage() {
       );
 
       setProducts(productsWithImages.filter((p) => p.images.length > 0));
+      await fetchQuickStats();
     } catch (err) {
       console.error('Error fetching products with images:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -75,13 +96,21 @@ export function SeoAltImage() {
     return product.title.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const allImages = filteredProducts.flatMap(p =>
+  let allImages = filteredProducts.flatMap(p =>
     p.images.map(img => ({
       ...img,
       productTitle: p.title,
       productId: p.id
     }))
   );
+
+  if (activeTab === 'needs-alt') {
+    allImages = allImages.filter(img => !img.alt_text || img.alt_text.trim() === '');
+  } else if (activeTab === 'has-alt') {
+    allImages = allImages.filter(img => img.alt_text && img.alt_text.trim() !== '');
+  } else if (activeTab === 'to-sync') {
+    allImages = allImages.filter(img => img.alt_text && img.alt_text.trim() !== '');
+  }
 
   const totalPages = Math.ceil(allImages.length / IMAGES_PER_PAGE);
   const startIndex = (currentPage - 1) * IMAGES_PER_PAGE;
@@ -300,14 +329,48 @@ export function SeoAltImage() {
     );
   }
 
-  const imagesWithAlt = allImages.filter(img => img.alt_text && img.alt_text.trim() !== '').length;
-  const imagesNeedingAlt = allImages.filter(img => !img.alt_text || img.alt_text.trim() === '').length;
+  const totalImages = quickStats?.total_images_count || allImages.length;
+  const imagesWithAlt = quickStats?.images_with_alt_count || allImages.filter(img => img.alt_text && img.alt_text.trim() !== '').length;
+  const imagesNeedingAlt = quickStats?.images_without_alt_count || allImages.filter(img => !img.alt_text || img.alt_text.trim() === '').length;
+
+  const tabs = [
+    { id: 'all' as AltImageTab, label: 'Toutes les images', count: totalImages },
+    { id: 'needs-alt' as AltImageTab, label: 'Sans ALT text', count: imagesNeedingAlt },
+    { id: 'has-alt' as AltImageTab, label: 'Avec ALT text', count: imagesWithAlt },
+    { id: 'to-sync' as AltImageTab, label: 'À synchroniser', count: imagesWithAlt }
+  ];
 
   return (
     <>
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
 
       <div className="animate-fadeIn">
+      <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setCurrentPage(1);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {tab.label}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === tab.id
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'bg-gray-200 text-gray-700'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">

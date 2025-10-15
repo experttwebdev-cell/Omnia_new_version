@@ -21,12 +21,16 @@ import type { Database } from '../lib/database.types';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
+type QuickFilterTab = 'all' | 'not-optimized' | 'optimized' | 'pending-sync' | 'synced';
+
 export function SeoOptimization() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<QuickFilterTab>('all');
+  const [quickStats, setQuickStats] = useState<any>(null);
   const [filters, setFilters] = useState({
     search: '',
     category: 'all',
@@ -41,6 +45,22 @@ export function SeoOptimization() {
   const [pushProgress, setPushProgress] = useState({ current: 0, total: 0 });
 
   const ITEMS_PER_PAGE = 50;
+
+  const fetchQuickStats = async () => {
+    try {
+      const { data, error: statsError } = await supabase
+        .from('quick_filter_stats_cache')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (!statsError && data) {
+        setQuickStats(data);
+      }
+    } catch (err) {
+      console.error('Error fetching quick stats:', err);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -61,6 +81,8 @@ export function SeoOptimization() {
 
       setCategories(uniqueCategories as string[]);
       setSubCategories(uniqueSubCategories as string[]);
+
+      await fetchQuickStats();
     } catch (err) {
       console.error('Error fetching products:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -105,6 +127,12 @@ export function SeoOptimization() {
     if (filters.syncStatus === 'synced' && !product.seo_synced_to_shopify) return false;
     if (filters.syncStatus === 'pending' && (product.seo_synced_to_shopify || product.enrichment_status !== 'enriched')) return false;
     if (filters.syncStatus === 'not-enriched' && product.enrichment_status === 'enriched') return false;
+
+    if (activeTab === 'not-optimized' && (product.seo_title || product.seo_description)) return false;
+    if (activeTab === 'optimized' && product.enrichment_status !== 'enriched') return false;
+    if (activeTab === 'pending-sync' && (product.enrichment_status !== 'enriched' || product.seo_synced_to_shopify)) return false;
+    if (activeTab === 'synced' && !product.seo_synced_to_shopify) return false;
+
     return true;
   });
 
@@ -264,8 +292,42 @@ export function SeoOptimization() {
   const optimizedProducts = products.filter(p => p.enrichment_status === 'enriched' && (p.seo_title || p.seo_description)).length;
   const pendingSyncProducts = products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length;
 
+  const tabs = [
+    { id: 'all' as QuickFilterTab, label: 'Tous', count: products.length },
+    { id: 'not-optimized' as QuickFilterTab, label: 'Non optimisés', count: quickStats?.products_not_optimized_count || 0 },
+    { id: 'optimized' as QuickFilterTab, label: 'Optimisés', count: products.filter(p => p.enrichment_status === 'enriched').length },
+    { id: 'pending-sync' as QuickFilterTab, label: 'À synchroniser', count: quickStats?.products_pending_sync_count || 0 },
+    { id: 'synced' as QuickFilterTab, label: 'Synchronisés', count: quickStats?.products_synced_count || 0 }
+  ];
+
   return (
     <div className="space-y-6 animate-fadeIn">
+      <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setCurrentPage(1);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {tab.label}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === tab.id
+                ? 'bg-white bg-opacity-20 text-white'
+                : 'bg-gray-200 text-gray-700'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition cursor-pointer"
              onClick={() => setFilters({ ...filters, enrichmentStatus: 'all', syncStatus: 'all' })}>
