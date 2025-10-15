@@ -211,13 +211,32 @@ export function AiChat() {
                   <div className="flex-1">
                     <h4 className="font-bold text-gray-900 mb-2 text-lg">{message.selectedProduct.title}</h4>
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">{message.selectedProduct.description}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-blue-600">
-                        {formatPrice(Number(message.selectedProduct.price), message.selectedProduct.currency || 'EUR')}
-                      </span>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition shadow-md">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        {message.selectedProduct.compare_at_price && Number(message.selectedProduct.compare_at_price) > Number(message.selectedProduct.price) && (
+                          <span className="text-lg text-gray-400 line-through">
+                            {formatPrice(Number(message.selectedProduct.compare_at_price), message.selectedProduct.currency || 'EUR')}
+                          </span>
+                        )}
+                        <span className="text-2xl font-bold text-blue-600">
+                          {formatPrice(Number(message.selectedProduct.price), message.selectedProduct.currency || 'EUR')}
+                        </span>
+                        {message.selectedProduct.compare_at_price && Number(message.selectedProduct.compare_at_price) > Number(message.selectedProduct.price) && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                            -{Math.round((1 - Number(message.selectedProduct.price) / Number(message.selectedProduct.compare_at_price)) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (message.selectedProduct.shop_name && message.selectedProduct.handle) {
+                            window.open(`https://${message.selectedProduct.shop_name}/products/${message.selectedProduct.handle}`, '_blank');
+                          }
+                        }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition shadow-md font-medium"
+                      >
                         <ShoppingCart className="w-4 h-4" />
-                        Ajouter au panier
+                        Acheter sur Shopify
                       </button>
                     </div>
                   </div>
@@ -253,7 +272,19 @@ export function AiChat() {
                     </div>
                     <div className="p-3">
                       <h5 className="font-semibold text-gray-900 mb-2 text-sm line-clamp-2">{product.title}</h5>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-col gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          {product.compare_at_price && Number(product.compare_at_price) > Number(product.price) && (
+                            <>
+                              <span className="text-sm text-gray-400 line-through">
+                                {formatPrice(Number(product.compare_at_price), product.currency || 'EUR')}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded">
+                                -{Math.round((1 - Number(product.price) / Number(product.compare_at_price)) * 100)}%
+                              </span>
+                            </>
+                          )}
+                        </div>
                         <span className="text-lg font-bold text-blue-600">
                           {formatPrice(Number(product.price), product.currency || 'EUR')}
                         </span>
@@ -266,9 +297,16 @@ export function AiChat() {
                           <Eye className="w-3 h-3" />
                           Voir
                         </button>
-                        <button className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition text-xs font-medium">
+                        <button
+                          onClick={() => {
+                            if (product.shop_name && product.handle) {
+                              window.open(`https://${product.shop_name}/products/${product.handle}`, '_blank');
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition text-xs font-medium"
+                        >
                           <ShoppingCart className="w-3 h-3" />
-                          Panier
+                          Acheter
                         </button>
                       </div>
                     </div>

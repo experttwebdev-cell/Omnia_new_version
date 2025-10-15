@@ -19,14 +19,22 @@ interface Product {
   id: string;
   title: string;
   price: string;
+  compare_at_price?: string;
   style?: string;
   material?: string;
   color?: string;
+  ai_color?: string;
+  ai_material?: string;
   room?: string;
   image_url?: string;
   product_type?: string;
   description?: string;
   ai_enhanced_description?: string;
+  ai_vision_analysis?: string;
+  handle?: string;
+  shopify_id?: string;
+  currency?: string;
+  shop_name?: string;
 }
 
 const intents = {
@@ -186,7 +194,7 @@ function extractProductAttributesSimple(userMessage: string): ProductAttributes 
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
   let query = supabase
     .from('shopify_products')
-    .select('id, title, price, style, material, color, room, image_url, product_type, description, ai_enhanced_description')
+    .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_enhanced_description, ai_vision_analysis, handle, shopify_id, currency, shop_name')
     .eq('status', 'active')
     .limit(8);
 
@@ -203,11 +211,11 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   }
 
   if (filters.color) {
-    query = query.or(`color.ilike.%${filters.color}%,tags.ilike.%${filters.color}%`);
+    query = query.or(`color.ilike.%${filters.color}%,ai_color.ilike.%${filters.color}%,tags.ilike.%${filters.color}%`);
   }
 
   if (filters.material) {
-    query = query.or(`material.ilike.%${filters.material}%,tags.ilike.%${filters.material}%`);
+    query = query.or(`material.ilike.%${filters.material}%,ai_material.ilike.%${filters.material}%,tags.ilike.%${filters.material}%`);
   }
 
   if (filters.room) {
