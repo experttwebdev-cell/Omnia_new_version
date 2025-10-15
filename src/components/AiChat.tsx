@@ -81,6 +81,7 @@ export function AiChat() {
 
     try {
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/ai-chat`;
+      console.log('Calling AI Chat API:', apiUrl);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -95,10 +96,19 @@ export function AiChat() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorText = await response.text();
+        console.error('API Error Response:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        throw new Error(errorData.error || `API Error ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('AI Chat Response:', data);
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -111,9 +121,10 @@ export function AiChat() {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Error sending message:', err);
+      const errorText = err instanceof Error ? err.message : 'Unknown error';
       const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Désolé, une erreur s\'est produite. Pouvez-vous réessayer ?',
+        content: `Désolé, une erreur s'est produite: ${errorText}`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
