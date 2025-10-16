@@ -5,9 +5,7 @@ import {
   Package,
   TrendingUp,
   AlertTriangle,
-  ShoppingBag,
   RefreshCw,
-  Store as StoreIcon,
   Activity,
   Sparkles,
   CheckCircle,
@@ -20,7 +18,6 @@ import {
   Users,
   Zap,
   Target,
-  Filter,
   Search,
   Download,
   AlertCircle
@@ -65,7 +62,6 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [showAllProducts, setShowAllProducts] = useState(false);
-  const [timeRange, setTimeRange] = useState<TimeRange>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProductType, setSelectedProductType] = useState<string>('all');
 
@@ -79,22 +75,19 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         dashboardStatsResult,
         productTypesResult,
         enrichedProductsResult,
-        syncLogsResult,
-        performanceResult
+        syncLogsResult
       ] = await Promise.all([
-        supabase.from('fast_dashboard_cache').select('*').maybeSingle(),
-        supabase.from('product_type_statistics_cache').select('*').limit(10),
-        supabase.from('fast_products_view').select('*').eq('enrichment_status', 'enriched').order('last_enriched_at', { ascending: false }),
-        supabase.from('recent_sync_logs_view').select('*').limit(10),
-        supabase.from('performance_metrics_cache').select('*').maybeSingle()
+        supabase.from('dashboard_stats_view').select('*').maybeSingle(),
+        supabase.from('product_categories_view').select('*').limit(10),
+        supabase.from('fast_products_view').select('*').eq('enrichment_status', 'enriched').order('last_enriched_at', { ascending: false }).limit(10),
+        supabase.from('recent_sync_logs_view').select('*').limit(10)
       ]);
 
       const errors = [
         dashboardStatsResult.error,
         productTypesResult.error,
         enrichedProductsResult.error,
-        syncLogsResult.error,
-        performanceResult.error
+        syncLogsResult.error
       ].filter(error => error);
 
       if (errors.length > 0) {
@@ -102,37 +95,31 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         throw new Error(`Failed to load some data: ${errors[0]?.message}`);
       }
 
-      const statsData = dashboardStatsResult.data;
+      const statsData: any = dashboardStatsResult.data;
       if (!statsData) {
         throw new Error('Dashboard statistics not available');
       }
 
-      const productTypes = (productTypesResult.data || []).map(pt => ({
-        type: pt.product_type || 'Uncategorized',
-        count: pt.product_count
+      const productTypes = (productTypesResult.data || []).map((pt: any) => ({
+        type: pt.category || 'Uncategorized',
+        count: pt.product_count || 0
       }));
 
-      const products = enrichedProductsResult.data || [];
-      const syncLogs = syncLogsResult.data || [];
-      const performanceData = performanceResult.data;
+      const products: any[] = enrichedProductsResult.data || [];
+      const syncLogs: any[] = syncLogsResult.data || [];
 
       setProducts(products);
       setStats({
-        totalProducts: statsData.total_products,
-        totalInventory: statsData.total_inventory,
-        activeProducts: statsData.active_products,
-        lowStockProducts: statsData.low_stock_products,
-        uniqueVendors: statsData.unique_vendors,
-        enrichedProducts: statsData.enriched_products,
-        syncedProducts: statsData.synced_products,
-        pendingSyncProducts: statsData.pending_sync_products,
+        totalProducts: statsData.total_products || 0,
+        totalInventory: statsData.total_inventory || 0,
+        activeProducts: statsData.active_products || 0,
+        lowStockProducts: statsData.low_stock_products || 0,
+        uniqueVendors: statsData.unique_vendors || 0,
+        enrichedProducts: statsData.enriched_products || 0,
+        syncedProducts: statsData.synced_products || 0,
+        pendingSyncProducts: statsData.pending_sync_products || 0,
         productTypes,
-        recentSyncs: syncLogs,
-        performanceMetrics: performanceData ? {
-          syncSuccessRate: performanceData.sync_success_rate,
-          averageEnrichmentTime: performanceData.avg_enrichment_time,
-          totalEnrichedValue: performanceData.total_enriched_value
-        } : undefined
+        recentSyncs: syncLogs
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
