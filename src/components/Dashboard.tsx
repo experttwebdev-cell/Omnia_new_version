@@ -96,20 +96,25 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           .eq('enrichment_status', 'enriched')
           .order('last_enriched_at', { ascending: false })
           .limit(100),
-        supabase.from('performance_metrics_cache').select('*').maybeSingle()
+        // Performance metrics cache is optional - doesn't block dashboard loading
+        supabase.from('performance_metrics_cache').select('*').maybeSingle().catch(() => ({ data: null, error: null }))
       ]);
 
-      // Handle errors
-      const errors = [
+      // Handle critical errors (performance metrics is optional)
+      const criticalErrors = [
         dashboardStatsResult.error,
         productTypesResult.error,
-        enrichedProductsResult.error,
-        performanceResult.error
+        enrichedProductsResult.error
       ].filter(error => error);
 
-      if (errors.length > 0) {
-        console.error('Database errors:', errors);
-        throw new Error(`Failed to load dashboard data: ${errors[0]?.message}`);
+      if (criticalErrors.length > 0) {
+        console.error('Database errors:', criticalErrors);
+        throw new Error(`Failed to load dashboard data: ${criticalErrors[0]?.message}`);
+      }
+
+      // Log performance metrics error if any, but don't fail
+      if (performanceResult.error) {
+        console.warn('Performance metrics not available:', performanceResult.error.message);
       }
 
       const statsData = dashboardStatsResult.data;
