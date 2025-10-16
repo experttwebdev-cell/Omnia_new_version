@@ -40,10 +40,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiKey) {
+    const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!deepseekKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
+        JSON.stringify({ error: "DeepSeek API key not configured" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -174,14 +174,14 @@ ${language === 'fr' ? 'Réponds UNIQUEMENT en JSON valide avec ce format exact' 
 
 ${langInstr.toneText}`;
 
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${openaiKey}`,
+            "Authorization": `Bearer ${deepseekKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "deepseek-chat",
             messages: [
               {
                 role: "system",
@@ -197,13 +197,13 @@ ${langInstr.toneText}`;
           }),
         });
 
-        if (!openaiResponse.ok) {
-          console.error("OpenAI API error:", await openaiResponse.text());
+        if (!deepseekResponse.ok) {
+          console.error("DeepSeek API error:", await deepseekResponse.text());
           continue;
         }
 
-        const openaiData = await openaiResponse.json();
-        const content = openaiData.choices[0].message.content;
+        const deepseekData = await deepseekResponse.json();
+        const content = deepseekData.choices[0].message.content;
 
         let parsedContent;
         try {
@@ -214,7 +214,7 @@ ${langInstr.toneText}`;
             parsedContent = JSON.parse(content);
           }
         } catch (e) {
-          console.error("Failed to parse OpenAI response:", content);
+          console.error("Failed to parse DeepSeek response:", content);
           continue;
         }
 
@@ -275,14 +275,14 @@ ${language === 'fr' ? 'Génère 1 idée d\'article de blog SEO optimisé spécif
 
 ${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment (1 seule opportunité).' : language === 'es' ? 'Responde en JSON con el mismo formato que antes (1 sola oportunidad).' : language === 'de' ? 'Antworten Sie in JSON mit dem gleichen Format wie zuvor (1 Gelegenheit).' : language === 'it' ? 'Rispondi in JSON con lo stesso formato di prima (1 sola opportunità).' : 'Respond in JSON with the same format as before (1 opportunity only).'}`;
 
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        const deepseekResponse2 = await fetch("https://api.deepseek.com/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${openaiKey}`,
+            "Authorization": `Bearer ${deepseekKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "deepseek-chat",
             messages: [
               {
                 role: "system",
@@ -298,9 +298,9 @@ ${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment 
           }),
         });
 
-        if (openaiResponse.ok) {
-          const openaiData = await openaiResponse.json();
-          const content = openaiData.choices[0].message.content;
+        if (deepseekResponse2.ok) {
+          const deepseekData2 = await deepseekResponse2.json();
+          const content = deepseekData2.choices[0].message.content;
 
           try {
             const jsonMatch = content.match(/\{[\s\S]*\}/);

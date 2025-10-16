@@ -96,30 +96,31 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
 
-    const visionPrompt = `Analyze this product image and generate a concise, SEO-optimized ALT text description (max 125 characters).
+    const textPrompt = `Generate a concise, SEO-optimized ALT text description for this product image (max 125 characters).
 
 Product Context:
 - Title: ${product.title}
 - Description: ${product.description || "Not provided"}
 - Type: ${product.product_type || "Not specified"}
 - Category: ${product.category || "Not specified"}
+- Sub-Category: ${product.sub_category || "Not specified"}
 - Color: ${product.ai_color || "Not specified"}
 - Material: ${product.ai_material || "Not specified"}
-- Image Position: ${image.position}
+- Image Position: ${image.position} (1 = main image, 2+ = additional views)
 
 Generate ALT text that:
-1. Describes what you see in the image
-2. Includes relevant product details
-3. Is natural and descriptive
-4. Is 125 characters or less
-5. Includes color and material if visible
+1. Is descriptive and natural (not keyword stuffing)
+2. Includes the product type and key attributes
+3. Includes color and material
+4. Is exactly 125 characters or less
+5. Is suitable for accessibility and SEO
 
-Provide response in JSON format:
+Provide response in JSON format only:
 {
   "alt_text": "Your generated ALT text here"
 }`;
 
-    const visionResponse = await fetch(
+    const textResponse = await fetch(
       "https://api.deepseek.com/v1/chat/completions",
       {
         method: "POST",
@@ -131,19 +132,12 @@ Provide response in JSON format:
           model: "deepseek-chat",
           messages: [
             {
+              role: "system",
+              content: "You are an SEO expert specializing in product ALT text. Always respond with valid JSON only."
+            },
+            {
               role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: visionPrompt,
-                },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: image.src,
-                  },
-                },
-              ],
+              content: textPrompt,
             },
           ],
           max_tokens: 150,
@@ -152,24 +146,29 @@ Provide response in JSON format:
       }
     );
 
-    if (!visionResponse.ok) {
-      const errorText = await visionResponse.text();
-      throw new Error(`DeepSeek API error: ${visionResponse.statusText} - ${errorText}`);
+    if (!textResponse.ok) {
+      const errorText = await textResponse.text();
+      throw new Error(`DeepSeek API error: ${textResponse.statusText} - ${errorText}`);
     }
 
-    const visionData = await visionResponse.json();
-    const visionContent = visionData.choices[0].message.content;
+    const textData = await textResponse.json();
+    const textContent = textData.choices[0].message.content;
 
     let altText = "";
     try {
-      const parsed = JSON.parse(visionContent);
+      const parsed = JSON.parse(textContent);
       altText = parsed.alt_text || "";
     } catch (e) {
-      altText = visionContent.substring(0, 125);
+      console.error("Failed to parse JSON, using raw content:", textContent);
+      altText = textContent.substring(0, 125);
     }
 
     if (altText.length > 125) {
       altText = altText.substring(0, 122) + "...";
+    }
+
+    if (!altText || altText.trim() === "") {
+      altText = `${product.title} - Image ${image.position}`.substring(0, 125);
     }
 
     const { error: updateError } = await supabaseClient
