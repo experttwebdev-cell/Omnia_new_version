@@ -87,7 +87,10 @@ export function SeoOpportunities() {
       score: 'Score',
       targetKeywords: 'Mots-clés Cibles',
       suggestedStructure: 'Structure Suggérée',
-      createArticle: 'Créer l\'Article'
+      createArticle: 'Créer l\'Article',
+      noOpportunities: 'Aucune opportunité de contenu trouvée',
+      noOpportunitiesFilter: 'Essayez de changer le filtre ou d\'importer plus de produits',
+      noOpportunitiesAll: 'Importez plus de produits pour découvrir des idées de contenu'
     },
     en: {
       title: 'Blog Content Opportunities',
@@ -111,7 +114,10 @@ export function SeoOpportunities() {
       score: 'Score',
       targetKeywords: 'Target Keywords',
       suggestedStructure: 'Suggested Structure',
-      createArticle: 'Create Article'
+      createArticle: 'Create Article',
+      noOpportunities: 'No content opportunities found',
+      noOpportunitiesFilter: 'Try changing the filter or import more products',
+      noOpportunitiesAll: 'Import more products to discover content ideas'
     },
     es: {
       title: 'Oportunidades de Contenido Blog',
@@ -135,7 +141,10 @@ export function SeoOpportunities() {
       score: 'Puntuación',
       targetKeywords: 'Palabras Clave Objetivo',
       suggestedStructure: 'Estructura Sugerida',
-      createArticle: 'Crear Artículo'
+      createArticle: 'Crear Artículo',
+      noOpportunities: 'No se encontraron oportunidades de contenido',
+      noOpportunitiesFilter: 'Intente cambiar el filtro o importar más productos',
+      noOpportunitiesAll: 'Importe más productos para descubrir ideas de contenido'
     },
     de: {
       title: 'Blog-Inhalts-Chancen',
@@ -159,7 +168,10 @@ export function SeoOpportunities() {
       score: 'Bewertung',
       targetKeywords: 'Ziel-Keywords',
       suggestedStructure: 'Vorgeschlagene Struktur',
-      createArticle: 'Artikel Erstellen'
+      createArticle: 'Artikel Erstellen',
+      noOpportunities: 'Keine Inhaltschancen gefunden',
+      noOpportunitiesFilter: 'Versuchen Sie, den Filter zu ändern oder mehr Produkte zu importieren',
+      noOpportunitiesAll: 'Importieren Sie mehr Produkte, um Content-Ideen zu entdecken'
     },
     it: {
       title: 'Opportunità di Contenuto Blog',
@@ -183,22 +195,15 @@ export function SeoOpportunities() {
       score: 'Punteggio',
       targetKeywords: 'Parole Chiave Target',
       suggestedStructure: 'Struttura Suggerita',
-      createArticle: 'Crea Articolo'
+      createArticle: 'Crea Articolo',
+      noOpportunities: 'Nessuna opportunità di contenuto trovata',
+      noOpportunitiesFilter: 'Prova a cambiare il filtro o importa più prodotti',
+      noOpportunitiesAll: 'Importa più prodotti per scoprire idee di contenuto'
     }
   };
   const ui = uiText[templateLang];
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  useEffect(() => {
-    if (!loading && products.length > 0 && opportunities.length === 0) {
-      handleGenerateSmartOpportunities();
-    }
-  }, [loading, products.length]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -243,8 +248,6 @@ export function SeoOpportunities() {
           suggestedStructure: []
         }));
         setOpportunities(formattedOpps);
-      } else if ((productsData || []).length > 0) {
-        generateBasicOpportunities(productsData || []);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -260,7 +263,11 @@ export function SeoOpportunities() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addNotification]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleGenerateSmartOpportunities = async () => {
     if (generatingSmart) return;
@@ -395,8 +402,6 @@ export function SeoOpportunities() {
 
     categoryMap.forEach((categoryProducts, category) => {
       if (categoryProducts.length >= 3) {
-        const avgPrice = categoryProducts.reduce((sum, p) => sum + p.price, 0) / categoryProducts.length;
-
         const extractedKeywords = [...new Set(
           categoryProducts.slice(0, 15).flatMap(p => {
             const words = p.title.toLowerCase().split(/\s+/);
@@ -552,109 +557,14 @@ export function SeoOpportunities() {
       }
     });
 
-
-    const priceRanges = [
-      { min: 0, max: 50, label: language === 'fr' ? 'Économique' : 'Budget-Friendly' },
-      { min: 50, max: 150, label: language === 'fr' ? 'Milieu de gamme' : 'Mid-Range' },
-      { min: 150, max: Infinity, label: language === 'fr' ? 'Premium' : 'Premium' }
-    ];
-
-    priceRanges.forEach(range => {
-      const rangeProducts = products.filter(p => p.price >= range.min && p.price < range.max);
-      const categoryGroups = new Map<string, Product[]>();
-
-      rangeProducts.forEach(p => {
-        if (p.category) {
-          if (!categoryGroups.has(p.category)) {
-            categoryGroups.set(p.category, []);
-          }
-          categoryGroups.get(p.category)!.push(p);
-        }
-      });
-
-      categoryGroups.forEach((products, category) => {
-        if (products.length >= 5) {
-          const currencySymbol = language === 'fr' ? '€' : '$';
-          opps.push({
-            id: `price-${range.label}-${category}`,
-            type: 'comparison',
-            title: templates.priceRange.title(range.label, category, range.max),
-            description: templates.priceRange.description(range.label, category),
-            targetKeywords: templates.priceRange.keywords(category, range.label, range.max),
-            productCount: products.length,
-            relatedProducts: products.map((p) => p.title).slice(0, 8),
-            score: Math.min(87, products.length * 8),
-            estimatedWordCount: 1300 + (products.length * 70),
-            difficulty: 'easy',
-            suggestedStructure: [
-              language === 'fr' ? 'Rapport qualité-prix' : 'Value for Money',
-              language === 'fr' ? 'Meilleurs choix par prix' : 'Top Picks by Price',
-              language === 'fr' ? 'À quoi s\'attendre' : 'What to Expect',
-              language === 'fr' ? 'Conseils d\'achat' : 'Shopping Tips'
-            ]
-          });
-        }
-      });
-    });
-
     opps.sort((a, b) => b.score - a.score);
     setOpportunities(opps);
   };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleGenerateOutline = async (opportunity: Opportunity) => {
-    setGeneratingOutline(opportunity.id);
-
-    try {
-      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          opportunity: {
-            title: opportunity.title,
-            description: opportunity.description,
-            keywords: opportunity.targetKeywords,
-            productTitles: opportunity.relatedProducts.slice(0, 10)
-          }
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const outline = result.outline || 'Outline generated successfully';
-        addNotification({
-          type: 'success',
-          title: 'Outline Generated',
-          message: outline.substring(0, 100) + '...',
-          duration: 5000
-        });
-      } else {
-        throw new Error('Failed to generate outline');
-      }
-    } catch (err) {
-      console.error('Error generating outline:', err);
-      addNotification({
-        type: 'error',
-        title: 'Generation Failed',
-        message: 'Failed to generate outline. Please try again.',
-        duration: 5000
-      });
-    } finally {
-      setGeneratingOutline(null);
-    }
   };
 
   const handleCreateArticle = async (opportunity: Opportunity) => {
@@ -818,6 +728,8 @@ export function SeoOpportunities() {
         return Package;
       case 'seasonal':
         return TrendingUp;
+      default:
+        return FileText;
     }
   };
 
@@ -833,6 +745,8 @@ export function SeoOpportunities() {
         return 'bg-purple-100 text-purple-700';
       case 'seasonal':
         return 'bg-teal-100 text-teal-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
@@ -844,7 +758,7 @@ export function SeoOpportunities() {
       'product-spotlight': ui.spotlight,
       'seasonal': templateLang === 'fr' ? 'Saisonnier' : templateLang === 'es' ? 'Temporal' : templateLang === 'de' ? 'Saisonal' : templateLang === 'it' ? 'Stagionale' : 'Seasonal'
     };
-    return labels[type];
+    return labels[type] || type;
   };
 
   const getDifficultyColor = (difficulty: Opportunity['difficulty']) => {
@@ -855,6 +769,8 @@ export function SeoOpportunities() {
         return 'bg-yellow-100 text-yellow-700';
       case 'hard':
         return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
@@ -867,13 +783,13 @@ export function SeoOpportunities() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Blog Content Opportunities</h2>
+            <h2 className="text-xl font-bold text-gray-900">{ui.title}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              AI-powered content ideas based on your product catalog
+              {ui.subtitle}
             </p>
           </div>
         </div>
-        <LoadingAnimation type="opportunities" message="Chargement des opportunités de contenu..." />
+        <LoadingAnimation type="opportunities" message={templateLang === 'fr' ? "Chargement des opportunités de contenu..." : "Loading content opportunities..."} />
       </div>
     );
   }
@@ -921,219 +837,220 @@ export function SeoOpportunities() {
           onUpdate={fetchProducts}
         />
       )}
+      
       <div className="space-y-6">
         {/* Product Diagnostics - Show if no products */}
         {products.length === 0 && <ProductDiagnostics />}
 
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">{ui.title}</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {ui.subtitle}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleGenerateSmartOpportunities}
-            disabled={generatingSmart || products.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
-          >
-            {generatingSmart ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {ui.generating}
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                {ui.generateButton}
-              </>
-            )}
-          </button>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          >
-            <option value="all">{ui.allTypes}</option>
-            <option value="category-guide">{ui.categoryGuides}</option>
-            <option value="comparison">{ui.comparisons}</option>
-            <option value="how-to">{ui.howToGuides}</option>
-            <option value="product-spotlight">{ui.productSpotlights}</option>
-          </select>
-          <button
-            onClick={fetchProducts}
-            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <RefreshCw className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-blue-900">{ui.categoryGuides}</h3>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{ui.title}</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {ui.subtitle}
+            </p>
           </div>
-          <p className="text-2xl font-bold text-blue-900">
-            {opportunities.filter((o) => o.type === 'category-guide').length}
-          </p>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Target className="w-5 h-5 text-green-600" />
-            <h3 className="font-semibold text-green-900">{ui.comparisons}</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateSmartOpportunities}
+              disabled={generatingSmart || products.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
+            >
+              {generatingSmart ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {ui.generating}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  {ui.generateButton}
+                </>
+              )}
+            </button>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="all">{ui.allTypes}</option>
+              <option value="category-guide">{ui.categoryGuides}</option>
+              <option value="comparison">{ui.comparisons}</option>
+              <option value="how-to">{ui.howToGuides}</option>
+              <option value="product-spotlight">{ui.productSpotlights}</option>
+            </select>
+            <button
+              onClick={fetchProducts}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <RefreshCw className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
-          <p className="text-2xl font-bold text-green-900">
-            {opportunities.filter((o) => o.type === 'comparison').length}
-          </p>
         </div>
 
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <FileText className="w-5 h-5 text-orange-600" />
-            <h3 className="font-semibold text-orange-900">{ui.howToGuides}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              <h3 className="font-semibold text-blue-900">{ui.categoryGuides}</h3>
+            </div>
+            <p className="text-2xl font-bold text-blue-900">
+              {opportunities.filter((o) => o.type === 'category-guide').length}
+            </p>
           </div>
-          <p className="text-2xl font-bold text-orange-900">
-            {opportunities.filter((o) => o.type === 'how-to').length}
-          </p>
-        </div>
 
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <Package className="w-5 h-5 text-purple-600" />
-            <h3 className="font-semibold text-purple-900">{ui.productSpotlights}</h3>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Target className="w-5 h-5 text-green-600" />
+              <h3 className="font-semibold text-green-900">{ui.comparisons}</h3>
+            </div>
+            <p className="text-2xl font-bold text-green-900">
+              {opportunities.filter((o) => o.type === 'comparison').length}
+            </p>
           </div>
-          <p className="text-2xl font-bold text-purple-900">
-            {opportunities.filter((o) => o.type === 'product-spotlight').length}
-          </p>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <FileText className="w-5 h-5 text-orange-600" />
+              <h3 className="font-semibold text-orange-900">{ui.howToGuides}</h3>
+            </div>
+            <p className="text-2xl font-bold text-orange-900">
+              {opportunities.filter((o) => o.type === 'how-to').length}
+            </p>
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Package className="w-5 h-5 text-purple-600" />
+              <h3 className="font-semibold text-purple-900">{ui.productSpotlights}</h3>
+            </div>
+            <p className="text-2xl font-bold text-purple-900">
+              {opportunities.filter((o) => o.type === 'product-spotlight').length}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        {filteredOpportunities.map((opportunity) => {
-          const Icon = getTypeIcon(opportunity.type);
-          const colorClass = getTypeColor(opportunity.type);
-          const difficultyClass = getDifficultyColor(opportunity.difficulty);
+        <div className="space-y-4">
+          {filteredOpportunities.map((opportunity) => {
+            const Icon = getTypeIcon(opportunity.type);
+            const colorClass = getTypeColor(opportunity.type);
+            const difficultyClass = getDifficultyColor(opportunity.difficulty);
 
-          return (
-            <div key={opportunity.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className={`p-3 rounded-lg ${colorClass}`}>
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h3 className="text-lg font-bold text-gray-900">{opportunity.title}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-                        {getTypeLabel(opportunity.type)}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${difficultyClass}`}>
-                        {ui[opportunity.difficulty]}
-                      </span>
-                      <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-                        <TrendingUp className="w-3 h-3" />
-                        {ui.score}: {opportunity.score}
+            return (
+              <div key={opportunity.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className={`p-3 rounded-lg ${colorClass}`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="text-lg font-bold text-gray-900">{opportunity.title}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+                          {getTypeLabel(opportunity.type)}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${difficultyClass}`}>
+                          {ui[opportunity.difficulty as keyof typeof ui]}
+                        </span>
+                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                          <TrendingUp className="w-3 h-3" />
+                          {ui.score}: {opportunity.score}
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-3">{opportunity.description}</p>
+                      <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Package className="w-4 h-4" />
+                          {opportunity.productCount} {ui.products}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-4 h-4" />
+                          ~{opportunity.estimatedWordCount.toLocaleString()} {ui.words}
+                        </span>
                       </div>
                     </div>
-                    <p className="text-gray-700 mb-3">{opportunity.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Package className="w-4 h-4" />
-                        {opportunity.productCount} {ui.products}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FileText className="w-4 h-4" />
-                        ~{opportunity.estimatedWordCount.toLocaleString()} {ui.words}
-                      </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleCopy(opportunity.title, opportunity.id)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition"
+                      title="Copy title"
+                    >
+                      {copiedId === opportunity.id ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-gray-500" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleCreateArticle(opportunity)}
+                      disabled={creatingArticle === opportunity.id}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
+                    >
+                      {creatingArticle === opportunity.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {templateLang === 'fr' ? 'Création...' : templateLang === 'es' ? 'Creando...' : templateLang === 'de' ? 'Wird erstellt...' : templateLang === 'it' ? 'Creazione...' : 'Creating...'}
+                        </>
+                      ) : (
+                        <>
+                          <FileEdit className="w-4 h-4" />
+                          {ui.createArticle}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      {ui.targetKeywords}
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {opportunity.targetKeywords.map((keyword, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
+                          {keyword}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => handleCopy(opportunity.title, opportunity.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition"
-                    title="Copy title"
-                  >
-                    {copiedId === opportunity.id ? (
-                      <Check className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-gray-500" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleCreateArticle(opportunity)}
-                    disabled={creatingArticle === opportunity.id}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
-                  >
-                    {creatingArticle === opportunity.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {templateLang === 'fr' ? 'Création...' : templateLang === 'es' ? 'Creando...' : templateLang === 'de' ? 'Wird erstellt...' : templateLang === 'it' ? 'Creazione...' : 'Creating...'}
-                      </>
-                    ) : (
-                      <>
-                        <FileEdit className="w-4 h-4" />
-                        {ui.createArticle}
-                      </>
-                    )}
-                  </button>
+
+                  {opportunity.suggestedStructure && opportunity.suggestedStructure.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        {ui.suggestedStructure}
+                      </h4>
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {opportunity.suggestedStructure.map((section, idx) => (
+                          <li key={idx} className="text-sm text-gray-600 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-xs font-bold">
+                              {idx + 1}
+                            </span>
+                            {section}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="border-t border-gray-200 pt-4">
-                <div className="mb-3">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                    <Target className="w-4 h-4" />
-                    {ui.targetKeywords}
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {opportunity.targetKeywords.map((keyword, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium">
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {opportunity.suggestedStructure && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      {ui.suggestedStructure}
-                    </h4>
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {opportunity.suggestedStructure.map((section, idx) => (
-                        <li key={idx} className="text-sm text-gray-600 flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-xs font-bold">
-                            {idx + 1}
-                          </span>
-                          {section}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredOpportunities.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <Lightbulb className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600">No content opportunities found</p>
-          <p className="text-sm text-gray-500 mt-1">
-            {filterType !== 'all'
-              ? 'Try changing the filter or import more products'
-              : 'Import more products to discover content ideas'}
-          </p>
+            );
+          })}
         </div>
-      )}
+
+        {filteredOpportunities.length === 0 && (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <Lightbulb className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">{ui.noOpportunities}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {filterType !== 'all'
+                ? ui.noOpportunitiesFilter
+                : ui.noOpportunitiesAll}
+            </p>
+          </div>
+        )}
       </div>
     </>
   );
