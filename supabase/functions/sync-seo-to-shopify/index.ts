@@ -355,6 +355,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (product.tags) {
+      console.log(`🏷️  Syncing tags to Shopify: "${product.tags}"`);
+      console.log(`📍 API URL: ${shopifyApiUrl}`);
+
       const updateResponse = await fetch(shopifyApiUrl, {
         method: "PUT",
         headers: {
@@ -371,10 +374,13 @@ Deno.serve(async (req: Request) => {
 
       if (!updateResponse.ok) {
         const errorText = await updateResponse.text();
-        console.error("Failed to update tags:", errorText);
-        throw new Error(`Failed to update tags: ${updateResponse.statusText}`);
+        console.error("❌ Failed to update tags:", errorText);
+        console.error("Response status:", updateResponse.status, updateResponse.statusText);
+        throw new Error(`Failed to update tags: ${updateResponse.statusText} - ${errorText}`);
       }
 
+      const responseData = await updateResponse.json();
+      console.log(`✅ Tags synced successfully:`, responseData.product?.tags);
       metafields.push("tags");
     }
 

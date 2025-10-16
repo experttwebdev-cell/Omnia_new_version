@@ -299,28 +299,29 @@ async function searchProducts(supabase: any, query: string, retailerId?: string)
   };
 
   const categoryKeywords: Record<string, string[]> = {
-    'canapé': ['canapé', 'sofa'],
-    'table': ['table'],
-    'chaise': ['chaise', 'siège'],
-    'lit': ['lit', 'sommier'],
-    'armoire': ['armoire', 'penderie'],
-    'étagère': ['étagère', 'bibliothèque'],
-    'lampe': ['lampe', 'luminaire', 'éclairage'],
-    'tapis': ['tapis'],
-    'fauteuil': ['fauteuil'],
-    'bureau': ['bureau', 'desk'],
-    'commode': ['commode', 'tiroirs'],
-    'buffet': ['buffet', 'vaisselier']
+    'canapé': ['canapé', 'sofa', 'divan'],
+    'table': ['table', 'table basse', 'table de salon', 'table à manger', 'table de nuit'],
+    'chaise': ['chaise', 'siège', 'assise'],
+    'lit': ['lit', 'sommier', 'matelas'],
+    'armoire': ['armoire', 'penderie', 'garde-robe'],
+    'étagère': ['étagère', 'bibliothèque', 'rangement'],
+    'lampe': ['lampe', 'luminaire', 'éclairage', 'applique'],
+    'tapis': ['tapis', 'carpette'],
+    'fauteuil': ['fauteuil', 'bergère'],
+    'bureau': ['bureau', 'desk', 'poste de travail'],
+    'commode': ['commode', 'tiroirs', 'meuble à tiroirs'],
+    'buffet': ['buffet', 'vaisselier', 'bahut']
   };
+
+  console.log('🔍 Building search query...');
 
   let queryBuilder = supabase
     .from('shopify_products')
     .select('*')
-    .eq('status', 'active')
     .limit(20);
 
   if (retailerId) {
-    queryBuilder = queryBuilder.eq('retailer_id', retailerId);
+    queryBuilder = queryBuilder.eq('store_id', retailerId);
   }
 
   let styleMatch = null;
@@ -378,12 +379,16 @@ async function searchProducts(supabase: any, query: string, retailerId?: string)
     queryBuilder = queryBuilder.or(filters.join(','));
   }
 
+  console.log('📊 Search criteria:', { styleMatch, roomMatch, categoryMatch, filters: filters.length });
+
   const { data, error } = await queryBuilder;
 
   if (error) {
     console.error('❌ Product search error:', error);
     return [];
   }
+
+  console.log(`✅ Found ${(data || []).length} raw products from database`);
 
   const products = (data || []).map((product: any) => ({
     id: product.id,

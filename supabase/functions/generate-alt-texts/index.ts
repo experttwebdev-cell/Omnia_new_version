@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: product } = await supabaseClient
       .from("shopify_products")
-      .select("title, description, product_type, category, sub_category, ai_color, ai_material")
+      .select("title, description, product_type, category, sub_category, ai_color, ai_material, ai_style, functionality, characteristics, ai_vision_analysis")
       .eq("id", image.product_id)
       .maybeSingle();
 
@@ -96,10 +96,9 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
 
-    const contextParts = [];
-    if (product.product_type) contextParts.push(product.product_type);
-    if (product.ai_color) contextParts.push(product.ai_color);
-    if (product.ai_material) contextParts.push(product.ai_material);
+    const visionInfo = product.ai_vision_analysis || "";
+    const functionalityInfo = product.functionality || "";
+    const characteristicsInfo = product.characteristics || "";
 
     const textPrompt = `Tu es un expert en accessibilité web et SEO. Génère un texte ALT descriptif et naturel pour cette image de produit.
 
@@ -108,23 +107,35 @@ Titre: ${product.title}
 Type: ${product.product_type || "meuble"}
 Catégorie: ${product.category || ""}
 Sous-catégorie: ${product.sub_category || ""}
-Couleur: ${product.ai_color || ""}
-Matière: ${product.ai_material || ""}
-Position: ${image.position === 1 ? "Image principale" : `Vue supplémentaire ${image.position}`}
+
+ANALYSE AI VISION:
+Couleur détectée: ${product.ai_color || "non spécifiée"}
+Matière détectée: ${product.ai_material || "non spécifiée"}
+Style: ${product.ai_style || "non spécifié"}
+Analyse visuelle: ${visionInfo}
+
+FONCTIONNALITÉ:
+${functionalityInfo}
+
+CARACTÉRISTIQUES:
+${characteristicsInfo}
+
+POSITION IMAGE: ${image.position === 1 ? "Image principale" : `Vue supplémentaire n°${image.position}`}
 
 INSTRUCTIONS:
 - Maximum 125 caractères
 - Commence DIRECTEMENT par le type de produit (ex: "Canapé", "Table", "Chaise")
-- Inclus les caractéristiques principales: couleur, matière, style
-- Sois naturel et descriptif, pas de phrases marketing
-- Évite les mots inutiles comme "Image de", "Photo de", "Produit"
+- Utilise les données de l'AI Vision (couleur, matière, style détectés)
+- Inclus la fonctionnalité principale si pertinente (convertible, extensible, etc.)
+- Sois naturel et descriptif, pas de marketing
+- INTERDIT: "Image de", "Photo de", "Produit"
 
 EXEMPLES CORRECTS:
-"Canapé d'angle convertible Nevada en tissu gris avec rangement et têtières réglables"
-"Table basse ronde en bois massif finition naturelle avec pieds métal noir"
-"Chaise de salle à manger velours bleu marine avec pieds en chêne clair"
+"Canapé d'angle convertible Nevada tissu gris anthracite avec rangement et têtières réglables"
+"Table basse ronde bois massif chêne naturel pieds métal noir style scandinave"
+"Chaise salle à manger velours bleu marine pieds chêne clair design moderne"
 
-Réponds UNIQUEMENT avec ce format JSON:
+Réponds UNIQUEMENT en JSON:
 {
   "alt_text": "ton texte ici"
 }`;
