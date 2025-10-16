@@ -595,10 +595,22 @@
               const errorText = await visionResponse.text();
               log(`❌ Erreur OpenAI: ${errorText}`, 'error');
 
+              // Check if it's a quota error
+              let errorMessage = `Erreur API: ${visionResponse.status}`;
+              try {
+                const errorData = JSON.parse(errorText);
+                if (errorData.error?.code === 'insufficient_quota') {
+                  errorMessage = 'Quota OpenAI dépassé. Utilisez le mode "Produit" pour tester avec vos produits.';
+                  log('💡 Astuce: Le mode Produit utilise votre configuration complète', 'info');
+                }
+              } catch (e) {
+                // Keep default error message
+              }
+
               const errorResult = {
                 imageUrl,
                 context,
-                analysis: `Erreur API: ${visionResponse.status}`,
+                analysis: errorMessage,
                 color: 'N/A',
                 material: 'N/A',
                 style: 'N/A'
