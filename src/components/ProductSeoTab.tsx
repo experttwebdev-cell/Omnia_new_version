@@ -440,11 +440,103 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
               </div>
             )}
 
+            {product.style && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Style</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.style}</p>
+              </div>
+            )}
+
+            {product.room && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <TagIcon className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Room</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.room}</p>
+              </div>
+            )}
+
+            {product.dimensions_text && (
+              <div className="p-4 bg-blue-50 rounded-lg md:col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Ruler className="w-5 h-5 text-blue-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Dimensions (AI Extracted)</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.dimensions_text}</p>
+                {product.dimensions_source && (
+                  <p className="text-xs text-gray-600 mt-1">Source: {product.dimensions_source}</p>
+                )}
+              </div>
+            )}
+
+            {(product.smart_length || product.smart_width || product.smart_height || product.smart_depth || product.smart_diameter || product.smart_weight) && (
+              <div className="p-4 bg-green-50 rounded-lg md:col-span-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ruler className="w-5 h-5 text-green-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Smart Dimensions (Parsed)</h4>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {product.smart_length && (
+                    <div>
+                      <p className="text-xs text-gray-600">Length</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_length} {product.smart_length_unit || 'cm'}
+                      </p>
+                    </div>
+                  )}
+                  {product.smart_width && (
+                    <div>
+                      <p className="text-xs text-gray-600">Width</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_width} {product.smart_width_unit || 'cm'}
+                      </p>
+                    </div>
+                  )}
+                  {product.smart_height && (
+                    <div>
+                      <p className="text-xs text-gray-600">Height</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_height} {product.smart_height_unit || 'cm'}
+                      </p>
+                    </div>
+                  )}
+                  {product.smart_depth && (
+                    <div>
+                      <p className="text-xs text-gray-600">Depth</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_depth} {product.smart_depth_unit || 'cm'}
+                      </p>
+                    </div>
+                  )}
+                  {product.smart_diameter && (
+                    <div>
+                      <p className="text-xs text-gray-600">Diameter</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_diameter} {product.smart_diameter_unit || 'cm'}
+                      </p>
+                    </div>
+                  )}
+                  {product.smart_weight && (
+                    <div>
+                      <p className="text-xs text-gray-600">Weight</p>
+                      <p className="text-gray-900 font-medium">
+                        {product.smart_weight} {product.smart_weight_unit || 'kg'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {(product.length || product.width || product.height) && (
               <div className="p-4 bg-gray-50 rounded-lg md:col-span-2">
                 <div className="flex items-center gap-2 mb-3">
                   <Ruler className="w-5 h-5 text-gray-700" />
-                  <h4 className="text-sm font-semibold text-gray-900">Dimensions Detected</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">Shopify Dimensions (Original)</h4>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   {product.length && (

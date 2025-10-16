@@ -172,17 +172,14 @@ INSTRUCTIONS:
 - Utilise les données de l'AI Vision (couleur, matière, style détectés)
 - Inclus la fonctionnalité principale si pertinente (convertible, extensible, etc.)
 - Sois naturel et descriptif, pas de marketing
-- INTERDIT: "Image de", "Photo de", "Produit"
+- INTERDIT: "Image de", "Photo de", "Produit", "JSON", "{", "}"
 
 EXEMPLES CORRECTS:
 "Canapé d'angle convertible Nevada tissu gris anthracite avec rangement et têtières réglables"
 "Table basse ronde bois massif chêne naturel pieds métal noir style scandinave"
 "Chaise salle à manger velours bleu marine pieds chêne clair design moderne"
 
-Réponds UNIQUEMENT en JSON:
-{
-  "alt_text": "ton texte ici"
-}`;
+Réponds UNIQUEMENT avec le texte ALT, SANS JSON, SANS guillemets, SANS tiret au début.`;
 
     const textResponse = await fetch(
       "https://api.deepseek.com/v1/chat/completions",
@@ -197,7 +194,7 @@ Réponds UNIQUEMENT en JSON:
           messages: [
             {
               role: "system",
-              content: "Tu es un expert en accessibilité web et SEO pour e-commerce. Tu génères des textes ALT descriptifs et naturels en français. Réponds toujours en JSON valide."
+              content: "Tu es un expert en accessibilité web et SEO pour e-commerce. Tu génères des textes ALT descriptifs et naturels en français. Réponds UNIQUEMENT avec le texte ALT, sans JSON, sans guillemets, sans tiret."
             },
             {
               role: "user",
@@ -216,7 +213,7 @@ Réponds UNIQUEMENT en JSON:
     }
 
     const textData = await textResponse.json();
-    const textContent = textData.choices[0].message.content.trim();
+    let textContent = textData.choices[0].message.content.trim();
 
     let altText = "";
 
@@ -235,7 +232,10 @@ Réponds UNIQUEMENT en JSON:
 
     altText = altText
       .replace(/^["']|["']$/g, '')
+      .replace(/^\{[\s\S]*"alt_text":\s*["']?/i, '')
+      .replace(/["']?\s*\}$/i, '')
       .replace(/^(Image de|Photo de|Produit|Image|Photo)[\s:]+/i, '')
+      .replace(/^-\s*/i, '')
       .trim();
 
     if (altText.length > 125) {
