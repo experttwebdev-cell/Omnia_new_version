@@ -60,7 +60,7 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [language, setLanguage] = useState<Language>('en');
   const [languageLoaded, setLanguageLoaded] = useState(false);
-  const [configError] = useState(false);
+  const [configError, setConfigError] = useState(false);
   const t = getTranslation(language);
 
   useEffect(() => {

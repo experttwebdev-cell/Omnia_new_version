@@ -12,11 +12,13 @@ import {
   Package,
   Home,
   Watch,
-  Shirt
+  Shirt,
+  Zap
 } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
 import { useLanguage } from '../App';
 import { OmnIAChat } from '../lib/omniaChat';
+import { ProductLandingPage } from './ProductLandingPage';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -30,7 +32,7 @@ interface ChatMessage {
 }
 
 export function AiChat() {
-  const { t } = useLanguage();
+  const { } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,6 +40,8 @@ export function AiChat() {
   const [chatSettings, setChatSettings] = useState<any>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showProductLanding, setShowProductLanding] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [sessionId] = useState<string>(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -64,21 +68,76 @@ export function AiChat() {
         .limit(1)
         .maybeSingle();
 
-      if (data) {
+      if (data && 'id' in data) {
         setChatSettings(data);
         setStoreId(data.id);
-        
-        // Message de bienvenue initial
-        const welcomeMessage: ChatMessage = {
-          role: 'assistant',
-          content: data.chat_welcome_message || "Bonjour ! Je suis OmnIA, votre assistant shopping intelligent. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?",
-          timestamp: new Date().toISOString(),
-          sector: 'meubles'
-        };
-        setMessages([welcomeMessage]);
+
+        // Create or load conversation
+        await initializeConversation(data.id);
       }
     } catch (err) {
       console.error('Error fetching store settings:', err);
+    }
+  };
+
+  const initializeConversation = async (storeId: string) => {
+    try {
+      // Create new conversation
+      const { data: conversation, error } = await supabase
+        .from('chat_conversations')
+        .insert({
+          store_id: storeId,
+          session_id: sessionId,
+          started_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setConversationId(conversation.id);
+
+      // Add welcome message
+      const welcomeContent = chatSettings?.chat_welcome_message ||
+        "Bonjour ! Je suis OmnIA, votre assistant shopping intelligent. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?";
+
+      const welcomeMessage: ChatMessage = {
+        role: 'assistant',
+        content: welcomeContent,
+        timestamp: new Date().toISOString(),
+        sector: 'meubles'
+      };
+
+      // Save welcome message to DB
+      await supabase.from('chat_messages').insert({
+        conversation_id: conversation.id,
+        role: 'assistant',
+        content: welcomeContent,
+        mode: 'conversation',
+        sector: 'meubles'
+      });
+
+      setMessages([welcomeMessage]);
+    } catch (err) {
+      console.error('Error initializing conversation:', err);
+    }
+  };
+
+  const saveMessage = async (message: ChatMessage) => {
+    if (!conversationId) return;
+
+    try {
+      await supabase.from('chat_messages').insert({
+        conversation_id: conversationId,
+        role: message.role,
+        content: message.content,
+        products: message.products || [],
+        mode: message.mode || 'conversation',
+        search_filters: message.searchFilters || null,
+        sector: message.sector || null
+      });
+    } catch (err) {
+      console.error('Error saving message:', err);
     }
   };
 
@@ -96,6 +155,8 @@ export function AiChat() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    await saveMessage(userMessage);
+
     const currentMessage = inputMessage;
     setInputMessage('');
     setLoading(true);
@@ -107,7 +168,7 @@ export function AiChat() {
         chat_tone: chatSettings.chat_tone,
         chat_response_length: chatSettings.chat_response_length
       } : undefined;
-      
+
       const response = await OmnIAChat(currentMessage, history, storeId || undefined, settings);
 
       console.log('OmnIA Response:', response);
@@ -123,6 +184,7 @@ export function AiChat() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      await saveMessage(assistantMessage);
     } catch (err) {
       console.error('Error sending message:', err);
       const errorText = err instanceof Error ? err.message : 'Unknown error';
@@ -133,6 +195,7 @@ export function AiChat() {
         sector: 'meubles'
       };
       setMessages(prev => [...prev, errorMessage]);
+      await saveMessage(errorMessage);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -273,6 +336,38 @@ export function AiChat() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Suggestions rapides */}
+      {messages.length === 1 && !loading && (
+        <div className="px-6 py-4 space-y-3 border-t border-gray-100">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Zap className="w-4 h-4" />
+            <span className="font-medium">Recherches populaires</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {[
+              { icon: Home, text: "Canapé scandinave", sector: "meubles" },
+              { icon: Home, text: "Table basse moderne", sector: "meubles" },
+              { icon: Watch, text: "Montre automatique", sector: "montres" },
+              { icon: Watch, text: "Montre sport", sector: "montres" },
+              { icon: Shirt, text: "Robe élégante", sector: "mode" },
+              { icon: Shirt, text: "Chemise casual", sector: "mode" }
+            ].map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setInputMessage(suggestion.text);
+                  inputRef.current?.focus();
+                }}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-blue-50 hover:to-purple-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-all group"
+              >
+                <suggestion.icon className="w-4 h-4 text-gray-500 group-hover:text-blue-600 transition" />
+                <span className="text-sm text-gray-700 group-hover:text-blue-700 font-medium">{suggestion.text}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input avec suggestions par secteur */}
       <div className="border-t border-gray-200 bg-white px-6 py-4">
         <div className="flex gap-3 items-end">
@@ -285,22 +380,37 @@ export function AiChat() {
               onKeyPress={handleKeyPress}
               placeholder="Décrivez ce que vous recherchez (meubles, montres, vêtements...)"
               disabled={loading}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition"
             />
-            <div className="flex items-center gap-4 mt-2">
-              <MessageCircle className="w-4 h-4 text-gray-400" />
-              <div className="flex gap-3 text-xs text-gray-500">
-                <span>Exemples:</span>
-                <span>"Canapé scandinave pour salon"</span>
-                <span>"Montre automatique en acier"</span>
-                <span>"Robe de soirée élégante"</span>
+            <div className="flex items-center gap-4 mt-2 overflow-x-auto pb-1">
+              <MessageCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <div className="flex gap-2 text-xs whitespace-nowrap">
+                <span className="text-gray-500">Exemples:</span>
+                <button
+                  onClick={() => setInputMessage("Canapé scandinave pour salon")}
+                  className="text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  "Canapé scandinave"
+                </button>
+                <button
+                  onClick={() => setInputMessage("Montre automatique en acier")}
+                  className="text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  "Montre automatique"
+                </button>
+                <button
+                  onClick={() => setInputMessage("Robe de soirée élégante")}
+                  className="text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  "Robe élégante"
+                </button>
               </div>
             </div>
           </div>
           <button
             onClick={handleSendMessage}
             disabled={loading || !inputMessage.trim()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-105 disabled:transform-none"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
