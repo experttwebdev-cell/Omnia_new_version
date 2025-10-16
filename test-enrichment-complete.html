@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete AI Enrichment Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 16px;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border-left: 4px solid #667eea;
+    }
+
+    .section h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .results {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border-left: 4px solid #28a745;
+    }
+
+    .results h3 {
+      color: #28a745;
+      margin-bottom: 15px;
+    }
+
+    .results pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .error {
+      background: #f8d7da;
+      border-left-color: #dc3545;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .success {
+      background: #d4edda;
+      border-left-color: #28a745;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .product-card {
+      padding: 15px;
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .product-card:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .product-card.selected {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .product-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .product-card h4 {
+      font-size: 14px;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .product-card p {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .field-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .field-item {
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .field-item label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 3px;
+    }
+
+    .field-item .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔬 AI Enrichment Complete Test</h1>
+      <p>Test all enrichment fields with detailed debugging</p>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <h2>📦 Select Product</h2>
+        <div class="form-group">
+          <label>Store</label>
+          <select id="storeSelect">
+            <option value="">Loading stores...</option>
+          </select>
+        </div>
+        <div id="productGrid" class="product-grid"></div>
+      </div>
+
+      <div class="section">
+        <h2>🎨 Enrichment Configuration</h2>
+        <div class="field-preview" id="fieldPreview">
+          <div class="field-item">
+            <label>Color</label>
+            <div class="value" id="previewColor">-</div>
+          </div>
+          <div class="field-item">
+            <label>Material</label>
+            <div class="value" id="previewMaterial">-</div>
+          </div>
+          <div class="field-item">
+            <label>Room</label>
+            <div class="value" id="previewRoom">-</div>
+          </div>
+          <div class="field-item">
+            <label>Style</label>
+            <div class="value" id="previewStyle">-</div>
+          </div>
+          <div class="field-item">
+            <label>Category</label>
+            <div class="value" id="previewCategory">-</div>
+          </div>
+          <div class="field-item">
+            <label>Functionality</label>
+            <div class="value" id="previewFunctionality">-</div>
+          </div>
+          <div class="field-item">
+            <label>Characteristics</label>
+            <div class="value" id="previewCharacteristics">-</div>
+          </div>
+          <div class="field-item">
+            <label>Dimensions</label>
+            <div class="value" id="previewDimensions">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn-primary" onclick="runEnrichment()" id="enrichBtn">
+          🚀 Run AI Enrichment
+        </button>
+        <button class="btn-success" onclick="testDirectUpdate()" id="updateBtn">
+          💾 Test Direct Update
+        </button>
+        <button class="btn-secondary" onclick="fetchProduct()" id="fetchBtn">
+          🔄 Refresh Product
+        </button>
+        <button class="btn-danger" onclick="testTrigger()" id="triggerBtn">
+          ⚡ Test GTIN Trigger
+        </button>
+      </div>
+
+      <div class="results" id="results" style="display: none;">
+        <h3>📊 Results</h3>
+        <pre id="resultContent"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://zfljemtjjwiwhdurvmyn.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmbGplbXRqandpd2hkdXJ2bXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjg5MjcxMjQsImV4cCI6MjA0NDUwMzEyNH0.4i3BKH9X8dEbV-9u4oZtqBgJYMDz53I4PbpEOvElv5Y';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let selectedProduct = null;
+    let selectedStore = null;
+
+    async function init() {
+      await loadStores();
+    }
+
+    async function loadStores() {
+      try {
+        const { data, error } = await supabase
+          .from('shopify_stores')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const select = document.getElementById('storeSelect');
+        select.innerHTML = '<option value="">Select a store...</option>';
+
+        data.forEach(store => {
+          const option = document.createElement('option');
+          option.value = store.id;
+          option.textContent = store.shop_name;
+          select.appendChild(option);
+        });
+
+        select.addEventListener('change', (e) => {
+          selectedStore = e.target.value;
+          if (selectedStore) loadProducts();
+        });
+      } catch (error) {
+        showError('Error loading stores: ' + error.message);
+      }
+    }
+
+    async function loadProducts() {
+      if (!selectedStore) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('shopify_products')
+          .select('*')
+          .eq('store_id', selectedStore)
+          .limit(20);
+
+        if (error) throw error;
+
+        const grid = document.getElementById('productGrid');
+        grid.innerHTML = '';
+
+        data.forEach(product => {
+          const card = document.createElement('div');
+          card.className = 'product-card';
+          card.onclick = () => selectProduct(product);
+          card.innerHTML = `
+            ${product.image_url ? `<img src="${product.image_url}" alt="${product.title}">` : '<div style="height: 150px; background: #e0e0e0;"></div>'}
+            <h4>${product.title}</h4>
+            <p>${product.price || 'N/A'}</p>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (error) {
+        showError('Error loading products: ' + error.message);
+      }
+    }
+
+    function selectProduct(product) {
+      selectedProduct = product;
+
+      document.querySelectorAll('.product-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+
+      updatePreview();
+    }
+
+    function updatePreview() {
+      if (!selectedProduct) return;
+
+      document.getElementById('previewColor').textContent = selectedProduct.ai_color || '-';
+      document.getElementById('previewMaterial').textContent = selectedProduct.ai_material || '-';
+      document.getElementById('previewRoom').textContent = selectedProduct.room || '-';
+      document.getElementById('previewStyle').textContent = selectedProduct.style || '-';
+      document.getElementById('previewCategory').textContent = selectedProduct.category || '-';
+      document.getElementById('previewFunctionality').textContent = selectedProduct.functionality || '-';
+      document.getElementById('previewCharacteristics').textContent = selectedProduct.characteristics || '-';
+      document.getElementById('previewDimensions').textContent = selectedProduct.dimensions_text || '-';
+    }
+
+    async function runEnrichment() {
+      if (!selectedProduct) {
+        showError('Please select a product first');
+        return;
+      }
+
+      const btn = document.getElementById('enrichBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Enriching...';
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/enrich-product-with-ai`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            productId: selectedProduct.id
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Enrichment failed');
+        }
+
+        showSuccess('Enrichment completed successfully!', result);
+        await fetchProduct();
+      } catch (error) {
+        showError('Enrichment error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🚀 Run AI Enrichment';
+      }
+    }
+
+    async function testDirectUpdate() {
+      if (!selectedProduct) {
+        showError('Please select a product first');
+        return;
+      }
+
+      const btn = document.getElementById('updateBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Updating...';
+
+      try {
+        const updateData = {
+          ai_color: 'Test Color',
+          ai_material: 'Test Material',
+          room: 'Living Room',
+          style: 'Modern',
+          category: 'Furniture',
+          functionality: 'Storage and Display',
+          characteristics: 'Durable, Easy to Clean',
+          dimensions_text: '120cm x 60cm x 75cm',
+          smart_length: 120,
+          smart_length_unit: 'cm',
+          smart_width: 60,
+          smart_width_unit: 'cm',
+          smart_height: 75,
+          smart_height_unit: 'cm',
+          ai_vision_analysis: 'Test analysis of the product',
+          enrichment_status: 'completed',
+          last_enriched_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+          .from('shopify_products')
+          .update(updateData)
+          .eq('id', selectedProduct.id)
+          .select();
+
+        if (error) throw error;
+
+        showSuccess('Direct update successful!', data);
+        await fetchProduct();
+      } catch (error) {
+        showError('Update error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 Test Direct Update';
+      }
+    }
+
+    async function fetchProduct() {
+      if (!selectedProduct) return;
+
+      const btn = document.getElementById('fetchBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Fetching...';
+
+      try {
+        const { data, error } = await supabase
+          .from('shopify_products')
+          .select('*')
+          .eq('id', selectedProduct.id)
+          .single();
+
+        if (error) throw error;
+
+        selectedProduct = data;
+        updatePreview();
+        showSuccess('Product refreshed!', data);
+      } catch (error) {
+        showError('Fetch error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Refresh Product';
+      }
+    }
+
+    async function testTrigger() {
+      if (!selectedProduct) {
+        showError('Please select a product first');
+        return;
+      }
+
+      const btn = document.getElementById('triggerBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span> Testing...';
+
+      try {
+        // Test: try to update with a field that triggers the GTIN issue
+        const { data, error } = await supabase
+          .from('shopify_products')
+          .update({
+            ai_color: 'Trigger Test - ' + new Date().toLocaleTimeString()
+          })
+          .eq('id', selectedProduct.id)
+          .select();
+
+        if (error) throw error;
+
+        showSuccess('Trigger test passed! GTIN trigger is working correctly.', data);
+        await fetchProduct();
+      } catch (error) {
+        showError('Trigger test failed: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⚡ Test GTIN Trigger';
+      }
+    }
+
+    function showError(message) {
+      const results = document.getElementById('results');
+      const content = document.getElementById('resultContent');
+      results.style.display = 'block';
+      results.style.borderLeftColor = '#dc3545';
+      results.querySelector('h3').style.color = '#dc3545';
+      results.querySelector('h3').textContent = '❌ Error';
+      content.textContent = message;
+    }
+
+    function showSuccess(message, data) {
+      const results = document.getElementById('results');
+      const content = document.getElementById('resultContent');
+      results.style.display = 'block';
+      results.style.borderLeftColor = '#28a745';
+      results.querySelector('h3').style.color = '#28a745';
+      results.querySelector('h3').textContent = '✅ ' + message;
+      content.textContent = JSON.stringify(data, null, 2);
+    }
+
+    init();
+  </script>
+</body>
+</html>
