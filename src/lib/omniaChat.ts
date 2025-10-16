@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, getEnvVar } from './supabase';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -132,7 +132,11 @@ Mets "product_search" si le client a donné des critères précis.`,
 };
 
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 50): Promise<string> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+
+  if (!supabaseUrl) {
+    throw new Error('Supabase URL is not configured. Please check your environment variables.');
+  }
 
   const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
     method: 'POST',
