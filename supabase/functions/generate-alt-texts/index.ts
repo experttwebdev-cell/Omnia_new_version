@@ -25,10 +25,10 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
+    const deepseekApiKey = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!deepseekApiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
+        JSON.stringify({ error: "DeepSeek API key not configured" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,15 +120,15 @@ Provide response in JSON format:
 }`;
 
     const visionResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+      "https://api.deepseek.com/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
+          "Authorization": `Bearer ${deepseekApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "deepseek-chat",
           messages: [
             {
               role: "user",
@@ -154,7 +154,7 @@ Provide response in JSON format:
 
     if (!visionResponse.ok) {
       const errorText = await visionResponse.text();
-      throw new Error(`OpenAI API error: ${visionResponse.statusText} - ${errorText}`);
+      throw new Error(`DeepSeek API error: ${visionResponse.statusText} - ${errorText}`);
     }
 
     const visionData = await visionResponse.json();
