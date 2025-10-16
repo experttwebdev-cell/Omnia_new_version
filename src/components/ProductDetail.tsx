@@ -39,6 +39,8 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentStep, setEnrichmentStep] = useState('');
 
   const fetchProductDetails = async () => {
     try {
@@ -99,6 +101,56 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
     }
   };
 
+  const handleEnrichProduct = async () => {
+    if (isEnriching) return;
+
+    setIsEnriching(true);
+    setEnrichmentStep('Analyzing product information...');
+
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      setEnrichmentStep('Processing with DeepSeek AI...');
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/enrich-product-with-ai`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: product!.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Enrichment failed');
+      }
+
+      setEnrichmentStep('Analyzing images with OpenAI Vision...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setEnrichmentStep('Finalizing enrichment...');
+      const data = await response.json();
+
+      if (data.success) {
+        await fetchProductDetails();
+        setEnrichmentStep('');
+      }
+    } catch (err) {
+      console.error('Enrichment error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to enrich product');
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsEnriching(false);
+      setEnrichmentStep('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
@@ -139,6 +191,29 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
 
   return (
     <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+      {isEnriching && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
+            <div className="text-center">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 mx-auto">
+                  <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-ping"></div>
+                  <div className="absolute inset-0 border-4 border-t-blue-600 border-r-purple-600 rounded-full animate-spin"></div>
+                  <Sparkles className="w-20 h-20 text-blue-600 animate-pulse" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">AI Enrichment in Progress</h3>
+              <p className="text-sm text-gray-600 mb-4">{enrichmentStep}</p>
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 bg-white border-b border-gray-200 z-20 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -152,15 +227,29 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
               </button>
               <h2 className="text-lg font-semibold text-gray-800 hidden sm:block">Product Details</h2>
             </div>
-            <a
-              href={`https://${product.shop_name}.myshopify.com/products/${product.handle}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span className="hidden sm:inline">View in Store</span>
-            </a>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleEnrichProduct}
+                disabled={isEnriching}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  isEnriching
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
+                }`}
+              >
+                <Sparkles className={`w-4 h-4 ${isEnriching ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isEnriching ? 'Enriching...' : 'Enrich with AI'}</span>
+              </button>
+              <a
+                href={`https://${product.shop_name}.myshopify.com/products/${product.handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span className="hidden sm:inline">View in Store</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

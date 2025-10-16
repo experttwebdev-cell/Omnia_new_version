@@ -165,7 +165,8 @@ Extract and provide the following in JSON format:
     "diameter": "value with unit if mentioned"
   },
   "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
-  "ai_vision_analysis": "Write a detailed, engaging product description (3-4 sentences) that highlights key features, materials, style, and benefits. Make it compelling and informative."
+  "ai_vision_analysis": "Write a detailed, engaging product description (3-4 sentences) that highlights key features, materials, style, and benefits. Make it compelling and informative.",
+  "dimensions_text": "Complete human-readable dimensions text (e.g., 'Length: 120 cm, Width: 80 cm, Height: 45 cm, Seat height: 40 cm') or empty string if no dimensions found"
 }
 
 IMPORTANT INSTRUCTIONS:
@@ -177,6 +178,7 @@ IMPORTANT INSTRUCTIONS:
 - color & material: Extract from both title and description
 - For dimensions with ranges (e.g., "82-98 cm"), provide both min and max values
 - keywords: Extract 10-15 relevant SEO keywords from title and description
+- dimensions_text: Create a complete, readable text of ALL dimensions found (length, width, height, depth, diameter, seat height, etc.) with units. Use the same language as the product title.
 - Return ONLY valid JSON, no additional text.`;
 
     const textAnalysisResponse = await callDeepSeek([
@@ -207,7 +209,86 @@ IMPORTANT INSTRUCTIONS:
       };
     }
 
-    const allKeywords = textAnalysis.keywords || [];
+    let visionAnalysis: any = {};
+    let imageInsights = "";
+
+    if (images && images.length > 0) {
+      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+
+      if (openaiApiKey) {
+        try {
+          const imageContents = images.slice(0, 3).map((img: ImageData) => ({
+            type: "image_url",
+            image_url: {
+              url: img.src,
+            },
+          }));
+
+          const visionPrompt = `Analyze these product images and provide detailed visual insights in JSON format:
+{
+  "visual_description": "Detailed description of what you see (materials, colors, design, style)",
+  "color_detected": "Main color detected",
+  "material_detected": "Material detected from visual inspection",
+  "style_detected": "Design style detected (Modern, Scandinavian, Industrial, etc.)",
+  "additional_features": ["list", "of", "visible", "features"]
+}
+
+Provide response in the same language as this product: ${product.title}`;
+
+          const visionResponse = await fetch(
+            "https://api.openai.com/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${openaiApiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      {
+                        type: "text",
+                        text: visionPrompt,
+                      },
+                      ...imageContents,
+                    ],
+                  },
+                ],
+                max_tokens: 500,
+                temperature: 0.3,
+              }),
+            }
+          );
+
+          if (visionResponse.ok) {
+            const visionData = await visionResponse.json();
+            const visionContent = visionData.choices[0].message.content;
+
+            try {
+              visionAnalysis = JSON.parse(visionContent);
+              imageInsights = visionAnalysis.visual_description || "";
+            } catch (e) {
+              console.error("Failed to parse vision analysis JSON:", visionContent);
+              imageInsights = visionContent || "";
+            }
+          }
+        } catch (error) {
+          console.error("OpenAI Vision API error:", error);
+        }
+      }
+    }
+
+    const finalColor = visionAnalysis.color_detected || textAnalysis.color || "";
+    const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
+    const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
+
+    const allKeywords = [
+      ...(textAnalysis.keywords || []),
+      ...(visionAnalysis.additional_features || []),
+    ];
     const uniqueKeywords = [...new Set(allKeywords)];
     const finalTags = uniqueKeywords.join(", ");
 
@@ -258,17 +339,22 @@ Provide response in JSON format:
       images?.length || 0
     );
 
+    const finalAiVisionAnalysis = imageInsights
+      ? `${textAnalysis.ai_vision_analysis || ""}\n\nVisual Analysis: ${imageInsights}`
+      : textAnalysis.ai_vision_analysis || "";
+
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
-      style: textAnalysis.style || "",
+      style: finalStyle,
       room: textAnalysis.room || "",
       seo_title: seoTitle,
       seo_description: seoDescription,
       tags: finalTags,
-      ai_vision_analysis: textAnalysis.ai_vision_analysis || "",
-      ai_color: textAnalysis.color || "",
-      ai_material: textAnalysis.material || "",
+      ai_vision_analysis: finalAiVisionAnalysis,
+      ai_color: finalColor,
+      ai_material: finalMaterial,
+      dimensions_text: textAnalysis.dimensions_text || "",
       ai_confidence_score: confidenceScore,
       enrichment_status: "enriched",
       last_enriched_at: new Date().toISOString(),
@@ -325,11 +411,12 @@ Provide response in JSON format:
           seo_title: seoTitle,
           seo_description: seoDescription,
           tags: finalTags,
-          ai_color: textAnalysis.color || "",
-          ai_material: textAnalysis.material || "",
-          style: textAnalysis.style || "",
+          ai_color: finalColor,
+          ai_material: finalMaterial,
+          style: finalStyle,
           room: textAnalysis.room || "",
-          ai_vision_analysis: textAnalysis.ai_vision_analysis || "",
+          ai_vision_analysis: finalAiVisionAnalysis,
+          dimensions_text: textAnalysis.dimensions_text || "",
           ai_confidence_score: confidenceScore,
         },
       }),
