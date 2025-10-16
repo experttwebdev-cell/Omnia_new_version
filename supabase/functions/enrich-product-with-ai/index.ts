@@ -251,8 +251,12 @@ Deno.serve(async (req: Request) => {
 
   console.log("=== 🚀 DÉBUT DE L'ENRICHISSEMENT ===");
 
+  let requestBody: any;
+  let enrichmentContext = "initialization";
+
   try {
     // Vérification des variables d'environnement
+    enrichmentContext = "environment_validation";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
@@ -294,18 +298,20 @@ Deno.serve(async (req: Request) => {
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
     // Parse du body avec gestion d'erreur
-    let requestBody;
+    enrichmentContext = "request_parsing";
     try {
       requestBody = await req.json();
     } catch (parseError) {
+      console.error("❌ Failed to parse request body:", parseError);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Invalid JSON in request body" 
+        JSON.stringify({
+          success: false,
+          error: "Invalid JSON in request body",
+          context: enrichmentContext
         }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -314,45 +320,81 @@ Deno.serve(async (req: Request) => {
     console.log("📦 Product ID:", productId);
 
     if (!productId) {
+      console.error("❌ Missing product ID in request");
       return new Response(
-        JSON.stringify({ success: false, error: "Product ID is required" }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        JSON.stringify({
+          success: false,
+          error: "Product ID is required",
+          context: enrichmentContext
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
 
     // Récupération du produit
+    enrichmentContext = "product_fetch";
     console.log("🔍 Fetching product from database...");
-    const { data: product, error: productError } = await supabaseClient
-      .from("shopify_products")
-      .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material, ai_vision_analysis")
-      .eq("id", productId)
-      .maybeSingle();
 
-    if (productError || !product) {
-      console.error("❌ Product not found:", productError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Product not found" }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
+    let product: any;
+    try {
+      const { data, error: productError } = await supabaseClient
+        .from("shopify_products")
+        .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material, ai_vision_analysis")
+        .eq("id", productId)
+        .maybeSingle();
+
+      if (productError) {
+        console.error("❌ Database error fetching product:", productError);
+        throw new Error(`Database error: ${productError.message || JSON.stringify(productError)}`);
+      }
+
+      if (!data) {
+        console.error("❌ Product not found with ID:", productId);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Product not found",
+            context: enrichmentContext,
+            productId
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
+
+      product = data;
+      console.log("✅ Product found:", product.title);
+    } catch (dbError) {
+      console.error("❌ Exception during product fetch:", dbError);
+      throw new Error(`Failed to fetch product: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
     }
 
-    console.log("✅ Product found:", product.title);
-
     // Récupération des images
-    const { data: images } = await supabaseClient
-      .from("product_images")
-      .select("src, alt_text, position")
-      .eq("product_id", productId)
-      .order("position", { ascending: true })
-      .limit(3);
+    enrichmentContext = "images_fetch";
+    let images: any[] = [];
+    try {
+      const { data, error: imagesError } = await supabaseClient
+        .from("product_images")
+        .select("src, alt_text, position")
+        .eq("product_id", productId)
+        .order("position", { ascending: true })
+        .limit(3);
 
-    console.log(`🖼️ Found ${images?.length || 0} images`);
+      if (imagesError) {
+        console.warn("⚠️ Error fetching images (continuing without images):", imagesError);
+      } else {
+        images = data || [];
+      }
+
+      console.log(`🖼️ Found ${images.length} images`);
+    } catch (imgError) {
+      console.warn("⚠️ Exception fetching images (continuing without images):", imgError);
+    }
 
     // Nettoyage de la description
     let cleanDescription = product.description
@@ -372,6 +414,7 @@ Deno.serve(async (req: Request) => {
     console.log("📝 Description cleaned");
 
     // Analyse de texte avec DeepSeek
+    enrichmentContext = "text_analysis";
     console.log("🧠 Starting text analysis with DeepSeek...");
     let textAnalysis: any = {};
 
@@ -404,6 +447,10 @@ Deno.serve(async (req: Request) => {
       });
     } catch (textError) {
       console.error("❌ Text analysis failed:", textError);
+      const errorMessage = textError instanceof Error ? textError.message : String(textError);
+      console.error("Text analysis error details:", errorMessage);
+
+      // Use fallback values but don't fail the entire enrichment
       textAnalysis = {
         category: product.product_type || "Non catégorisé",
         sub_category: "",
@@ -535,13 +582,30 @@ Deno.serve(async (req: Request) => {
     })();
 
     // Attente des appels parallèles
+    enrichmentContext = "parallel_api_calls";
     console.log("⏳ Waiting for parallel API calls...");
-    const [visionResult, seoResult] = await Promise.allSettled([visionPromise, seoPromise]);
 
-    const visionData = visionResult.status === 'fulfilled' ? visionResult.value : { visionAnalysis: {}, imageInsights: "" };
-    const seoData = seoResult.status === 'fulfilled' ? seoResult.value : {};
+    let visionData = { visionAnalysis: {}, imageInsights: "" };
+    let seoData = {};
 
-    console.log("✅ Parallel API calls completed");
+    try {
+      const [visionResult, seoResult] = await Promise.allSettled([visionPromise, seoPromise]);
+
+      visionData = visionResult.status === 'fulfilled' ? visionResult.value : { visionAnalysis: {}, imageInsights: "" };
+      seoData = seoResult.status === 'fulfilled' ? seoResult.value : {};
+
+      if (visionResult.status === 'rejected') {
+        console.warn("⚠️ Vision analysis was rejected:", visionResult.reason);
+      }
+      if (seoResult.status === 'rejected') {
+        console.warn("⚠️ SEO generation was rejected:", seoResult.reason);
+      }
+
+      console.log("✅ Parallel API calls completed");
+    } catch (parallelError) {
+      console.error("❌ Error in parallel API calls:", parallelError);
+      // Continue with empty data - don't fail the enrichment
+    }
 
     const { visionAnalysis, imageInsights } = visionData;
 
@@ -593,18 +657,26 @@ Deno.serve(async (req: Request) => {
     };
 
     // Mise à jour en base de données
+    enrichmentContext = "database_update";
     console.log("💾 Updating product in database...");
-    const { error: updateError } = await supabaseClient
-      .from("shopify_products")
-      .update(updateData)
-      .eq("id", productId);
 
-    if (updateError) {
-      console.error("❌ Database update failed:", updateError);
-      throw updateError;
+    try {
+      const { error: updateError } = await supabaseClient
+        .from("shopify_products")
+        .update(updateData)
+        .eq("id", productId);
+
+      if (updateError) {
+        console.error("❌ Database update failed:", updateError);
+        console.error("Update error details:", JSON.stringify(updateError, null, 2));
+        throw new Error(`Database update failed: ${updateError.message || JSON.stringify(updateError)}`);
+      }
+
+      console.log("✅ ENRICHISSEMENT TERMINÉ AVEC SUCCÈS!");
+    } catch (updateException) {
+      console.error("❌ Exception during database update:", updateException);
+      throw new Error(`Failed to update product in database: ${updateException instanceof Error ? updateException.message : String(updateException)}`);
     }
-
-    console.log("✅ ENRICHISSEMENT TERMINÉ AVEC SUCCÈS!");
 
     return new Response(
       JSON.stringify({
@@ -629,10 +701,43 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("💥 ENRICHMENT PROCESS FAILED:", error);
 
+    // Log detailed error information
+    const errorDetails: any = {
+      timestamp: new Date().toISOString(),
+      productId: requestBody?.productId || 'unknown',
+      context: enrichmentContext,
+    };
+
+    if (error instanceof Error) {
+      errorDetails.name = error.name;
+      errorDetails.message = error.message;
+      errorDetails.stack = error.stack;
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      console.error("Error context:", enrichmentContext);
+    } else {
+      errorDetails.rawError = String(error);
+      console.error("Raw error:", error);
+      console.error("Error context:", enrichmentContext);
+    }
+
+    // Try to determine the failure context
+    console.error("Error context details:", JSON.stringify(errorDetails, null, 2));
+
     return new Response(
       JSON.stringify({
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+        context: enrichmentContext,
+        timestamp: errorDetails.timestamp,
+        // Include limited debugging info (safe for production)
+        debug: {
+          hasProductId: !!requestBody?.productId,
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          failedAt: enrichmentContext
+        }
       }),
       {
         status: 500,
