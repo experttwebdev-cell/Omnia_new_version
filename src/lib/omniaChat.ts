@@ -378,12 +378,12 @@ async function generateSmartProductPresentation(products: Product[], userMessage
 
   if (products.length === 0) {
     const filterDesc = [];
-    if (filters.type) filterDesc.push(`${filters.type}s`);
+    if (filters.type) filterDesc.push(filters.type);
     if (filters.style) filterDesc.push(`de style ${filters.style}`);
     if (filters.room) filterDesc.push(`pour ${filters.room}`);
 
-    const search = filterDesc.length > 0 ? filterDesc.join(' ') : 'ce type de produit';
-    return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Par exemple :\n- Quel style préférez-vous ? (scandinave, moderne, industriel...)\n- Quelle pièce souhaitez-vous aménager ?\n- Avez-vous des préférences de couleur ou matériau ?`;
+    const search = filterDesc.length > 0 ? filterDesc.join(' ') : 'produit correspondant';
+    return `Je n'ai pas trouvé de ${search} pour le moment. 😊\n\nPuis-je vous aider à affiner votre recherche ? Voici quelques suggestions :\n• Quel style recherchez-vous ? (scandinave, moderne, industriel...)\n• Pour quelle pièce ? (salon, chambre, bureau...)\n• Avez-vous des préférences de couleur ou de matériau ?\n• Quel est votre budget approximatif ?`;
   }
 
   // Construire les données enrichies pour l'IA
