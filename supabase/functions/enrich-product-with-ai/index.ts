@@ -251,8 +251,12 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
       let visionAnalysis: any = {};
       let imageInsights = "";
 
+      console.log("=== Vision Analysis Start ===");
+      console.log("Images count:", images?.length || 0);
+
       if (images && images.length > 0) {
         const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+        console.log("OpenAI API Key present:", !!openaiApiKey);
 
         if (openaiApiKey) {
           try {
@@ -262,6 +266,8 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
                 url: img.src,
               },
             }));
+
+            console.log("Processing", imageContents.length, "images for vision analysis");
 
             const visionPrompt = `TÂCHE : Analyser les ATTRIBUTS VISUELS uniquement (couleur, texture, matériau, style).
 
@@ -310,24 +316,49 @@ EXEMPLE INCORRECT : "Canapé moderne en tissu gris" ❌`;
               }
             );
 
+            console.log("Vision API response status:", visionResponse.status);
+
             if (visionResponse.ok) {
               const visionData = await visionResponse.json();
               const visionContent = visionData.choices[0].message.content;
 
+              console.log("Vision API raw response:", visionContent);
+
               try {
-                visionAnalysis = JSON.parse(visionContent);
+                let jsonContent = visionContent;
+                const jsonMatch = visionContent.match(/```json\s*([\s\S]*?)\s*```/);
+                if (jsonMatch) {
+                  jsonContent = jsonMatch[1];
+                  console.log("Extracted JSON from markdown block");
+                }
+
+                visionAnalysis = JSON.parse(jsonContent);
                 imageInsights = visionAnalysis.visual_description || "";
+
+                console.log("✅ Vision analysis parsed successfully");
+                console.log("Color detected:", visionAnalysis.color_detected);
+                console.log("Material detected:", visionAnalysis.material_detected);
+                console.log("Style detected:", visionAnalysis.style_detected);
               } catch (e) {
-                console.error("Failed to parse vision analysis JSON:", visionContent);
+                console.error("❌ Failed to parse vision analysis JSON:", e);
+                console.error("Content that failed:", visionContent);
                 imageInsights = visionContent || "";
               }
+            } else {
+              const errorText = await visionResponse.text();
+              console.error("❌ Vision API error:", visionResponse.status, errorText);
             }
           } catch (error) {
-            console.error("OpenAI Vision API error:", error);
+            console.error("❌ OpenAI Vision API error:", error);
           }
+        } else {
+          console.warn("⚠️ OpenAI API Key not configured - skipping vision analysis");
         }
+      } else {
+        console.warn("⚠️ No images available for vision analysis");
       }
 
+      console.log("=== Vision Analysis End ===");
       return { visionAnalysis, imageInsights };
     })();
 
@@ -376,6 +407,12 @@ Return ONLY valid JSON:
     const finalColor = visionAnalysis.color_detected || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
+
+    console.log("=== Final Values ===");
+    console.log("Final Color:", finalColor);
+    console.log("Final Material:", finalMaterial);
+    console.log("Final Style:", finalStyle);
+    console.log("Final AI Vision Analysis:", imageInsights || visionAnalysis.visual_description || "");
 
     const allKeywords = [
       ...(textAnalysis.keywords || []),
