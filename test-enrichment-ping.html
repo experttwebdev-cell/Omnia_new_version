@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Enrichment - Ping Simple</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0a0a0a;
+      color: #00ff00;
+    }
+    .log {
+      background: #1a1a1a;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border-left: 3px solid #00ff00;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .error {
+      border-left-color: #ff0000;
+      color: #ff6b6b;
+    }
+    .success {
+      border-left-color: #00ff00;
+      color: #00ff00;
+    }
+    .warning {
+      border-left-color: #ffaa00;
+      color: #ffaa00;
+    }
+    button {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #00cc00;
+    }
+    h1 {
+      color: #00ff00;
+      text-align: center;
+    }
+    .status {
+      text-align: center;
+      font-size: 18px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Test Enrichment - Ping Simple</h1>
+  <div class="status" id="status">Prêt à tester</div>
+
+  <div style="text-align: center; margin: 20px 0;">
+    <button onclick="testPing()">🚀 Test Ping (OPTIONS)</button>
+    <button onclick="testWithoutBody()">📦 Test sans Body</button>
+    <button onclick="testWithInvalidJSON()">❌ Test avec JSON invalide</button>
+  </div>
+
+  <div id="logs"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = window.APP_CONFIG?.VITE_SUPABASE_URL || import.meta.env?.VITE_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = window.APP_CONFIG?.VITE_SUPABASE_ANON_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      alert('❌ ERREUR: Variables d\'environnement Supabase manquantes!\n\nVérifie que VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont définis.');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function log(message, type = 'log') {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = `log ${type}`;
+
+      const timestamp = new Date().toLocaleTimeString('fr-FR');
+      logEntry.textContent = `[${timestamp}] ${message}`;
+
+      logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+      console.log(message);
+    }
+
+    function updateStatus(message, type = 'log') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+    }
+
+    window.testPing = async function() {
+      log('🔄 Test 1: Envoi d\'une requête OPTIONS (ping)...', 'log');
+      updateStatus('⏳ Test OPTIONS en cours...', 'warning');
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/enrich-product-with-ai`, {
+          method: 'OPTIONS',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          }
+        });
+
+        log(`📡 Statut HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+        log(`📋 Headers: ${JSON.stringify([...response.headers.entries()])}`, 'log');
+
+        if (response.ok) {
+          log('✅ OPTIONS réussit - La fonction répond!', 'success');
+          updateStatus('✅ La fonction Edge répond correctement', 'success');
+        } else {
+          log('❌ OPTIONS échoue - La fonction ne répond pas correctement', 'error');
+          updateStatus('❌ La fonction ne répond pas', 'error');
+        }
+      } catch (error) {
+        log(`💥 ERREUR RÉSEAU: ${error.message}`, 'error');
+        updateStatus('💥 Erreur réseau', 'error');
+      }
+    };
+
+    window.testWithoutBody = async function() {
+      log('🔄 Test 2: POST sans body...', 'log');
+      updateStatus('⏳ Test POST sans body...', 'warning');
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/enrich-product-with-ai`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({})
+        });
+
+        log(`📡 Statut HTTP: ${response.status}`, response.status === 400 ? 'warning' : 'error');
+
+        const text = await response.text();
+        log(`📄 Réponse brute: ${text}`, 'log');
+
+        try {
+          const data = JSON.parse(text);
+          log(`📦 JSON parsé: ${JSON.stringify(data, null, 2)}`, 'success');
+
+          if (data.error) {
+            log(`✅ Erreur attendue reçue: ${data.error}`, 'success');
+            updateStatus('✅ La fonction gère les erreurs correctement', 'success');
+          }
+        } catch (e) {
+          log(`❌ Impossible de parser la réponse comme JSON`, 'error');
+          updateStatus('❌ Réponse invalide', 'error');
+        }
+      } catch (error) {
+        log(`💥 ERREUR: ${error.message}`, 'error');
+        log(`📋 Détails: ${JSON.stringify(error, null, 2)}`, 'error');
+        updateStatus('💥 Erreur lors du test', 'error');
+      }
+    };
+
+    window.testWithInvalidJSON = async function() {
+      log('🔄 Test 3: POST avec JSON invalide...', 'log');
+      updateStatus('⏳ Test POST avec JSON invalide...', 'warning');
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/enrich-product-with-ai`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: 'this is not json'
+        });
+
+        log(`📡 Statut HTTP: ${response.status}`, 'log');
+
+        const text = await response.text();
+        log(`📄 Réponse: ${text.substring(0, 500)}`, text.length > 0 ? 'log' : 'error');
+
+        if (response.status >= 400) {
+          log('✅ La fonction rejette correctement les requêtes invalides', 'success');
+          updateStatus('✅ Validation des entrées fonctionne', 'success');
+        }
+      } catch (error) {
+        log(`💥 ERREUR: ${error.message}`, 'error');
+        updateStatus('💥 Erreur lors du test', 'error');
+      }
+    };
+
+    // Auto-run first test
+    log('🚀 Page chargée - Prêt pour les tests', 'success');
+    log(`📍 URL Function: ${SUPABASE_URL}/functions/v1/enrich-product-with-ai`, 'log');
+  </script>
+</body>
+</html>
