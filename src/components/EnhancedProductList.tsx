@@ -248,8 +248,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
   const handleEnrichWithAI = () => {
     const productsToEnrich = products.filter(p =>
-      p.enrichment_status !== 'enriched' &&
-      p.enrichment_status !== 'completed'
+      p.enrichment_status !== 'enriched'
     );
 
     console.log(`Products to enrich: ${productsToEnrich.length}/${products.length}`);
@@ -265,7 +264,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
   const executeEnrichment = async () => {
     setShowEnrichConfirm(false);
-    const productsToEnrich = products.filter(p => p.enrichment_status !== 'enriched' && p.enrichment_status !== 'completed');
+    const productsToEnrich = products.filter(p => p.enrichment_status !== 'enriched');
 
     if (productsToEnrich.length === 0) {
       console.warn('No products to enrich');
@@ -497,8 +496,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
   }
 
   const productsNeedingEnrichment = products.filter(p =>
-    p.enrichment_status !== 'enriched' &&
-    p.enrichment_status !== 'completed'
+    p.enrichment_status !== 'enriched'
   ).length;
 
   return (
@@ -531,10 +529,10 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">{t.products.enrichedProducts}</p>
               <p className="text-3xl font-bold text-gray-900">
-                {products.filter(p => p.enrichment_status === 'enriched' || p.enrichment_status === 'completed').length}
+                {products.filter(p => p.enrichment_status === 'enriched').length}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {products.length > 0 ? Math.round((products.filter(p => p.enrichment_status === 'enriched' || p.enrichment_status === 'completed').length / products.length) * 100) : 0}% {t.products.ofTotal}
+                {products.length > 0 ? Math.round((products.filter(p => p.enrichment_status === 'enriched').length / products.length) * 100) : 0}% {t.products.ofTotal}
               </p>
             </div>
             <Sparkles className="w-10 h-10 text-green-600 opacity-20" />
@@ -558,7 +556,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">{t.products.pendingSync}</p>
               <p className="text-3xl font-bold text-gray-900">
-                {products.filter(p => (p.enrichment_status === 'enriched' || p.enrichment_status === 'completed') && !p.seo_synced_to_shopify).length}
+                {products.filter(p => p.enrichment_status === 'enriched' && !p.seo_synced_to_shopify).length}
               </p>
             </div>
             <Clock className="w-10 h-10 text-orange-600 opacity-20" />
@@ -775,7 +773,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                 </div>
               )}
               <div className="absolute top-2 left-2 flex gap-2">
-                {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && (
+                {product.enrichment_status === 'enriched' && (
                   <div className="flex items-center gap-1 px-2 py-1 bg-purple-600 text-white rounded-full text-xs font-medium shadow-lg">
                     <Sparkles className="w-3 h-3" />
                     AI
@@ -787,14 +785,14 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                     Synced
                   </div>
                 )}
-                {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && !product.seo_synced_to_shopify && (
+                {product.enrichment_status === 'enriched' && !product.seo_synced_to_shopify && (
                   <div className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded-full text-xs font-medium shadow-lg">
                     <Clock className="w-3 h-3" />
                     Pending
                   </div>
                 )}
               </div>
-              {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && product.ai_confidence_score > 0 && (
+              {product.enrichment_status === 'enriched' && product.ai_confidence_score > 0 && (
                 <div className="absolute bottom-2 right-2 px-2 py-1 bg-black bg-opacity-70 text-white rounded text-xs font-medium">
                   {product.ai_confidence_score}% confidence
                 </div>
@@ -883,7 +881,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                       <Package className="w-8 h-8 text-gray-400" />
                     </div>
                   )}
-                  {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && (
+                  {product.enrichment_status === 'enriched' && (
                     <div className="absolute top-1 left-1 flex items-center gap-1 px-2 py-1 bg-purple-600 text-white rounded-full text-xs font-medium">
                       <Sparkles className="w-3 h-3" />
                     </div>
@@ -908,7 +906,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                         }`}>
                           {product.status}
                         </span>
-                        {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && (
+                        {product.enrichment_status === 'enriched' && (
                           <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                             <Sparkles className="w-3 h-3" />
                             AI
@@ -919,7 +917,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                             <CheckCircle className="w-3 h-3" />
                             Synced
                           </span>
-                        ) : (product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') ? (
+                        ) : product.enrichment_status === 'enriched' ? (
                           <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                             <Clock className="w-3 h-3" />
                             Pending
@@ -939,7 +937,7 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
                     </button>
                   </div>
 
-                  {(product.enrichment_status === 'enriched' || product.enrichment_status === 'completed') && (
+                  {product.enrichment_status === 'enriched' && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
                       {product.ai_color && (
                         <div className="flex items-center gap-2">

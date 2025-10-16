@@ -636,7 +636,7 @@ Deno.serve(async (req: Request) => {
       dimensions_text: textAnalysis.dimensions_text || null,
       dimensions_source: textAnalysis.dimensions_source || null,
       ai_confidence_score: confidenceScore,
-      enrichment_status: "completed",
+      enrichment_status: "enriched",
       last_enriched_at: new Date().toISOString(),
       seo_synced_to_shopify: false,
     };

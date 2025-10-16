@@ -114,7 +114,7 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
             if (!productsError && productsData) {
               console.log('Product data fetched:', productsData.length, 'products');
               productsData.forEach(p => {
-                console.log(`Product: ${p.title} - Enriched: ${p.enrichment_status === 'completed' ? 'Yes' : 'No'}`);
+                console.log(`Product: ${p.title} - Enriched: ${p.enrichment_status === 'enriched' ? 'Yes' : 'No'}`);
                 if (p.dimensions_text) console.log(`  - Has dimensions: ${p.dimensions_text}`);
                 if (p.characteristics) console.log(`  - Has characteristics: ${p.characteristics}`);
                 if (p.ai_color) console.log(`  - Has color: ${p.ai_color}`);
