@@ -386,6 +386,11 @@
 
     async function loadProducts() {
       try {
+        if (!supabase) {
+          log('❌ Erreur: Supabase non initialisé', 'error');
+          return;
+        }
+
         log('📥 Chargement des produits...', 'info');
 
         const { data: products, error } = await supabase
@@ -614,13 +619,35 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      supabase = window.supabase.createClient(
-        window.ENV.VITE_SUPABASE_URL,
-        window.ENV.VITE_SUPABASE_ANON_KEY
-      );
+      // Check if config is loaded
+      if (!window.ENV) {
+        log('❌ Erreur: Configuration non chargée. Assurez-vous que config.js est chargé.', 'error');
+        console.error('window.ENV is undefined. Make sure /config.js is loaded properly.');
+        return;
+      }
 
-      log('🚀 Application initialisée', 'success');
-      log('💡 Testez l\'analyse d\'images avec les différents modes', 'info');
+      // Check if environment variables are set
+      if (!window.ENV.VITE_SUPABASE_URL || !window.ENV.VITE_SUPABASE_ANON_KEY) {
+        log('❌ Erreur: Variables d\'environnement manquantes', 'error');
+        console.error('Environment variables missing:', {
+          hasUrl: !!window.ENV.VITE_SUPABASE_URL,
+          hasKey: !!window.ENV.VITE_SUPABASE_ANON_KEY
+        });
+        return;
+      }
+
+      // Initialize Supabase client
+      try {
+        supabase = window.supabase.createClient(
+          window.ENV.VITE_SUPABASE_URL,
+          window.ENV.VITE_SUPABASE_ANON_KEY
+        );
+        log('🚀 Application initialisée', 'success');
+        log('💡 Testez l\'analyse d\'images avec les différents modes', 'info');
+      } catch (error) {
+        log(`❌ Erreur d'initialisation: ${error.message}`, 'error');
+        console.error('Failed to initialize Supabase:', error);
+      }
     });
   </script>
 </body>

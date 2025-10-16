@@ -1,7 +1,8 @@
-// This file will be replaced by your hosting platform
-// Do not commit actual values to git
-window.ENV_CONFIG = {
-  VITE_SUPABASE_URL: '__VITE_SUPABASE_URL__',
-  VITE_SUPABASE_ANON_KEY: '__VITE_SUPABASE_ANON_KEY__',
-  VITE_OPENAI_API_KEY: '__VITE_OPENAI_API_KEY__'
+// Environment configuration for HTML test files
+// This file is used by standalone HTML files that don't go through the Vite build process
+// For production deployments, use inject-env.sh to replace these values
+window.ENV = {
+  VITE_SUPABASE_URL: 'https://ufdhzgqrubbnornjdvgv.supabase.co',
+  VITE_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms',
+  VITE_OPENAI_API_KEY: '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'
 };

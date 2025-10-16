@@ -8,9 +8,15 @@ CONFIG_FILE="dist/config.js"
 if [ -f "$CONFIG_FILE" ]; then
   echo "Injecting environment variables into config.js..."
 
-  sed -i "s|__VITE_SUPABASE_URL__|${VITE_SUPABASE_URL}|g" "$CONFIG_FILE"
-  sed -i "s|__VITE_SUPABASE_ANON_KEY__|${VITE_SUPABASE_ANON_KEY}|g" "$CONFIG_FILE"
-  sed -i "s|__VITE_OPENAI_API_KEY__|${VITE_OPENAI_API_KEY}|g" "$CONFIG_FILE"
+  # Replace the entire window.ENV object with real values
+  cat > "$CONFIG_FILE" << EOF
+// Environment configuration injected at build time
+window.ENV = {
+  VITE_SUPABASE_URL: '${VITE_SUPABASE_URL}',
+  VITE_SUPABASE_ANON_KEY: '${VITE_SUPABASE_ANON_KEY}',
+  VITE_OPENAI_API_KEY: '${VITE_OPENAI_API_KEY}'
+};
+EOF
 
   echo "Environment variables injected successfully!"
 else

@@ -506,19 +506,42 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      supabase = window.supabase.createClient(
-        window.ENV.VITE_SUPABASE_URL,
-        window.ENV.VITE_SUPABASE_ANON_KEY
-      );
+      // Check if config is loaded
+      if (!window.ENV) {
+        console.error('window.ENV is undefined. Make sure /config.js is loaded properly.');
+        document.body.innerHTML = '<div style="padding: 20px; color: red;">Configuration error: config.js not loaded</div>';
+        return;
+      }
 
-      log('🚀 Application initialisée', 'success');
-      log('💡 Testez les différents modes de recherche', 'info');
+      // Check if environment variables are set
+      if (!window.ENV.VITE_SUPABASE_URL || !window.ENV.VITE_SUPABASE_ANON_KEY) {
+        console.error('Environment variables missing:', {
+          hasUrl: !!window.ENV.VITE_SUPABASE_URL,
+          hasKey: !!window.ENV.VITE_SUPABASE_ANON_KEY
+        });
+        document.body.innerHTML = '<div style="padding: 20px; color: red;">Configuration error: Environment variables missing</div>';
+        return;
+      }
 
-      document.getElementById('searchQuery').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          searchProducts();
-        }
-      });
+      // Initialize Supabase client
+      try {
+        supabase = window.supabase.createClient(
+          window.ENV.VITE_SUPABASE_URL,
+          window.ENV.VITE_SUPABASE_ANON_KEY
+        );
+
+        log('🚀 Application initialisée', 'success');
+        log('💡 Testez les différents modes de recherche', 'info');
+
+        document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            searchProducts();
+          }
+        });
+      } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        document.body.innerHTML = '<div style="padding: 20px; color: red;">Initialization error: ' + error.message + '</div>';
+      }
     });
   </script>
 </body>
