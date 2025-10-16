@@ -47,20 +47,28 @@ export function ProductList() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-12 text-center">
-        <div className="relative w-24 h-24 mx-auto mb-6">
-          <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-t-blue-600 border-r-purple-600 rounded-full animate-spin"></div>
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <Package className="w-10 h-10 text-blue-600 animate-pulse" />
+            <div className="relative">
+              <Package className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+            </div>
           </div>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chargement des produits</h3>
-        <p className="text-sm text-gray-600">Veuillez patienter...</p>
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Chargement des produits</h3>
+        <p className="text-base text-gray-600 mb-6">Récupération des données en cours...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
         </div>
       </div>
     );
