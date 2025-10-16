@@ -47,6 +47,7 @@ export function SeoOpportunities() {
   const [products, setProducts] = useState<Product[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generatingOutline, setGeneratingOutline] = useState<string | null>(null);
   const [creatingArticle, setCreatingArticle] = useState<string | null>(null);
@@ -206,11 +207,6 @@ export function SeoOpportunities() {
 
   const fetchProducts = useCallback(async () => {
     const startTime = Date.now();
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.warn('⏱️ Request timeout after 30 seconds');
-      abortController.abort();
-    }, 30000);
 
     try {
       setLoading(true);
@@ -218,14 +214,11 @@ export function SeoOpportunities() {
 
       console.log('🔍 [FETCH START]', new Date().toISOString(), 'Fetching products from shopify_products table...');
 
-      const productsPromise = supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('shopify_products')
-        .select('*')
+        .select('id, title, category, sub_category, product_type, tags, status, enrichment_status, created_at')
         .order('created_at', { ascending: false })
-        .limit(1000)
-        .abortSignal(abortController.signal);
-
-      const { data: productsData, error: productsError } = await productsPromise;
+        .limit(1000);
 
       if (productsError) {
         console.error('❌ Error fetching products:', productsError);
@@ -251,13 +244,10 @@ export function SeoOpportunities() {
 
       console.log('🔍 [OPPORTUNITIES START]', new Date().toISOString(), 'Fetching opportunities from blog_opportunities table...');
 
-      const oppsPromise = supabase
+      const { data: dbOpportunities, error: oppsError } = await supabase
         .from('blog_opportunities')
         .select('*')
-        .order('score', { ascending: false })
-        .abortSignal(abortController.signal);
-
-      const { data: dbOpportunities, error: oppsError } = await oppsPromise;
+        .order('score', { ascending: false });
 
       const oppsElapsed = Date.now() - startTime;
 
@@ -288,11 +278,9 @@ export function SeoOpportunities() {
         }
       }
 
-      clearTimeout(timeoutId);
       const totalElapsed = Date.now() - startTime;
       console.log(`✅ [FETCH COMPLETE] Total time: ${totalElapsed}ms`);
     } catch (err) {
-      clearTimeout(timeoutId);
       console.error('❌ [FETCH ERROR]', err);
 
       let errorMessage = 'Failed to fetch products';

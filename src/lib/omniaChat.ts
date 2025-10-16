@@ -286,7 +286,8 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
       ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
       room, image_url, product_type, description, ai_vision_analysis,
       handle, shopify_id, currency, shop_name, category, sub_category, tags,
-      length, width, height, length_unit, width_unit, height_unit, inventory_quantity
+      length, width, height, length_unit, width_unit, height_unit, inventory_quantity,
+      chat_text
     `)
     .eq('status', 'active')
     .limit(12);
@@ -300,19 +301,11 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
 
   // Recherche principale par type de produit (plus large et rapide)
   if (filters.type) {
-    const searchTerms = filters.type.toLowerCase().split(' ');
-    console.log('🔎 [SEARCH] Search terms:', searchTerms);
-    const orConditions = [];
+    const searchTerm = filters.type.toLowerCase();
+    console.log('🔎 [SEARCH] Search term:', searchTerm);
 
-    for (const term of searchTerms) {
-      orConditions.push(`title.ilike.%${term}%`);
-      orConditions.push(`category.ilike.%${term}%`);
-      orConditions.push(`sub_category.ilike.%${term}%`);
-      orConditions.push(`tags.ilike.%${term}%`);
-    }
-
-    console.log('🔎 [SEARCH] OR conditions:', orConditions.length);
-    query = query.or(orConditions.join(','));
+    // Use chat_text field for faster single-field search
+    query = query.ilike('chat_text', `%${searchTerm}%`);
   }
 
   console.log('🗄️ [SEARCH] Querying Supabase...');
@@ -340,22 +333,15 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
         ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
         room, image_url, product_type, description, ai_vision_analysis,
         handle, shopify_id, currency, shop_name, category, sub_category, tags,
-        length, width, height, length_unit, width_unit, height_unit, inventory_quantity
+        length, width, height, length_unit, width_unit, height_unit, inventory_quantity,
+        chat_text
       `)
       .eq('status', 'active')
       .limit(12);
 
-    const searchTerms = filters.type.toLowerCase().split(' ');
-    const orConditions = [];
-
-    for (const term of searchTerms) {
-      orConditions.push(`title.ilike.%${term}%`);
-      orConditions.push(`category.ilike.%${term}%`);
-      orConditions.push(`sub_category.ilike.%${term}%`);
-      orConditions.push(`tags.ilike.%${term}%`);
-    }
-
-    fallbackQuery = fallbackQuery.or(orConditions.join(','));
+    const searchTerm = filters.type.toLowerCase();
+    // Use chat_text field for faster single-field search
+    fallbackQuery = fallbackQuery.ilike('chat_text', `%${searchTerm}%`);
 
     const { data: fallbackData, error: fallbackError } = await fallbackQuery;
 
