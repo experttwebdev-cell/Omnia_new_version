@@ -123,7 +123,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       }
 
       const category = (productTypesResult.data || []).map(pt => ({
-        type: pt.product_type || 'Uncategorized',
+        type: pt.category || 'Uncategorized',
         count: pt.product_count
       }));
 
