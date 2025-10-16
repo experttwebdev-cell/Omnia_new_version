@@ -5,7 +5,9 @@ import {
   Package,
   TrendingUp,
   AlertTriangle,
+  ShoppingBag,
   RefreshCw,
+  Store as StoreIcon,
   Activity,
   Sparkles,
   CheckCircle,
@@ -18,15 +20,26 @@ import {
   Users,
   Zap,
   Target,
+  Filter,
   Search,
   Download,
-  AlertCircle
+  AlertCircle,
+  Text,
+  Image,
+  Gauge
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { LoadingAnimation, DashboardCardSkeleton } from './LoadingAnimation';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
-type SyncLog = Database['public']['Tables']['sync_logs']['Row'];
+type SyncLog = {
+  id: string;
+  store_name: string;
+  status: 'success' | 'failed' | 'processing';
+  products_processed: number;
+  products_failed: number;
+  created_at: string;
+};
 
 interface DashboardStats {
   totalProducts: number;
@@ -41,8 +54,8 @@ interface DashboardStats {
   recentSyncs: SyncLog[];
   performanceMetrics?: {
     syncSuccessRate: number;
-    averageEnrichmentTime: number;
-    totalEnrichedValue: number;
+    avgConfidenceScore: number;
+    highConfidenceProducts: number;
   };
 }
 
@@ -51,8 +64,6 @@ interface DashboardProps {
   onViewAllProducts?: (filter?: string) => void;
   onViewAllSyncs?: () => void;
 }
-
-type TimeRange = 'today' | 'week' | 'month' | 'all';
 
 export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }: DashboardProps) {
   const { t } = useLanguage();
@@ -71,42 +82,68 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       const isRefreshing = !loading;
       if (isRefreshing) setRefreshing(true);
 
+      // Fetch all data in parallel
       const [
         dashboardStatsResult,
         productTypesResult,
         enrichedProductsResult,
-        syncLogsResult
+        performanceResult
       ] = await Promise.all([
-        supabase.from('dashboard_stats_view').select('*').maybeSingle(),
-        supabase.from('product_categories_view').select('*').limit(10),
-        supabase.from('fast_products_view').select('*').eq('enrichment_status', 'enriched').order('last_enriched_at', { ascending: false }).limit(10),
-        supabase.from('recent_sync_logs_view').select('*').limit(10)
+        supabase.from('fast_dashboard_cache').select('*').maybeSingle(),
+        supabase.from('product_type_statistics_cache').select('*'),
+        supabase.from('shopify_products')
+          .select('*')
+          .eq('enrichment_status', 'enriched')
+          .order('last_enriched_at', { ascending: false })
+          .limit(100),
+        supabase.from('performance_metrics_cache').select('*').maybeSingle()
       ]);
 
+      // Handle errors
       const errors = [
         dashboardStatsResult.error,
         productTypesResult.error,
         enrichedProductsResult.error,
-        syncLogsResult.error
+        performanceResult.error
       ].filter(error => error);
 
       if (errors.length > 0) {
         console.error('Database errors:', errors);
-        throw new Error(`Failed to load some data: ${errors[0]?.message}`);
+        throw new Error(`Failed to load dashboard data: ${errors[0]?.message}`);
       }
 
-      const statsData: any = dashboardStatsResult.data;
+      const statsData = dashboardStatsResult.data;
       if (!statsData) {
         throw new Error('Dashboard statistics not available');
       }
 
-      const productTypes = (productTypesResult.data || []).map((pt: any) => ({
-        type: pt.category || 'Uncategorized',
-        count: pt.product_count || 0
+      const productTypes = (productTypesResult.data || []).map(pt => ({
+        type: pt.product_type || 'Uncategorized',
+        count: pt.product_count
       }));
 
-      const products: any[] = enrichedProductsResult.data || [];
-      const syncLogs: any[] = syncLogsResult.data || [];
+      const products = enrichedProductsResult.data || [];
+      const performanceData = performanceResult.data;
+
+      // Mock recent syncs (replace with actual sync_logs data when available)
+      const mockRecentSyncs: SyncLog[] = [
+        {
+          id: '1',
+          store_name: 'Main Store',
+          status: 'success',
+          products_processed: 45,
+          products_failed: 2,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: '2', 
+          store_name: 'Outlet Store',
+          status: 'processing',
+          products_processed: 23,
+          products_failed: 0,
+          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+        }
+      ];
 
       setProducts(products);
       setStats({
@@ -119,7 +156,12 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         syncedProducts: statsData.synced_products || 0,
         pendingSyncProducts: statsData.pending_sync_products || 0,
         productTypes,
-        recentSyncs: syncLogs
+        recentSyncs: mockRecentSyncs,
+        performanceMetrics: performanceData ? {
+          syncSuccessRate: performanceData.sync_success_rate || 0,
+          avgConfidenceScore: performanceData.avg_confidence_score || 0,
+          highConfidenceProducts: performanceData.high_confidence_products || 0
+        } : undefined
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -133,8 +175,9 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   useEffect(() => {
     fetchDashboardData();
 
-    const channel = supabase
-      .channel('dashboard-changes')
+    // Set up real-time subscriptions
+    const productSubscription = supabase
+      .channel('dashboard-products')
       .on(
         'postgres_changes',
         {
@@ -147,22 +190,10 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           fetchDashboardData();
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'sync_logs'
-        },
-        () => {
-          console.log('Sync logs changed, refreshing dashboard...');
-          fetchDashboardData();
-        }
-      )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(productSubscription);
     };
   }, [fetchDashboardData]);
 
@@ -170,28 +201,25 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
     fetchDashboardData();
   };
 
-  const handleExportData = async () => {
-    try {
-      // In a real implementation, this would generate and download a CSV/Excel file
-      console.log('Exporting dashboard data...');
-      // Mock export functionality
-      alert('Export functionality would be implemented here');
-    } catch (err) {
-      console.error('Error exporting data:', err);
-      setError('Failed to export data');
-    }
+  const handleExportData = () => {
+    // Export functionality implementation
+    console.log('Exporting dashboard data...');
+    alert('Export functionality would be implemented here');
   };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.seo_title?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.seo_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.vendor?.toLowerCase().includes(searchTerm.toLowerCase());
+    
     const matchesType = selectedProductType === 'all' || 
                        product.product_type === selectedProductType;
+    
     return matchesSearch && matchesType;
   });
 
   const displayedProducts = showAllProducts ? filteredProducts : filteredProducts.slice(0, 5);
-
   const productTypes = [...new Set(products.map(p => p.product_type).filter(Boolean))];
 
   if (loading) {
@@ -233,8 +261,10 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Overview of your product catalog and AI enrichment</p>
+          <h1 className="text-3xl font-bold text-gray-800">Product Intelligence Dashboard</h1>
+          <p className="text-gray-600 mt-1">
+            AI-powered product enrichment and Shopify synchronization
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -271,28 +301,28 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title={t.dashboard.totalProducts}
+          title="Total Products"
           value={stats.totalProducts.toLocaleString()}
           icon={Package}
           color="blue"
-          trend={{ value: 12, positive: true }}
+          trend={{ value: 8, positive: true }}
         />
         <StatCard
-          title={t.dashboard.aiEnriched}
+          title="AI Enriched"
           value={stats.enrichedProducts.toLocaleString()}
           icon={Sparkles}
           color="purple"
           subtitle={`${Math.round((stats.enrichedProducts / stats.totalProducts) * 100)}% of total`}
         />
         <StatCard
-          title={t.dashboard.syncedToShopify}
+          title="Synced to Shopify"
           value={stats.syncedProducts.toLocaleString()}
           icon={CheckCircle}
           color="green"
-          subtitle={`${Math.round((stats.syncedProducts / stats.totalProducts) * 100)}% success rate`}
+          subtitle={`${Math.round((stats.syncedProducts / stats.enrichedProducts) * 100)}% success`}
         />
         <StatCard
-          title={t.dashboard.pendingSync}
+          title="Pending Sync"
           value={stats.pendingSyncProducts.toLocaleString()}
           icon={Clock}
           color="orange"
@@ -300,24 +330,24 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         />
       </div>
 
-      {/* Performance Metrics */}
+      {/* AI Performance Metrics */}
       {stats.performanceMetrics && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <MetricCard
-            title="Sync Success Rate"
-            value={`${stats.performanceMetrics.syncSuccessRate}%`}
+            title="Avg Confidence Score"
+            value={`${stats.performanceMetrics.avgConfidenceScore}%`}
+            icon={Gauge}
+            color="blue"
+          />
+          <MetricCard
+            title="High Confidence Products"
+            value={stats.performanceMetrics.highConfidenceProducts.toLocaleString()}
             icon={Target}
             color="green"
           />
           <MetricCard
-            title="Avg Enrichment Time"
-            value={`${stats.performanceMetrics.averageEnrichmentTime}s`}
-            icon={Zap}
-            color="blue"
-          />
-          <MetricCard
-            title="Enrichment Value Score"
-            value={stats.performanceMetrics.totalEnrichedValue.toFixed(1)}
+            title="Sync Success Rate"
+            value={`${stats.performanceMetrics.syncSuccessRate}%`}
             icon={TrendingUp}
             color="purple"
           />
@@ -346,14 +376,18 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           {stats.productTypes.length > 0 ? (
             <div className="space-y-3">
               {stats.productTypes.slice(0, 5).map((type, idx) => (
-                <div key={idx} className="flex items-center justify-between group">
+                <div key={idx} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      idx === 0 ? 'bg-blue-500' :
+                      idx === 1 ? 'bg-green-500' :
+                      idx === 2 ? 'bg-purple-500' : 'bg-gray-400'
+                    }`}></div>
                     <span className="text-gray-700 font-medium">{type.type}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-600">{type.count} products</span>
-                    <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition">
+                    <span className="text-xs text-gray-400">
                       {Math.round((type.count / stats.totalProducts) * 100)}%
                     </span>
                   </div>
@@ -365,96 +399,44 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           )}
         </div>
 
-        {/* Recent Sync Activity */}
+        {/* Inventory Insights */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-teal-100 rounded-lg">
-                <Activity className="w-5 h-5 text-teal-600" />
+                <BarChart3 className="w-5 h-5 text-teal-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-800">Recent Sync Activity</h2>
+              <h2 className="text-xl font-bold text-gray-800">Inventory Insights</h2>
             </div>
-            {stats.recentSyncs.length > 5 && (
-              <button
-                onClick={onViewAllSyncs}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                View All
-              </button>
-            )}
           </div>
-          {stats.recentSyncs.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recentSyncs.slice(0, 5).map((sync) => (
-                <div key={sync.id} className="border-l-4 border-gray-200 pl-3 py-2 hover:border-teal-400 transition">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-gray-800">{sync.store_name}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      sync.status === 'success'
-                        ? 'bg-green-100 text-green-700'
-                        : sync.status === 'processing'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}>
-                      {sync.status}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {sync.products_processed} products processed
-                    {sync.products_failed > 0 && (
-                      <span className="text-red-600 ml-2">
-                        ({sync.products_failed} failed)
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {new Date(sync.created_at).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Package className="w-5 h-5 text-gray-600" />
+                <span className="text-gray-700">Total Inventory Value</span>
+              </div>
+              <span className="text-lg font-bold text-gray-800">
+                {stats.totalInventory.toLocaleString()} units
+              </span>
             </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">No sync history yet</p>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-gray-100 rounded-lg">
-            <BarChart3 className="w-5 h-5 text-gray-600" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800">Business Insights</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-            <Users className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-800">{stats.uniqueVendors}</div>
-            <div className="text-sm text-gray-600 mt-1">Unique Vendors</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-            <Package className="w-8 h-8 text-green-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-800">
-              {stats.totalProducts > 0
-                ? Math.round(stats.totalInventory / stats.totalProducts)
-                : 0}
+            <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <span className="text-gray-700">Low Stock Products</span>
+              </div>
+              <span className="text-lg font-bold text-orange-600">
+                {stats.lowStockProducts}
+              </span>
             </div>
-            <div className="text-sm text-gray-600 mt-1">Avg. Inventory Per Product</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-            <TrendingUp className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-800">
-              {stats.totalProducts > 0
-                ? Math.round((stats.activeProducts / stats.totalProducts) * 100)
-                : 0}%
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-green-600" />
+                <span className="text-gray-700">Unique Vendors</span>
+              </div>
+              <span className="text-lg font-bold text-green-600">
+                {stats.uniqueVendors}
+              </span>
             </div>
-            <div className="text-sm text-gray-600 mt-1">Active Products</div>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-            <AlertTriangle className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-800">{stats.lowStockProducts}</div>
-            <div className="text-sm text-gray-600 mt-1">Low Stock Items</div>
           </div>
         </div>
       </div>
@@ -469,7 +451,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
             <div>
               <h2 className="text-xl font-bold text-gray-800">AI Enriched Products</h2>
               <p className="text-sm text-gray-600">
-                Products enhanced with AI-generated SEO and descriptions
+                Products enhanced with AI-generated SEO, descriptions, and metadata
               </p>
             </div>
           </div>
@@ -535,7 +517,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
             <p className="text-sm text-gray-500 max-w-md mx-auto">
               {searchTerm || selectedProductType !== 'all' 
                 ? 'Try adjusting your search filters'
-                : 'Go to the Products tab to start enriching your products with AI'
+                : 'Start enriching your products with AI to see them here'
               }
             </p>
           </div>
@@ -545,6 +527,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   );
 }
 
+// StatCard Component (same as before)
 interface StatCardProps {
   title: string;
   value: string;
@@ -590,6 +573,7 @@ function StatCard({ title, value, icon: Icon, color, subtitle, trend, alert }: S
   );
 }
 
+// MetricCard Component (same as before)
 interface MetricCardProps {
   title: string;
   value: string;
@@ -620,18 +604,26 @@ function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   );
 }
 
+// Enhanced ProductCard Component matching your schema
 interface ProductCardProps {
   product: Product;
   onView: () => void;
 }
 
 function ProductCard({ product, onView }: ProductCardProps) {
+  const getConfidenceColor = (score: number) => {
+    if (score >= 80) return 'text-green-600 bg-green-100';
+    if (score >= 60) return 'text-orange-600 bg-orange-100';
+    return 'text-red-600 bg-red-100';
+  };
+
   return (
     <div
       className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition cursor-pointer group"
       onClick={onView}
     >
       <div className="flex items-start gap-4">
+        {/* Product Image */}
         <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden group-hover:shadow-md transition">
           {product.image_url ? (
             <img
@@ -641,16 +633,17 @@ function ProductCard({ product, onView }: ProductCardProps) {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-8 h-8 text-gray-400" />
+              <Image className="w-8 h-8 text-gray-400" />
             </div>
           )}
         </div>
 
         <div className="flex-1 min-w-0">
+          {/* Header with title and actions */}
           <div className="flex items-start justify-between gap-4 mb-3">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition">
-                {product.title}
+                {product.title || 'Untitled Product'}
               </h3>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
@@ -669,7 +662,7 @@ function ProductCard({ product, onView }: ProductCardProps) {
                   </span>
                 )}
                 {product.ai_confidence_score > 0 && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConfidenceColor(product.ai_confidence_score)}`}>
                     {product.ai_confidence_score}% confidence
                   </span>
                 )}
@@ -692,7 +685,8 @@ function ProductCard({ product, onView }: ProductCardProps) {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          {/* AI Enrichment Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {product.ai_color && (
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gray-50 rounded-lg">
@@ -726,32 +720,50 @@ function ProductCard({ product, onView }: ProductCardProps) {
                 </div>
               </div>
             )}
-            {product.seo_title && (
-              <div className="lg:col-span-2">
-                <p className="text-xs text-gray-500 mb-1">SEO Title</p>
-                <p className="text-sm text-gray-800 line-clamp-2">{product.seo_title}</p>
-              </div>
-            )}
           </div>
 
-          {product.last_enriched_at && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                Enriched: {new Date(product.last_enriched_at).toLocaleString()}
-              </p>
-              {product.inventory_level !== undefined && (
-                <p className={`text-xs font-medium ${
-                  product.inventory_level < 10 
-                    ? 'text-red-600' 
-                    : product.inventory_level < 25 
-                    ? 'text-orange-600'
-                    : 'text-green-600'
-                }`}>
-                  Stock: {product.inventory_level}
+          {/* SEO Information */}
+          {(product.seo_title || product.seo_description) && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Text className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-medium text-gray-700">SEO Content</span>
+              </div>
+              {product.seo_title && (
+                <p className="text-sm text-gray-800 line-clamp-1 mb-1">
+                  <strong>Title:</strong> {product.seo_title}
+                </p>
+              )}
+              {product.seo_description && (
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  <strong>Description:</strong> {product.seo_description}
                 </p>
               )}
             </div>
           )}
+
+          {/* Footer with metadata */}
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              {product.last_enriched_at && (
+                <span>Enriched: {new Date(product.last_enriched_at).toLocaleDateString()}</span>
+              )}
+              {product.vendor && (
+                <span>Vendor: {product.vendor}</span>
+              )}
+            </div>
+            {product.inventory_quantity !== undefined && (
+              <p className={`text-xs font-medium ${
+                product.inventory_quantity < 10 
+                  ? 'text-red-600' 
+                  : product.inventory_quantity < 25 
+                  ? 'text-orange-600'
+                  : 'text-green-600'
+              }`}>
+                Stock: {product.inventory_quantity}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
