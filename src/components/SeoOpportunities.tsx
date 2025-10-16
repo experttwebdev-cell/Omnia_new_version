@@ -202,22 +202,30 @@ export function SeoOpportunities() {
     try {
       setLoading(true);
 
+      console.log('🔍 Fetching products from shopify_products table...');
       const { data: productsData, error: productsError } = await supabase
         .from('shopify_products')
         .select('*')
         .limit(1000);
 
-      if (productsError) throw productsError;
+      if (productsError) {
+        console.error('❌ Error fetching products:', productsError);
+        throw productsError;
+      }
 
+      console.log(`✅ Found ${(productsData || []).length} products`);
       setProducts(productsData || []);
 
+      console.log('🔍 Fetching opportunities from blog_opportunities table...');
       const { data: dbOpportunities, error: oppsError } = await supabase
         .from('blog_opportunities')
         .select('*')
         .order('score', { ascending: false });
 
       if (oppsError) {
-        console.error('Error fetching opportunities:', oppsError);
+        console.error('❌ Error fetching opportunities:', oppsError);
+      } else {
+        console.log(`✅ Found ${(dbOpportunities || []).length} opportunities`);
       }
 
       if (dbOpportunities && dbOpportunities.length > 0) {
@@ -266,11 +274,13 @@ export function SeoOpportunities() {
 
   const generateSmartOpportunities = async (products: Product[]) => {
     if (products.length === 0) {
+      console.log('⚠️ No products to generate opportunities from');
       setOpportunities([]);
       return;
     }
 
     try {
+      console.log(`🚀 Starting opportunity generation with ${products.length} products`);
       setGenerationProgress({ current: 30, total: 100, currentItem: language === 'fr' ? 'Préparation des données produits...' : 'Preparing product data...' });
 
       const productsData = products.map(p => ({
@@ -286,9 +296,11 @@ export function SeoOpportunities() {
         ai_material: p.ai_material,
       }));
 
+      console.log('📦 Products data prepared:', productsData.length);
       setGenerationProgress({ current: 50, total: 100, currentItem: language === 'fr' ? 'IA en cours d\'analyse...' : 'AI analyzing...' });
 
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
+      console.log('🔗 Calling API:', apiUrl);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -302,12 +314,16 @@ export function SeoOpportunities() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate opportunities');
+        const errorText = await response.text();
+        console.error('❌ API Error:', response.status, errorText);
+        throw new Error(`Failed to generate opportunities: ${response.status} - ${errorText}`);
       }
 
+      console.log('✅ API Response received');
       setGenerationProgress({ current: 80, total: 100, currentItem: language === 'fr' ? 'Finalisation des opportunités...' : 'Finalizing opportunities...' });
 
       const result = await response.json();
+      console.log('📊 Result:', result);
 
       if (result.opportunities && Array.isArray(result.opportunities)) {
         const formattedOpps: Opportunity[] = result.opportunities.map((opp: any, index: number) => ({
