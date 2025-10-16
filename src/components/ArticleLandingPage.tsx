@@ -41,6 +41,12 @@ interface BlogArticle {
     image_url: string;
     price: number;
     category: string;
+    sub_category?: string;
+    ai_color?: string;
+    ai_material?: string;
+    dimensions_text?: string;
+    characteristics?: string;
+    google_product_category?: string;
   }>;
 }
 
@@ -88,7 +94,37 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
 
       if (error) throw error;
       if (data) {
-        setArticle(data as BlogArticle);
+        const articleData = data as BlogArticle;
+
+        if (articleData.product_links && Array.isArray(articleData.product_links) && articleData.product_links.length > 0) {
+          const productIds = articleData.product_links.map((p: any) => p.product_id).filter(Boolean);
+
+          if (productIds.length > 0) {
+            const { data: productsData, error: productsError } = await supabase
+              .from('shopify_products')
+              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, dimensions_text, characteristics, google_product_category')
+              .in('id', productIds);
+
+            if (!productsError && productsData) {
+              articleData.product_links = productsData.map(p => ({
+                product_id: p.id,
+                title: p.title,
+                handle: p.handle,
+                image_url: p.image_url,
+                price: p.price,
+                category: p.category || '',
+                sub_category: p.sub_category || '',
+                ai_color: p.ai_color || '',
+                ai_material: p.ai_material || '',
+                dimensions_text: p.dimensions_text || '',
+                characteristics: p.characteristics || '',
+                google_product_category: p.google_product_category || ''
+              }));
+            }
+          }
+        }
+
+        setArticle(articleData);
       }
     } catch (err) {
       console.error('Error fetching article:', err);
@@ -114,6 +150,58 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
     }
 
     return sections;
+  };
+
+  const enrichArticleContent = (htmlContent: string): string => {
+    if (!article?.product_links || article.product_links.length === 0) {
+      return htmlContent;
+    }
+
+    let enrichedContent = htmlContent;
+
+    article.product_links.forEach(product => {
+      const productCardRegex = new RegExp(
+        `<div[^>]*class="[^"]*product-card[^"]*"[^>]*>[\\s\\S]*?${product.title}[\\s\\S]*?<\\/div>`,
+        'gi'
+      );
+
+      const existingCard = enrichedContent.match(productCardRegex);
+
+      if (existingCard) {
+        let enrichedCard = existingCard[0];
+
+        if (product.dimensions_text) {
+          enrichedCard = enrichedCard.replace(
+            /<\/div>(\s*)<\/div>\s*$/,
+            `<div class="mt-3 pt-3 border-t border-gray-200">
+              <p class="text-sm text-gray-600"><strong>Dimensions:</strong> ${product.dimensions_text}</p>
+            </div>$1</div>`
+          );
+        }
+
+        if (product.characteristics) {
+          enrichedCard = enrichedCard.replace(
+            /<\/div>(\s*)<\/div>\s*$/,
+            `<div class="mt-2">
+              <p class="text-sm text-gray-600"><strong>Caractéristiques:</strong> ${product.characteristics}</p>
+            </div>$1</div>`
+          );
+        }
+
+        if (product.google_product_category) {
+          enrichedCard = enrichedCard.replace(
+            /<\/div>(\s*)<\/div>\s*$/,
+            `<div class="mt-2">
+              <p class="text-xs text-gray-500"><strong>Google Category:</strong> ${product.google_product_category}</p>
+            </div>$1</div>`
+          );
+        }
+
+        enrichedContent = enrichedContent.replace(existingCard[0], enrichedCard);
+      }
+    });
+
+    return enrichedContent;
   };
 
   const getReadingTime = (wordCount: number | null): string => {
@@ -181,6 +269,10 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
   const featuredImage = getArticleThumbnail(article.content, article.category || undefined);
   const sections = extractSections(article.content);
   const readingTime = getReadingTime(article.word_count);
+
+  const enrichedContent = useMemo(() => {
+    return enrichArticleContent(article.content);
+  }, [article.content, article.product_links]);
 
   const hasIncompleteContent = useMemo(() => {
     if (!article.content) return true;
@@ -544,10 +636,10 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
               }
             `}</style>
 
-            {article.content && article.content.trim() ? (
+            {enrichedContent && enrichedContent.trim() ? (
               <div
                 className="prose prose-lg max-w-none prose-headings:font-bold prose-h1:text-4xl prose-h1:mb-6 prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4 prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-3 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-img:rounded-lg prose-img:shadow-lg prose-figcaption:text-center prose-figcaption:text-sm prose-figcaption:text-gray-600 prose-figcaption:mt-2 prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:italic prose-ul:list-disc prose-ol:list-decimal"
-                dangerouslySetInnerHTML={{ __html: article.content }}
+                dangerouslySetInnerHTML={{ __html: enrichedContent }}
               />
             ) : (
               <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
