@@ -1,5 +1,5 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import "jsr:@supabase/functions-js/edge-runtime@1.4.2";
+import { createClient } from "npm:@supabase/supabase-js@2.38.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ function parseAIResponse(responseContent: string): any {
     const patterns = [
       /```json\s*([\s\S]*?)\s*```/,
       /```\s*([\s\S]*?)\s*```/,
-      /\{[\s\S]*\}/,
+      /\{[\s\S]*\}/
     ];
 
     for (const pattern of patterns) {
@@ -155,24 +155,19 @@ INSTRUCTIONS CRITIQUES:
 
 FORMAT JSON ATTENDU:
 {
-  "category": "Catégorie principale (ex: 'Chaise', 'Table', 'Canapé')",
-  "sub_category": "Sous-catégorie détaillée (ex: 'Chaise de bar métal', 'Table basse bois')",
-  "functionality": "Fonctionnalité clé (ex: 'Convertible', 'Avec rangement', 'Réglable')",
-  "characteristics": "Liste des caractéristiques techniques séparées par des virgules",
+  "category": "Catégorie principale",
+  "sub_category": "Sous-catégorie détaillée",
+  "functionality": "Fonctionnalité clé",
+  "characteristics": "Liste des caractéristiques techniques",
   "material": "Matériau principal identifié",
   "color": "Couleur principale si mentionnée",
-  "style": "Style design (ex: 'Moderne', 'Scandinave', 'Industriel', 'Minimaliste')",
-  "room": "Pièce d'utilisation (ex: 'Salon', 'Chambre', 'Cuisine', 'Bureau')",
-  "google_product_category": "Catégorie Google Shopping COMPLÈTE en anglais (ex: 'Home & Garden > Furniture > Chairs > Bar Stools')",
-  "keywords": ["liste", "de", "10-15", "mots-clés", "SEO", "pertinents"],
-  "dimensions_text": "Texte descriptif des dimensions (ex: 'Hauteur: 85 cm, Largeur: 45 cm, Profondeur: 50 cm')",
+  "style": "Style design",
+  "room": "Pièce d'utilisation",
+  "google_product_category": "Catégorie Google Shopping COMPLÈTE en anglais",
+  "keywords": ["liste", "de", "10-15", "mots-clés", "SEO"],
+  "dimensions_text": "Texte descriptif des dimensions",
   "dimensions_source": "title ou description ou ai_inference"
 }
-
-EXTRACTION DES DIMENSIONS:
-- Cherche les patterns: "120x80", "L120 x l80 x H45", "Ø60", "hauteur 85 cm"
-- Inclus TOUTES les dimensions trouvées (hauteur, largeur, profondeur, diamètre, poids)
-- Formate lisiblement: "Hauteur: 85 cm, Largeur: 45 cm"
 
 Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
 }
@@ -191,13 +186,10 @@ RÈGLES ABSOLUES:
 RÉPONDS EN JSON (français):
 {
   "color_detected": "Couleur(s) principale(s) observée(s)",
-  "material_detected": "Matériau(x) visible(s): bois, métal, tissu, cuir, verre, plastique",
-  "style_detected": "Style visuel: Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
-  "visual_description": "Description concise (1-2 phrases) des attributs visuels d'UNE unité"
-}
-
-✅ CORRECT: "Tissu gris clair rembourré, structure en métal noir mat, lignes épurées"
-❌ INTERDIT: "Lot de 4 chaises", "Ensemble de meubles", "Set de 2 tabourets"`;
+  "material_detected": "Matériau(x) visible(s)",
+  "style_detected": "Style visuel",
+  "visual_description": "Description concise des attributs visuels d'UNE unité"
+}`;
 }
 
 function createSEOPrompt(product: any, textAnalysis: any): string {
@@ -212,7 +204,7 @@ Style: ${textAnalysis.style || ''}
 EXIGENCES:
 1. seo_title: 50-60 caractères max
 2. seo_description: 140-155 caractères max
-3. Langue: français (ou même langue que le titre)
+3. Langue: français
 4. NE PAS répéter le titre exact
 5. NE PAS mentionner quantité (lot, set, pack, X pièces)
 6. Inclure: catégorie + matériau/style + bénéfice clé
@@ -249,6 +241,7 @@ function calculateConfidenceScore(
 }
 
 Deno.serve(async (req: Request) => {
+  // Gestion CORS
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -259,16 +252,15 @@ Deno.serve(async (req: Request) => {
   console.log("=== 🚀 DÉBUT DE L'ENRICHISSEMENT ===");
 
   try {
+    // Vérification des variables d'environnement
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
     console.log("🔑 Environment check:", {
       supabaseUrl: supabaseUrl ? "✓" : "✗",
       serviceRoleKey: serviceRoleKey ? "✓" : "✗",
-      deepseekKey: deepseekKey ? "✓" : "✗",
-      openaiKey: openaiKey ? "✓" : "✗"
+      deepseekKey: deepseekKey ? "✓" : "✗"
     });
 
     if (!supabaseUrl || !serviceRoleKey) {
@@ -278,7 +270,10 @@ Deno.serve(async (req: Request) => {
           error: "Supabase configuration missing",
           details: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured"
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
@@ -287,24 +282,48 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: "DeepSeek API key not configured",
-          details: "DEEPSEEK_API_KEY environment variable is missing. Please configure it in Supabase Edge Function secrets."
+          details: "DEEPSEEK_API_KEY environment variable is missing"
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { productId }: EnrichmentRequest = await req.json();
+    // Parse du body avec gestion d'erreur
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid JSON in request body" 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    const { productId }: EnrichmentRequest = requestBody;
     console.log("📦 Product ID:", productId);
 
     if (!productId) {
       return new Response(
         JSON.stringify({ success: false, error: "Product ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
+    // Récupération du produit
     console.log("🔍 Fetching product from database...");
     const { data: product, error: productError } = await supabaseClient
       .from("shopify_products")
@@ -316,12 +335,16 @@ Deno.serve(async (req: Request) => {
       console.error("❌ Product not found:", productError);
       return new Response(
         JSON.stringify({ success: false, error: "Product not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
     console.log("✅ Product found:", product.title);
 
+    // Récupération des images
     const { data: images } = await supabaseClient
       .from("product_images")
       .select("src, alt_text, position")
@@ -331,6 +354,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`🖼️ Found ${images?.length || 0} images`);
 
+    // Nettoyage de la description
     let cleanDescription = product.description
       ? product.description
           .replace(/<[^>]*>/g, ' ')
@@ -347,6 +371,7 @@ Deno.serve(async (req: Request) => {
 
     console.log("📝 Description cleaned");
 
+    // Analyse de texte avec DeepSeek
     console.log("🧠 Starting text analysis with DeepSeek...");
     let textAnalysis: any = {};
 
@@ -395,6 +420,7 @@ Deno.serve(async (req: Request) => {
       };
     }
 
+    // Extraction des dimensions avec regex
     if (!textAnalysis.dimensions_text) {
       const regexDimensions = extractDimensionsWithRegex(product.title, product.description || "");
       if (regexDimensions) {
@@ -404,6 +430,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Analyse d'image en parallèle
     const visionPromise = (async () => {
       if (!images || images.length === 0) {
         console.log("⏭️ No images for vision analysis");
@@ -426,13 +453,6 @@ Deno.serve(async (req: Request) => {
             detail: "low",
           },
         }));
-
-        if (imageContents.length === 0) {
-          console.log("⚠️ No images to process");
-          return { visionAnalysis: {}, imageInsights: "" };
-        }
-
-        console.log(`📸 Processing ${imageContents.length} images...`);
 
         const visionResponse = await fetch(
           "https://api.openai.com/v1/chat/completions",
@@ -460,7 +480,8 @@ Deno.serve(async (req: Request) => {
         );
 
         if (!visionResponse.ok) {
-          throw new Error(`Vision API error: ${visionResponse.status}`);
+          const errorText = await visionResponse.text();
+          throw new Error(`Vision API error: ${visionResponse.status} - ${errorText}`);
         }
 
         const visionData = await visionResponse.json();
@@ -482,6 +503,7 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
+    // Génération SEO en parallèle
     const seoPromise = (async () => {
       try {
         console.log("📝 Generating SEO content...");
@@ -512,6 +534,7 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
+    // Attente des appels parallèles
     console.log("⏳ Waiting for parallel API calls...");
     const [visionResult, seoResult] = await Promise.allSettled([visionPromise, seoPromise]);
 
@@ -522,6 +545,7 @@ Deno.serve(async (req: Request) => {
 
     const { visionAnalysis, imageInsights } = visionData;
 
+    // Fusion des données
     const finalColor = visionAnalysis.color_detected || textAnalysis.color || product.ai_color || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || product.ai_material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
@@ -530,7 +554,7 @@ Deno.serve(async (req: Request) => {
     const baseKeywords = Array.isArray(textAnalysis.keywords) ? textAnalysis.keywords : [];
     const allKeywords = [...new Set(baseKeywords)].slice(0, 15);
 
-    const seoTitle = seoData.seo_title || product.title;
+    const seoTitle = seoData.seo_title || product.title.substring(0, 60);
     const seoDescription = seoData.seo_description || cleanDescription.substring(0, 155);
 
     console.log("🎯 Final data fusion:", {
@@ -544,6 +568,7 @@ Deno.serve(async (req: Request) => {
     const confidenceScore = calculateConfidenceScore(textAnalysis, images?.length || 0, visionAnalysis);
     console.log("📊 Confidence score:", confidenceScore);
 
+    // Préparation des données de mise à jour
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
@@ -567,6 +592,7 @@ Deno.serve(async (req: Request) => {
       seo_synced_to_shopify: false,
     };
 
+    // Mise à jour en base de données
     console.log("💾 Updating product in database...");
     const { error: updateError } = await supabaseClient
       .from("shopify_products")
