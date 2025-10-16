@@ -148,6 +148,7 @@ Extract and provide the following in JSON format:
 {
   "category": "Main product category (e.g., 'Table basse', 'Canapé', 'Chaise')",
   "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
+  "functionality": "Key functionality or type (e.g., 'Convertible', '3 places', 'Relevable', 'Avec rangement', 'Modulable', 'Extensible')",
   "color": "Main color of the product (always provide if visible or mentioned)",
   "material": "Primary material (if mentioned)",
   "style": "Product style in the same language as the title (e.g., 'Moderne', 'Scandinave', 'Industriel', 'Classique', 'Rustique')",
@@ -164,29 +165,32 @@ Extract and provide the following in JSON format:
   "smart_diameter_unit": "unit",
   "smart_weight": number or null,
   "smart_weight_unit": "kg, g, lb, etc.",
+  "smart_seat_height": number or null (hauteur d'assise pour chaises/canapés),
+  "smart_seat_height_unit": "unit",
   "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
-  "ai_vision_analysis": "Write a detailed, engaging product description (3-4 sentences) that highlights key features, materials, style, and benefits. Make it compelling and informative.",
-  "dimensions_text": "Complete human-readable dimensions text (e.g., 'Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm') or empty string if no dimensions found",
+  "ai_vision_analysis": "Write a SHORT concise product description (2-3 sentences MAX) based ONLY on title and description. NO marketing fluff. Just key facts: materials, main features, and practical use.",
+  "dimensions_text": "Complete human-readable dimensions text extracting ALL dimensions found (e.g., 'Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm, Profondeur: 60 cm, Hauteur d'assise: 42 cm'). Include ALL dimensions mentioned.",
   "dimensions_source": "title, description, or ai_inference"
 }
 
-IMPORTANT INSTRUCTIONS - SMART DIMENSION EXTRACTION:
+IMPORTANT INSTRUCTIONS:
 - category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
+- functionality: Extract key functionality like "Convertible", "3 places", "Modulable", "Avec rangement", "Extensible", "Relevable", etc.
 - style: Infer the design style in the same language as the title (e.g., for French: "Moderne", "Scandinave", "Industriel", "Classique", "Rustique", "Minimaliste", "Contemporain")
 - room: Infer typical usage room in the same language as the title (e.g., for French: "Salon", "Chambre", "Salle à manger", "Bureau", "Cuisine", "Salle de bain")
-- ai_vision_analysis: Write a rich, detailed description based on title and description ONLY (vision analysis from images will be added separately). Include materials, dimensions if mentioned, style characteristics, and practical benefits. Use the same language as the product title.
+- ai_vision_analysis: KEEP IT SHORT (2-3 sentences). Based ONLY on title/description. State materials, main feature, and use case. NO marketing language.
 - color & material: Extract from both title and description
 
-CRITICAL - SMART DIMENSIONS:
-1. Extract ANY dimension mentioned in title or description (numbers followed by cm, m, inches, mm, etc.)
-2. Look for patterns like: "120x80", "120 x 80", "L120 x W80 x H45", "Ø60" (diameter)
-3. Common French terms: Longueur (length), Largeur (width), Hauteur (height), Profondeur (depth), Diamètre (diameter), Poids (weight)
-4. Common English terms: Length, Width, Height, Depth, Diameter, Weight
-5. If dimensions are in ranges (e.g., "82-98 cm"), take the average or the max value
-6. Always specify the unit found (cm, m, inches, kg, g, lb)
-7. dimensions_source: Set to "title" if found in title, "description" if in description, "ai_inference" if you inferred it
-8. dimensions_text: Create a complete, readable summary like "Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm" in the same language as the title
+CRITICAL - EXTRACT ALL DIMENSIONS:
+1. Extract EVERY dimension mentioned in title AND description (numbers + units: cm, m, inches, mm, kg, g, lb)
+2. Look for ALL patterns: "120x80", "120 x 80", "L120 x W80 x H45", "Ø60", "H.45", "hauteur d'assise 42 cm"
+3. French terms: Longueur (length), Largeur (width), Hauteur (height), Profondeur (depth), Diamètre (diameter), Poids (weight), Hauteur d'assise (seat height), Épaisseur (thickness)
+4. English terms: Length, Width, Height, Depth, Diameter, Weight, Seat height, Thickness
+5. Extract ranges: "82-98 cm" → use max value (98)
+6. ALWAYS specify unit found (cm, m, inches, kg, g, lb)
+7. dimensions_source: "title" if in title, "description" if in description, "ai_inference" if inferred
+8. dimensions_text: Include ALL dimensions in readable format: "Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm, Profondeur: 60 cm, Hauteur d'assise: 42 cm"
 
 - keywords: Extract 10-15 relevant SEO keywords from title and description
 - Return ONLY valid JSON, no additional text.`;
@@ -256,16 +260,17 @@ CRITICAL - SMART DIMENSIONS:
             },
           }));
 
-          const visionPrompt = `Analyze these product images and provide detailed visual insights in JSON format:
+          const visionPrompt = `Analyze ONLY the product images (ignore any text/title). Provide ONLY visual observations in JSON:
 {
-  "visual_description": "Detailed description of what you see (materials, colors, design, style)",
-  "color_detected": "Main color detected",
-  "material_detected": "Material detected from visual inspection",
-  "style_detected": "Design style detected (Modern, Scandinavian, Industrial, etc.)",
-  "additional_features": ["list", "of", "visible", "features"]
+  "visual_description": "SHORT visual description (1-2 sentences): what you SEE in the images - colors, materials, design features",
+  "color_detected": "Main color(s) visible in images",
+  "material_detected": "Material visible in images (wood, metal, fabric, etc.)",
+  "style_detected": "Design style visible in images",
+  "additional_features": ["visible", "features", "from", "images"]
 }
 
-Provide response in the same language as this product: ${product.title}`;
+CRITICAL: Base response ONLY on what you SEE in images, NOT on title/text. Keep visual_description SHORT (1-2 sentences).
+Respond in the same language as: ${product.title}`;
 
           const visionResponse = await fetch(
             "https://api.openai.com/v1/chat/completions",
@@ -289,7 +294,7 @@ Provide response in the same language as this product: ${product.title}`;
                     ],
                   },
                 ],
-                max_tokens: 500,
+                max_tokens: 250,
                 temperature: 0.3,
               }),
             }
@@ -324,34 +329,41 @@ Provide response in the same language as this product: ${product.title}`;
     const uniqueKeywords = [...new Set(allKeywords)];
     const finalTags = uniqueKeywords.join(", ");
 
-    const seoPrompt = `Generate SEO-optimized title and description for this product:
+    const seoPrompt = `Generate SEO-optimized title and meta description for this product:
 
 Product: ${product.title}
-Description: ${cleanDescription}
-Color: ${textAnalysis.color || ''}
-Material: ${textAnalysis.material || ''}
-Style: ${textAnalysis.style || ''}
-Type: ${product.product_type || ''}
 Category: ${textAnalysis.category || ''}
+Functionality: ${textAnalysis.functionality || ''}
+Material: ${textAnalysis.material || ''}
+Color: ${textAnalysis.color || ''}
+Style: ${textAnalysis.style || ''}
+Room: ${textAnalysis.room || ''}
+Key Features: ${cleanDescription.substring(0, 300)}
 
-Generate compelling SEO content in the SAME LANGUAGE as the product title.
+CRITICAL INSTRUCTIONS:
+1. seo_title: 50-60 characters, include category + main keyword + ONE key benefit (e.g., "Canapé d'angle convertible 5 places - Confort & Design Moderne")
+2. seo_description: 140-155 characters, natural text with key features + subtle CTA
+3. Use SAME LANGUAGE as product title
+4. NO HTML tags (no <p>, <strong>, <div>, etc.)
+5. NO special characters that break plain text
+6. Be specific and informative, not generic
 
 Provide response in JSON format:
 {
-  "seo_title": "SEO title (55-65 characters, include main keyword and benefit)",
-  "seo_description": "SEO description (145-155 characters, include CTA and key features)"
+  "seo_title": "Optimized title with category, keyword, and benefit (50-60 chars)",
+  "seo_description": "Natural description with features and CTA (140-155 chars, PLAIN TEXT ONLY)"
 }`;
 
     const seoResponse = await callDeepSeek([
       {
         role: "system",
-        content: "You are an SEO expert. Generate compelling, keyword-rich SEO content. Always respond with valid JSON only.",
+        content: "You are an SEO expert. Generate clean, plain-text SEO content WITHOUT any HTML tags. Always respond with valid JSON only.",
       },
       {
         role: "user",
         content: seoPrompt,
       },
-    ], 500);
+    ], 600);
 
     let seoTitle = product.title;
     let seoDescription = product.description?.substring(0, 160) || "";
@@ -378,6 +390,7 @@ Provide response in JSON format:
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
+      functionality: textAnalysis.functionality || "",
       style: finalStyle,
       room: textAnalysis.room || "",
       seo_title: seoTitle,
@@ -416,6 +429,10 @@ Provide response in JSON format:
     if (textAnalysis.smart_weight) {
       updateData.smart_weight = textAnalysis.smart_weight;
       updateData.smart_weight_unit = textAnalysis.smart_weight_unit || "kg";
+    }
+    if (textAnalysis.smart_seat_height) {
+      updateData.smart_seat_height = textAnalysis.smart_seat_height;
+      updateData.smart_seat_height_unit = textAnalysis.smart_seat_height_unit || "cm";
     }
     if (textAnalysis.dimensions_text) {
       updateData.dimensions_text = textAnalysis.dimensions_text;
