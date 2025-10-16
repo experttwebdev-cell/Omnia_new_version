@@ -96,28 +96,37 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
 
-    const textPrompt = `Generate a concise, SEO-optimized ALT text description for this product image (max 125 characters).
+    const contextParts = [];
+    if (product.product_type) contextParts.push(product.product_type);
+    if (product.ai_color) contextParts.push(product.ai_color);
+    if (product.ai_material) contextParts.push(product.ai_material);
 
-Product Context:
-- Title: ${product.title}
-- Description: ${product.description || "Not provided"}
-- Type: ${product.product_type || "Not specified"}
-- Category: ${product.category || "Not specified"}
-- Sub-Category: ${product.sub_category || "Not specified"}
-- Color: ${product.ai_color || "Not specified"}
-- Material: ${product.ai_material || "Not specified"}
-- Image Position: ${image.position} (1 = main image, 2+ = additional views)
+    const textPrompt = `Tu es un expert en accessibilité web et SEO. Génère un texte ALT descriptif et naturel pour cette image de produit.
 
-Generate ALT text that:
-1. Is descriptive and natural (not keyword stuffing)
-2. Includes the product type and key attributes
-3. Includes color and material
-4. Is exactly 125 characters or less
-5. Is suitable for accessibility and SEO
+PRODUIT:
+Titre: ${product.title}
+Type: ${product.product_type || "meuble"}
+Catégorie: ${product.category || ""}
+Sous-catégorie: ${product.sub_category || ""}
+Couleur: ${product.ai_color || ""}
+Matière: ${product.ai_material || ""}
+Position: ${image.position === 1 ? "Image principale" : `Vue supplémentaire ${image.position}`}
 
-Provide response in JSON format only:
+INSTRUCTIONS:
+- Maximum 125 caractères
+- Commence DIRECTEMENT par le type de produit (ex: "Canapé", "Table", "Chaise")
+- Inclus les caractéristiques principales: couleur, matière, style
+- Sois naturel et descriptif, pas de phrases marketing
+- Évite les mots inutiles comme "Image de", "Photo de", "Produit"
+
+EXEMPLES CORRECTS:
+"Canapé d'angle convertible Nevada en tissu gris avec rangement et têtières réglables"
+"Table basse ronde en bois massif finition naturelle avec pieds métal noir"
+"Chaise de salle à manger velours bleu marine avec pieds en chêne clair"
+
+Réponds UNIQUEMENT avec ce format JSON:
 {
-  "alt_text": "Your generated ALT text here"
+  "alt_text": "ton texte ici"
 }`;
 
     const textResponse = await fetch(
@@ -133,15 +142,15 @@ Provide response in JSON format only:
           messages: [
             {
               role: "system",
-              content: "You are an SEO expert specializing in product ALT text. Always respond with valid JSON only."
+              content: "Tu es un expert en accessibilité web et SEO pour e-commerce. Tu génères des textes ALT descriptifs et naturels en français. Réponds toujours en JSON valide."
             },
             {
               role: "user",
               content: textPrompt,
             },
           ],
-          max_tokens: 150,
-          temperature: 0.3,
+          max_tokens: 100,
+          temperature: 0.4,
         }),
       }
     );
@@ -152,23 +161,38 @@ Provide response in JSON format only:
     }
 
     const textData = await textResponse.json();
-    const textContent = textData.choices[0].message.content;
+    const textContent = textData.choices[0].message.content.trim();
 
     let altText = "";
+
     try {
-      const parsed = JSON.parse(textContent);
-      altText = parsed.alt_text || "";
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        altText = parsed.alt_text || "";
+      } else {
+        altText = textContent;
+      }
     } catch (e) {
-      console.error("Failed to parse JSON, using raw content:", textContent);
-      altText = textContent.substring(0, 125);
+      console.log("Failed to parse JSON, using raw content");
+      altText = textContent;
     }
+
+    altText = altText
+      .replace(/^["']|["']$/g, '')
+      .replace(/^(Image de|Photo de|Produit|Image|Photo)[\s:]+/i, '')
+      .trim();
 
     if (altText.length > 125) {
-      altText = altText.substring(0, 122) + "...";
+      const lastSpace = altText.substring(0, 122).lastIndexOf(' ');
+      altText = altText.substring(0, lastSpace > 100 ? lastSpace : 122) + "...";
     }
 
-    if (!altText || altText.trim() === "") {
-      altText = `${product.title} - Image ${image.position}`.substring(0, 125);
+    if (!altText || altText.length < 10) {
+      const titleParts = [product.product_type || "Produit"];
+      if (product.ai_color) titleParts.push(product.ai_color);
+      if (product.ai_material) titleParts.push(product.ai_material);
+      altText = titleParts.join(' ').substring(0, 125);
     }
 
     const { error: updateError } = await supabaseClient
