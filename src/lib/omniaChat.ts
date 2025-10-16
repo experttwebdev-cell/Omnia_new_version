@@ -292,7 +292,10 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     .limit(12);
 
   if (storeId) {
+    console.log('🔎 [SEARCH] Filtering by store_id:', storeId);
     query = query.eq('store_id', storeId);
+  } else {
+    console.log('🔎 [SEARCH] No store filter applied - searching all stores');
   }
 
   // Recherche principale par type de produit (plus large et rapide)
@@ -324,6 +327,44 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   }
 
   let results = data || [];
+  console.log('📊 [SEARCH] Found', results.length, 'products with current filters');
+
+  // If no results and we filtered by store, try again without store filter
+  if (results.length === 0 && storeId && filters.type) {
+    console.log('⚠️ [SEARCH] No products found with store filter. Retrying without store filter...');
+
+    let fallbackQuery = supabase
+      .from('shopify_products')
+      .select(`
+        id, title, price, compare_at_price, style, material, color,
+        ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
+        room, image_url, product_type, description, ai_vision_analysis,
+        handle, shopify_id, currency, shop_name, category, sub_category, tags,
+        length, width, height, length_unit, width_unit, height_unit, inventory_quantity
+      `)
+      .eq('status', 'active')
+      .limit(12);
+
+    const searchTerms = filters.type.toLowerCase().split(' ');
+    const orConditions = [];
+
+    for (const term of searchTerms) {
+      orConditions.push(`title.ilike.%${term}%`);
+      orConditions.push(`category.ilike.%${term}%`);
+      orConditions.push(`sub_category.ilike.%${term}%`);
+      orConditions.push(`tags.ilike.%${term}%`);
+    }
+
+    fallbackQuery = fallbackQuery.or(orConditions.join(','));
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+
+    if (!fallbackError && fallbackData) {
+      results = fallbackData;
+      console.log('✅ [SEARCH] Fallback search found', results.length, 'products');
+    }
+  }
+
   console.log('📊 [SEARCH] Initial results:', results.length, 'products');
 
   // Filtrage secondaire côté client pour style, couleur, matériau
