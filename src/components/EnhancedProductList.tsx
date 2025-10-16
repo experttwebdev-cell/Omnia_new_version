@@ -265,42 +265,45 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
     setEnrichingProducts(true);
     setEnrichProgress({ current: 0, total: productsToEnrich.length, currentProduct: '', currentImage: '' });
 
-    for (let i = 0; i < productsToEnrich.length; i++) {
+    const BATCH_SIZE = 5;
+    let completed = 0;
+
+    for (let i = 0; i < productsToEnrich.length; i += BATCH_SIZE) {
       if (enrichmentAbortRef.current) {
         break;
       }
 
-      const product = productsToEnrich[i];
-      setEnrichProgress({
-        current: i,
-        total: productsToEnrich.length,
-        currentProduct: product.title,
-        currentImage: product.image_url
+      const batch = productsToEnrich.slice(i, i + BATCH_SIZE);
+
+      const batchPromises = batch.map(async (product) => {
+        try {
+          const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId: product.id }),
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to enrich product ${product.id}`);
+          }
+        } catch (err) {
+          console.error(`Error enriching product ${product.id}:`, err);
+        }
       });
 
-      try {
-        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ productId: product.id }),
-        });
+      await Promise.all(batchPromises);
+      completed += batch.length;
 
-        if (!response.ok) {
-          console.error(`Failed to enrich product ${product.id}`);
-        }
-      } catch (err) {
-        console.error(`Error enriching product ${product.id}:`, err);
-      }
-
+      const lastProduct = batch[batch.length - 1];
       setEnrichProgress({
-        current: i + 1,
+        current: completed,
         total: productsToEnrich.length,
-        currentProduct: product.title,
-        currentImage: product.image_url
+        currentProduct: lastProduct.title,
+        currentImage: lastProduct.image_url
       });
     }
 

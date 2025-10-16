@@ -200,27 +200,35 @@ export function SeoOptimization() {
     setGeneratingAll(true);
     setPushProgress({ current: 0, total: productsToGenerate.length });
 
-    for (let i = 0; i < productsToGenerate.length; i++) {
-      const product = productsToGenerate[i];
-      setPushProgress({ current: i + 1, total: productsToGenerate.length });
+    const BATCH_SIZE = 5;
+    let completed = 0;
 
-      try {
-        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ productId: product.id }),
-        });
+    for (let i = 0; i < productsToGenerate.length; i += BATCH_SIZE) {
+      const batch = productsToGenerate.slice(i, i + BATCH_SIZE);
 
-        if (!response.ok) {
-          console.error(`Failed to generate SEO for product ${product.id}`);
+      const batchPromises = batch.map(async (product) => {
+        try {
+          const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId: product.id }),
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to generate SEO for product ${product.id}`);
+          }
+        } catch (err) {
+          console.error(`Error generating SEO for product ${product.id}:`, err);
         }
-      } catch (err) {
-        console.error(`Error generating SEO for product ${product.id}:`, err);
-      }
+      });
+
+      await Promise.all(batchPromises);
+      completed += batch.length;
+      setPushProgress({ current: completed, total: productsToGenerate.length });
     }
 
     setGeneratingAll(false);
