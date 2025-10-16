@@ -259,10 +259,41 @@ Deno.serve(async (req: Request) => {
   console.log("=== 🚀 DÉBUT DE L'ENRICHISSEMENT ===");
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+
+    console.log("🔑 Environment check:", {
+      supabaseUrl: supabaseUrl ? "✓" : "✗",
+      serviceRoleKey: serviceRoleKey ? "✓" : "✗",
+      deepseekKey: deepseekKey ? "✓" : "✗",
+      openaiKey: openaiKey ? "✓" : "✗"
+    });
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Supabase configuration missing",
+          details: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured"
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!deepseekKey) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "DeepSeek API key not configured",
+          details: "DEEPSEEK_API_KEY environment variable is missing. Please configure it in Supabase Edge Function secrets."
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { productId }: EnrichmentRequest = await req.json();
     console.log("📦 Product ID:", productId);
