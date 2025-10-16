@@ -230,11 +230,11 @@
             </div>
 
             <div class="preset-queries">
+                <button class="preset-btn" onclick="setQuery('bonjour')">Bonjour (greeting)</button>
+                <button class="preset-btn" onclick="setQuery('je cherche une table basse travertin moins de 100 euros')">Table travertin < 100€</button>
                 <button class="preset-btn" onclick="setQuery('canapé scandinave')">Canapé scandinave</button>
                 <button class="preset-btn" onclick="setQuery('table basse moderne')">Table basse moderne</button>
-                <button class="preset-btn" onclick="setQuery('canapé')">Canapé</button>
-                <button class="preset-btn" onclick="setQuery('table')">Table</button>
-                <button class="preset-btn" onclick="setQuery('meuble blanc')">Meuble blanc</button>
+                <button class="preset-btn" onclick="setQuery('chat')">Chat (non-product)</button>
             </div>
         </div>
 
@@ -287,6 +287,16 @@
             const msg = query.toLowerCase();
             const attributes = {};
 
+            // Détection de salutation simple (sans produit) → pas de recherche
+            const greetings = ['bonjour', 'salut', 'hello', 'bonsoir', 'hey', 'coucou'];
+            const isSimpleGreeting = greetings.some(g => msg === g || msg === g + ' !');
+
+            if (isSimpleGreeting) {
+                log('Salutation détectée - PAS de recherche produit', 'warning');
+                attributes.isGreeting = true;
+                return attributes;
+            }
+
             // Détection du type de produit
             const productTypes = ['table basse', 'table', 'chaise', 'canapé', 'fauteuil', 'lit', 'armoire', 'commode', 'meuble', 'étagère', 'bureau'];
             for (const type of productTypes) {
@@ -295,6 +305,13 @@
                     log(`Type détecté: ${type}`, 'success');
                     break;
                 }
+            }
+
+            // Pas de type de produit détecté → conversation générale
+            if (!attributes.type) {
+                log('Aucun type de produit détecté - conversation générale', 'warning');
+                attributes.isConversation = true;
+                return attributes;
             }
 
             // Détection du style
@@ -318,13 +335,20 @@
             }
 
             // Détection du matériau
-            const materials = ['bois', 'métal', 'verre', 'marbre', 'tissu', 'cuir'];
+            const materials = ['bois', 'métal', 'verre', 'marbre', 'tissu', 'cuir', 'travertin', 'granit'];
             for (const material of materials) {
                 if (msg.includes(material)) {
                     attributes.material = material;
                     log(`Matériau détecté: ${material}`, 'success');
                     break;
                 }
+            }
+
+            // Détection prix
+            const priceMatch = msg.match(/(?:moins de|maximum|max|sous|en dessous de)\s*(\d+)/);
+            if (priceMatch) {
+                attributes.maxPrice = parseInt(priceMatch[1]);
+                log(`Prix max détecté: ${attributes.maxPrice}€`, 'success');
             }
 
             return attributes;
@@ -347,6 +371,13 @@
                 const attributes = extractAttributes(query);
                 log(`Attributs extraits: ${JSON.stringify(attributes)}`, 'info');
 
+                // Si c'est une salutation ou conversation générale, ne pas chercher de produits
+                if (attributes.isGreeting || attributes.isConversation) {
+                    setStatus('Message de conversation - pas de recherche produit', 'success');
+                    document.getElementById('results').innerHTML = '<p style="text-align: center; color: #718096; padding: 40px;">👋 Ceci est un message de conversation général, pas une recherche de produit.</p>';
+                    return;
+                }
+
                 // Construction de la requête
                 let dbQuery = supabase
                     .from('shopify_products')
@@ -356,20 +387,11 @@
 
                 log('Recherche dans la base de données...', 'info');
 
-                // Filtre principal par type
+                // Filtre principal par type en utilisant chat_text
                 if (attributes.type) {
-                    const searchTerms = attributes.type.split(' ');
-                    const orConditions = [];
-
-                    for (const term of searchTerms) {
-                        orConditions.push(`title.ilike.%${term}%`);
-                        orConditions.push(`category.ilike.%${term}%`);
-                        orConditions.push(`sub_category.ilike.%${term}%`);
-                        orConditions.push(`tags.ilike.%${term}%`);
-                    }
-
-                    log(`Conditions OR: ${orConditions.length}`, 'info');
-                    dbQuery = dbQuery.or(orConditions.join(','));
+                    const searchTerm = attributes.type.toLowerCase();
+                    log(`Recherche avec chat_text: "${searchTerm}"`, 'info');
+                    dbQuery = dbQuery.ilike('chat_text', `%${searchTerm}%`);
                 }
 
                 const { data, error } = await dbQuery;
@@ -415,9 +437,21 @@
                     results = results.filter(p =>
                         p.material?.toLowerCase().includes(attributes.material.toLowerCase()) ||
                         p.ai_material?.toLowerCase().includes(attributes.material.toLowerCase()) ||
-                        p.tags?.toLowerCase().includes(attributes.material.toLowerCase())
+                        p.tags?.toLowerCase().includes(attributes.material.toLowerCase()) ||
+                        p.title?.toLowerCase().includes(attributes.material.toLowerCase())
                     );
                     log(`${before} → ${results.length} produits après filtre matériau`, results.length > 0 ? 'success' : 'warning');
+                }
+
+                // Filtre prix
+                if (attributes.maxPrice && results.length > 0) {
+                    log(`Filtre prix max: ${attributes.maxPrice}€`, 'info');
+                    const before = results.length;
+                    results = results.filter(p => {
+                        const price = Number(p.price);
+                        return !isNaN(price) && price <= attributes.maxPrice;
+                    });
+                    log(`${before} → ${results.length} produits après filtre prix`, results.length > 0 ? 'success' : 'warning');
                 }
 
                 const finalResults = results.slice(0, 8);

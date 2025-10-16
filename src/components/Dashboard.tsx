@@ -364,8 +364,8 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Package className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Package className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-xl font-bold text-gray-800">Top Product Types</h2>
             </div>
@@ -385,8 +385,9 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${
                       idx === 0 ? 'bg-blue-500' :
-                      idx === 1 ? 'bg-green-500' :
-                      idx === 2 ? 'bg-purple-500' : 'bg-gray-400'
+                      idx === 1 ? 'bg-emerald-500' :
+                      idx === 2 ? 'bg-amber-500' :
+                      idx === 3 ? 'bg-violet-500' : 'bg-cyan-500'
                     }`}></div>
                     <span className="text-gray-700 font-medium">{type.type}</span>
                   </div>
@@ -408,8 +409,8 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-teal-100 rounded-lg">
-                <BarChart3 className="w-5 h-5 text-teal-600" />
+              <div className="p-2 bg-cyan-500 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-xl font-bold text-gray-800">Inventory Insights</h2>
             </div>
@@ -450,8 +451,8 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Sparkles className="w-5 h-5 text-purple-600" />
+            <div className="p-2 bg-violet-500 rounded-lg">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-800">AI Enriched Products</h2>
@@ -545,11 +546,11 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, color, subtitle, trend, alert }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    teal: 'bg-teal-100 text-teal-600',
-    orange: 'bg-orange-100 text-orange-600',
-    purple: 'bg-purple-100 text-purple-600'
+    blue: 'bg-blue-500 text-white',
+    green: 'bg-emerald-500 text-white',
+    teal: 'bg-cyan-500 text-white',
+    orange: 'bg-amber-500 text-white',
+    purple: 'bg-violet-500 text-white'
   };
 
   return (
@@ -588,21 +589,21 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-700',
-    green: 'bg-green-50 border-green-200 text-green-700',
-    purple: 'bg-purple-50 border-purple-200 text-purple-700',
-    orange: 'bg-orange-50 border-orange-200 text-orange-700'
+    blue: 'bg-blue-500 text-white shadow-md',
+    green: 'bg-emerald-500 text-white shadow-md',
+    purple: 'bg-violet-500 text-white shadow-md',
+    orange: 'bg-amber-500 text-white shadow-md'
   };
 
   return (
-    <div className={`border rounded-lg p-4 ${colorClasses[color]}`}>
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-white rounded-lg">
-          <Icon className="w-5 h-5" />
+    <div className={`rounded-xl p-6 ${colorClasses[color]} transition-transform hover:scale-105`}>
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-white/90 text-sm font-medium mb-2">{title}</p>
+          <p className="text-3xl font-bold text-white">{value}</p>
         </div>
-        <div>
-          <p className="text-sm font-medium">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
+        <div className="p-3 bg-white/20 rounded-lg">
+          <Icon className="w-8 h-8 text-white" />
         </div>
       </div>
     </div>

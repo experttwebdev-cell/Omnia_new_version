@@ -13,6 +13,8 @@ interface ProductAttributes {
   material?: string;
   room?: string;
   dimensions?: string;
+  maxPrice?: number;
+  minPrice?: number;
 }
 
 interface ChatSettings {
@@ -163,9 +165,15 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 50): Promise<st
 export async function detectIntent(userMessage: string, history: ChatMessage[] = []): Promise<string> {
   const lowerMessage = userMessage.toLowerCase();
 
-  // Mots de salutation → conversation générale
-  const greetings = ['bonjour', 'salut', 'hello', 'bonsoir', 'hey'];
-  if (greetings.some(g => lowerMessage === g || lowerMessage.startsWith(g + ' '))) {
+  // Mots de salutation simples → conversation générale (sans mention de produit)
+  const greetings = ['bonjour', 'salut', 'hello', 'bonsoir', 'hey', 'coucou'];
+  const productTypes = ['table', 'chaise', 'canapé', 'fauteuil', 'lit', 'armoire', 'commode', 'meuble', 'étagère', 'bureau', 'tabouret', 'lampe', 'miroir'];
+
+  // Si c'est JUSTE une salutation sans produit → ChatIntent
+  const isSimpleGreeting = greetings.some(g => lowerMessage === g || lowerMessage === g + ' !');
+  const hasProductMention = productTypes.some(type => lowerMessage.includes(type));
+
+  if (isSimpleGreeting && !hasProductMention) {
     return 'ChatIntent';
   }
 
@@ -236,13 +244,20 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
       }
 
       // Détection matériau
-      const materials = ['bois', 'métal', 'verre', 'marbre', 'tissu', 'cuir', 'céramique'];
+      const materials = ['bois', 'métal', 'verre', 'marbre', 'tissu', 'cuir', 'céramique', 'travertin', 'granit', 'acier'];
       for (const material of materials) {
         if (msg.includes(material)) {
           attributes.material = material;
           console.log('✅ [EXTRACT] Detected material:', material);
           break;
         }
+      }
+
+      // Détection prix
+      const priceMatch = msg.match(/(?:moins de|maximum|max|sous|en dessous de)\s*(\d+)/);
+      if (priceMatch) {
+        attributes.maxPrice = parseInt(priceMatch[1]);
+        console.log('✅ [EXTRACT] Detected max price:', attributes.maxPrice);
       }
 
       const extractTime = performance.now() - extractStart;
@@ -381,10 +396,23 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     const materialFiltered = results.filter(p =>
       p.material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
-      p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
+      p.tags?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+      p.title?.toLowerCase().includes(filters.material!.toLowerCase())
     );
     console.log('📊 [SEARCH] Material filter result:', materialFiltered.length, 'products');
     results = materialFiltered;
+  }
+
+  // Filtre prix
+  if (filters.maxPrice && results.length > 0) {
+    console.log('💰 [SEARCH] Applying max price filter:', filters.maxPrice);
+    const before = results.length;
+    const priceFiltered = results.filter(p => {
+      const price = Number(p.price);
+      return !isNaN(price) && price <= filters.maxPrice!;
+    });
+    console.log('📊 [SEARCH] Price filter result:', before, '→', priceFiltered.length, 'products');
+    results = priceFiltered;
   }
 
   const finalResults = results.slice(0, 8);
