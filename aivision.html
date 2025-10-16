@@ -507,18 +507,117 @@
             log(`❌ Erreur ALT: ${errorText}`, 'error');
           }
         } else {
-          log('⚠️ Mode test simple (pas de sauvegarde)', 'warning');
+          log('⚠️ Mode test URL - Analyse via OpenAI Vision directe', 'warning');
+          log('🤖 Appel de l\'API OpenAI Vision...', 'info');
 
-          const mockResult = {
-            imageUrl,
-            context,
-            analysis: 'Vision AI analyse ici',
-            color: 'Couleur détectée',
-            material: 'Matière détectée',
-            style: 'Style détecté'
-          };
+          // For URL-based testing, call OpenAI Vision API directly
+          const openaiApiKey = window.ENV.VITE_OPENAI_API_KEY;
 
-          displayResults(mockResult, Date.now() - startTime);
+          if (!openaiApiKey || openaiApiKey.includes('__VITE_OPENAI_API_KEY__')) {
+            log('❌ Clé OpenAI non configurée', 'error');
+
+            const errorResult = {
+              imageUrl,
+              context,
+              analysis: 'Clé API OpenAI manquante - Configurez VITE_OPENAI_API_KEY',
+              color: 'N/A',
+              material: 'N/A',
+              style: 'N/A'
+            };
+            displayResults(errorResult, 0);
+            return;
+          }
+
+          try {
+            const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Analyze this image and provide a JSON response with: alt_text (descriptive alt text), color (main color), material (primary material), style (design style), functionality (purpose/use), characteristics (key features). Respond ONLY with valid JSON, no markdown.'
+                    },
+                    {
+                      type: 'image_url',
+                      image_url: {
+                        url: imageUrl,
+                        detail: 'low'
+                      }
+                    }
+                  ]
+                }],
+                max_tokens: 300,
+                temperature: 0.3
+              })
+            });
+
+            if (visionResponse.ok) {
+              const visionData = await visionResponse.json();
+              const aiContent = visionData.choices[0].message.content;
+
+              log(`✅ Réponse OpenAI reçue`, 'success');
+
+              // Parse JSON from AI response
+              let parsedData;
+              try {
+                parsedData = JSON.parse(aiContent);
+              } catch (e) {
+                const jsonMatch = aiContent.match(/```json\s*([\s\S]*?)\s*```/) ||
+                                 aiContent.match(/```\s*([\s\S]*?)\s*```/) ||
+                                 aiContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  parsedData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                } else {
+                  throw new Error('Could not extract JSON from response');
+                }
+              }
+
+              const result = {
+                imageUrl,
+                context,
+                analysis: parsedData.alt_text || 'N/A',
+                color: parsedData.color || 'Non détectée',
+                material: parsedData.material || 'Non détectée',
+                style: parsedData.style || 'Non détecté',
+                functionality: parsedData.functionality || 'N/A',
+                characteristics: parsedData.characteristics || 'N/A'
+              };
+
+              displayResults(result, Date.now() - startTime);
+            } else {
+              const errorText = await visionResponse.text();
+              log(`❌ Erreur OpenAI: ${errorText}`, 'error');
+
+              const errorResult = {
+                imageUrl,
+                context,
+                analysis: `Erreur API: ${visionResponse.status}`,
+                color: 'N/A',
+                material: 'N/A',
+                style: 'N/A'
+              };
+              displayResults(errorResult, Date.now() - startTime);
+            }
+          } catch (error) {
+            log(`❌ Erreur: ${error.message}`, 'error');
+
+            const errorResult = {
+              imageUrl,
+              context,
+              analysis: `Erreur: ${error.message}`,
+              color: 'N/A',
+              material: 'N/A',
+              style: 'N/A'
+            };
+            displayResults(errorResult, Date.now() - startTime);
+          }
         }
 
         updateStats(Date.now() - startTime, 1, 1);
