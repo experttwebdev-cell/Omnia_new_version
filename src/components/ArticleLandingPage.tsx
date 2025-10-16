@@ -44,7 +44,14 @@ interface BlogArticle {
     sub_category?: string;
     ai_color?: string;
     ai_material?: string;
+    ai_texture?: string;
+    ai_pattern?: string;
+    ai_finish?: string;
+    ai_shape?: string;
+    ai_design_elements?: string;
     ai_vision_analysis?: string;
+    style?: string;
+    room?: string;
     dimensions_text?: string;
     dimensions_source?: string;
     smart_length?: number;
@@ -119,7 +126,7 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
             console.log('Fetching enriched product data for', productIds.length, 'products');
             const { data, error: productsError } = await supabase
               .from('shopify_products')
-              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, ai_vision_analysis, dimensions_text, dimensions_source, smart_length, smart_length_unit, smart_width, smart_width_unit, smart_height, smart_height_unit, smart_depth, smart_depth_unit, smart_diameter, smart_diameter_unit, smart_weight, smart_weight_unit, characteristics, functionality, google_product_category, google_brand, vendor, enrichment_status')
+              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements, ai_vision_analysis, style, room, dimensions_text, dimensions_source, smart_length, smart_length_unit, smart_width, smart_width_unit, smart_height, smart_height_unit, smart_depth, smart_depth_unit, smart_diameter, smart_diameter_unit, smart_weight, smart_weight_unit, characteristics, functionality, google_product_category, google_brand, vendor, enrichment_status')
               .in('id', productIds);
 
             const productsData = data as Array<{
@@ -133,7 +140,14 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
               sub_category: string | null;
               ai_color: string | null;
               ai_material: string | null;
+              ai_texture: string | null;
+              ai_pattern: string | null;
+              ai_finish: string | null;
+              ai_shape: string | null;
+              ai_design_elements: string | null;
               ai_vision_analysis: string | null;
+              style: string | null;
+              room: string | null;
               dimensions_text: string | null;
               dimensions_source: string | null;
               smart_length: number | null;
@@ -183,7 +197,14 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
                 sub_category: p.sub_category || '',
                 ai_color: p.ai_color || '',
                 ai_material: p.ai_material || '',
+                ai_texture: p.ai_texture || '',
+                ai_pattern: p.ai_pattern || '',
+                ai_finish: p.ai_finish || '',
+                ai_shape: p.ai_shape || '',
+                ai_design_elements: p.ai_design_elements || '',
                 ai_vision_analysis: p.ai_vision_analysis || '',
+                style: p.style || '',
+                room: p.room || '',
                 dimensions_text: p.dimensions_text || '',
                 dimensions_source: p.dimensions_source || '',
                 smart_length: p.smart_length || undefined,

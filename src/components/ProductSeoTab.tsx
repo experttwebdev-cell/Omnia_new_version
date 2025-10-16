@@ -370,6 +370,16 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {product.ai_shape && (
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <TagIcon className="w-5 h-5 text-blue-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Product Name</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.ai_shape}</p>
+              </div>
+            )}
+
             {product.ai_color && (
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
@@ -387,6 +397,46 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
                   <h4 className="text-sm font-semibold text-gray-900">Material Detected</h4>
                 </div>
                 <p className="text-gray-800 font-medium">{product.ai_material}</p>
+              </div>
+            )}
+
+            {product.ai_texture && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Layers className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Texture</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.ai_texture}</p>
+              </div>
+            )}
+
+            {product.ai_pattern && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Palette className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Pattern</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.ai_pattern}</p>
+              </div>
+            )}
+
+            {product.ai_finish && (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Finish</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.ai_finish}</p>
+              </div>
+            )}
+
+            {product.ai_design_elements && (
+              <div className="p-4 bg-gray-50 rounded-lg md:col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <TagIcon className="w-5 h-5 text-gray-700" />
+                  <h4 className="text-sm font-semibold text-gray-900">Design Elements</h4>
+                </div>
+                <p className="text-gray-800 font-medium">{product.ai_design_elements}</p>
               </div>
             )}
 

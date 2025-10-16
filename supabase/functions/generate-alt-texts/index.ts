@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: product } = await supabaseClient
       .from("shopify_products")
-      .select("title, description, product_type, category, sub_category, ai_color, ai_material, ai_style, functionality, characteristics, ai_vision_analysis")
+      .select("title, description, product_type, category, sub_category, ai_color, ai_material, style, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements, functionality, characteristics, ai_vision_analysis")
       .eq("id", image.product_id)
       .maybeSingle();
 
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
 
-    const hasEnrichmentData = product.ai_color || product.ai_material || product.ai_style || product.functionality || product.characteristics || product.ai_vision_analysis;
+    const hasEnrichmentData = product.ai_color || product.ai_material || product.style || product.functionality || product.characteristics || product.ai_vision_analysis;
 
     if (!hasEnrichmentData) {
       console.log(`⚠️ Product ${product.title} has no AI enrichment data. Triggering enrichment...`);
@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
 
           const { data: enrichedProduct } = await supabaseClient
             .from("shopify_products")
-            .select("title, description, product_type, category, sub_category, ai_color, ai_material, ai_style, functionality, characteristics, ai_vision_analysis")
+            .select("title, description, product_type, category, sub_category, ai_color, ai_material, style, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements, functionality, characteristics, ai_vision_analysis")
             .eq("id", image.product_id)
             .maybeSingle();
 
@@ -145,9 +145,14 @@ Catégorie: ${product.category || "non spécifiée"}
 Sous-catégorie: ${product.sub_category || "non spécifiée"}
 
 ANALYSE AI VISION (données enrichies par IA):
+Nom du produit détecté: ${product.ai_shape || product.product_type || "À déduire"}
 Couleur détectée: ${product.ai_color || "À déduire du titre/description"}
 Matière détectée: ${product.ai_material || "À déduire du titre/description"}
-Style: ${product.ai_style || "À déduire du titre/description"}
+Texture: ${product.ai_texture || "non spécifiée"}
+Motif: ${product.ai_pattern || "non spécifié"}
+Finition: ${product.ai_finish || "non spécifiée"}
+Éléments de design: ${product.ai_design_elements || "non spécifiés"}
+Style: ${product.style || "À déduire du titre/description"}
 ${visionInfo ? `Analyse visuelle détaillée: ${visionInfo}` : ""}
 
 FONCTIONNALITÉ:
