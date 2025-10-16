@@ -173,25 +173,39 @@ Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
 }
 
 function createVisionPrompt(): string {
-  return `ANALYSE VISUELLE STRICTE - Tu analyses des IMAGES de produit.
+  return `ANALYSE VISUELLE EXPERTE - Tu es un expert en identification de produits e-commerce.
 
-RÈGLES ABSOLUES:
-1. FOCALISE-TOI UNIQUEMENT sur le PRODUIT PRINCIPAL au centre de l'image
-2. IGNORE COMPLÈTEMENT l'arrière-plan, les supports, les présentoirs, le décor
-3. Tu décris UNE SEULE UNITÉ du produit principal
-4. Tu n'as AUCUN contexte sur le titre, la description ou l'emballage
-5. Tu décris UNIQUEMENT ce qui est VISUELLEMENT OBSERVABLE sur le produit principal
-6. INTERDIT: mentionner "lot", "set", "ensemble", "pack", nombres de pièces
-7. INTERDIT: nommer le type d'objet (pas de "chaise", "table", "canapé")
-8. INTERDIT: décrire les supports, présentoirs, surfaces de présentation
-9. AUTORISÉ: couleurs, textures, matériaux, finitions, style visuel DU PRODUIT PRINCIPAL UNIQUEMENT
+OBJECTIFS PRIORITAIRES:
+1. IDENTIFIER le type de produit exact (Canapé, Table à manger, Chaise, Lampe, etc.)
+2. DÉCRIRE les attributs visuels du produit EN VENTE (pas le décor)
+3. CONCENTRE-TOI sur l'objet principal à vendre, pas la mise en scène
+
+RÈGLES STRICTES:
+✓ NOMME le produit (Canapé d'angle, Table basse ronde, Chaise de salle à manger, etc.)
+✓ DÉCRIS: couleur, matériau, texture, finition, style du PRODUIT EN VENTE
+✓ IDENTIFIE: le type de pieds/support si visible (pieds métal, pieds bois, roulettes, etc.)
+✓ OBSERVE: les éléments distinctifs (poignées, capitonnage, accoudoirs, tiroirs, etc.)
+
+✗ IGNORE: l'arrière-plan, les murs, le sol, les plantes décoratives, les coussins déco
+✗ IGNORE: les supports de présentation (présentoirs, tables d'exposition)
+✗ INTERDIT: mentionner "lot", "set", "ensemble", quantité
+
+EXEMPLES:
+- Image de canapé blanc → product_name: "Canapé", color: "Blanc"
+- Image de table en bois → product_name: "Table", material: "Bois massif"
+- Image de chaise grise avec pieds métal → product_name: "Chaise", color: "Gris", design_elements: "Pieds en métal noir"
 
 RÉPONDS EN JSON (français):
 {
-  "color_detected": "Couleur(s) principale(s) du produit principal",
-  "material_detected": "Matériau(x) visible(s) du produit principal",
-  "style_detected": "Style visuel du produit principal",
-  "visual_description": "Description concise des attributs visuels du produit principal (ignore l'arrière-plan)"
+  "product_name": "Type exact du produit (Canapé, Table, Chaise, Lampe, Meuble TV, etc.)",
+  "color_detected": "Couleur(s) principale(s) du PRODUIT À VENDRE",
+  "material_detected": "Matériau(x) visible(s) du PRODUIT",
+  "texture_detected": "Texture (lisse, velours, grain de bois, tissé, etc.)",
+  "pattern_detected": "Motif (uni, rayé, géométrique, fleuri, etc.)",
+  "finish_detected": "Finition (mat, brillant, satiné, brossé, etc.)",
+  "design_elements": "Éléments distinctifs (pieds métal, poignées dorées, capitonnage, tiroirs, accoudoirs, roulettes, etc.)",
+  "style_detected": "Style (moderne, scandinave, industriel, classique, contemporain, etc.)",
+  "visual_description": "Description courte et précise du produit visible"
 }`;
 }
 
@@ -529,8 +543,11 @@ Deno.serve(async (req: Request) => {
 
         const visionAnalysis = parseAIResponse(visionContent) || {};
         console.log("✅ Vision analysis completed:", {
+          product_name: visionAnalysis.product_name,
           color: visionAnalysis.color_detected,
-          material: visionAnalysis.material_detected
+          material: visionAnalysis.material_detected,
+          texture: visionAnalysis.texture_detected,
+          pattern: visionAnalysis.pattern_detected
         });
 
         return {
@@ -638,9 +655,16 @@ Deno.serve(async (req: Request) => {
       ai_vision_analysis: finalAiVisionAnalysis,
       ai_color: finalColor,
       ai_material: finalMaterial,
+      ai_texture: visionAnalysis.texture_detected || null,
+      ai_pattern: visionAnalysis.pattern_detected || null,
+      ai_finish: visionAnalysis.finish_detected || null,
+      ai_shape: visionAnalysis.product_name || null,
+      ai_design_elements: visionAnalysis.design_elements || null,
       dimensions_text: textAnalysis.dimensions_text || null,
       dimensions_source: textAnalysis.dimensions_source || null,
       ai_confidence_score: confidenceScore,
+      ai_vision_model: images?.length > 0 ? "gpt-4o" : null,
+      ai_vision_timestamp: images?.length > 0 ? new Date().toISOString() : null,
       enrichment_status: "enriched",
       last_enriched_at: new Date().toISOString(),
       seo_synced_to_shopify: false,

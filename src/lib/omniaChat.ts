@@ -281,7 +281,13 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
 
   let query = supabase
     .from('shopify_products')
-    .select('id, title, price, compare_at_price, style, material, color, ai_color, ai_material, room, image_url, product_type, description, ai_vision_analysis, handle, shopify_id, currency, shop_name, category, sub_category, tags, length, width, height, length_unit, width_unit, height_unit, inventory_quantity')
+    .select(`
+      id, title, price, compare_at_price, style, material, color,
+      ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
+      room, image_url, product_type, description, ai_vision_analysis,
+      handle, shopify_id, currency, shop_name, category, sub_category, tags,
+      length, width, height, length_unit, width_unit, height_unit, inventory_quantity
+    `)
     .eq('status', 'active')
     .limit(12);
 
