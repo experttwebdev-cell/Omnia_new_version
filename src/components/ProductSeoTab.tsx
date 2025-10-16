@@ -31,11 +31,21 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
   const [enrichSuccess, setEnrichSuccess] = useState('');
   const [syncSuccess, setSyncSuccess] = useState('');
 
-  const handleEnrich = async () => {
+  const handleEnrich = async (retryCount = 0) => {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 120000);
+
     try {
       setEnriching(true);
       setEnrichError('');
       setEnrichSuccess('');
+
+      if (retryCount > 0) {
+        console.log(`Retry attempt ${retryCount} for product: ${product.title}`);
+      } else {
+        console.log(`Starting enrichment for product: ${product.title}`);
+      }
+      const startTime = Date.now();
 
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
       const headers = {
@@ -47,7 +57,12 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
         method: 'POST',
         headers,
         body: JSON.stringify({ productId: product.id }),
+        signal: abortController.signal,
       });
+
+      clearTimeout(timeoutId);
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      console.log(`Enrichment completed in ${duration} seconds`);
 
       const data = await response.json();
 
@@ -55,13 +70,34 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
         throw new Error(data.error || 'Failed to enrich product');
       }
 
-      setEnrichSuccess('Product enriched successfully with AI!');
+      setEnrichSuccess(`Product enriched successfully with AI in ${duration} seconds!`);
       onProductUpdate();
     } catch (err) {
+      clearTimeout(timeoutId);
       console.error('Enrichment error:', err);
-      setEnrichError(err instanceof Error ? err.message : 'Failed to enrich product');
-    } finally {
+
+      if (err instanceof Error && err.name === 'AbortError') {
+        if (retryCount === 0) {
+          setEnrichError('Request timeout. Retrying in 2 seconds...');
+          setTimeout(() => handleEnrich(1), 2000);
+          return;
+        }
+        setEnrichError('Enrichment timeout after retry - the request took longer than 120 seconds. This may be due to slow AI API responses. Please try again or contact support if the issue persists.');
+      } else if ((err instanceof Error && err.message.includes('fetch')) || err instanceof TypeError) {
+        if (retryCount === 0) {
+          setEnrichError('Network error. Retrying in 2 seconds...');
+          setTimeout(() => handleEnrich(1), 2000);
+          return;
+        }
+        setEnrichError('Network error after retry. Please check your connection and try again.');
+      } else {
+        setEnrichError(err instanceof Error ? err.message : 'Failed to enrich product');
+      }
       setEnriching(false);
+    } finally {
+      if (retryCount > 0) {
+        setEnriching(false);
+      }
     }
   };
 

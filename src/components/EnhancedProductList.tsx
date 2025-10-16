@@ -293,20 +293,34 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
 
 
       const batchPromises = batch.map(async (product) => {
-        try {
-          console.log(`🚀 Enriching product: ${product.title} (ID: ${product.id})`);
-          const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
+        const enrichWithRetry = async (retryCount = 0): Promise<any> => {
+          const abortController = new AbortController();
+          const timeoutId = setTimeout(() => abortController.abort(), 120000);
 
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ productId: product.id }),
-          });
+          try {
+            if (retryCount > 0) {
+              console.log(`🔄 Retry attempt ${retryCount} for product: ${product.title}`);
+            } else {
+              console.log(`🚀 Enriching product: ${product.title} (ID: ${product.id})`);
+            }
+            const startTime = Date.now();
+            const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/enrich-product-with-ai`;
 
-          const responseData = await response.json();
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ productId: product.id }),
+              signal: abortController.signal,
+            });
+
+            clearTimeout(timeoutId);
+            const duration = Date.now() - startTime;
+            console.log(`⏱️ Enrichment request completed in ${duration}ms`);
+
+            const responseData = await response.json();
 
           if (!response.ok) {
             console.error(`❌ Failed to enrich product ${product.title}:`, {
@@ -325,11 +339,36 @@ export function EnhancedProductList({ onProductSelect }: EnhancedProductListProp
             console.log(`✅ Successfully enriched product: ${product.title}`, responseData);
           }
 
-          return { product, success: response.ok, data: responseData };
-        } catch (err) {
-          console.error(`💥 Error enriching product ${product.title}:`, err);
-          return { product, success: false, error: err };
-        }
+            return { product, success: response.ok, data: responseData };
+          } catch (err) {
+            clearTimeout(timeoutId);
+
+            if (err instanceof Error && err.name === 'AbortError') {
+              console.error(`⏰ Timeout enriching product ${product.title} (exceeded 120s)`);
+
+              if (retryCount === 0) {
+                console.log('⏳ Waiting 2 seconds before retry...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return enrichWithRetry(1);
+              }
+
+              return { product, success: false, error: new Error('Enrichment timeout after retry - request took longer than 120 seconds') };
+            }
+
+            if ((err instanceof Error && err.message.includes('fetch')) || err instanceof TypeError) {
+              if (retryCount === 0) {
+                console.log(`⏳ Network error, waiting ${2000 * (retryCount + 1)}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return enrichWithRetry(1);
+              }
+            }
+
+            console.error(`💥 Error enriching product ${product.title}:`, err);
+            return { product, success: false, error: err };
+          }
+        };
+
+        return enrichWithRetry();
       });
 
       const results = await Promise.all(batchPromises);

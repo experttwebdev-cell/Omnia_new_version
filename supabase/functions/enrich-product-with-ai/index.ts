@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime@1.4.2";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.38.1";
 
 const corsHeaders = {
@@ -57,7 +57,7 @@ function parseAIResponse(responseContent: string): any {
   }
 }
 
-async function callDeepSeek(messages: any[], maxTokens = 800, retries = 2) {
+async function callDeepSeek(messages: any[], maxTokens = 500, retries = 2) {
   const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
 
   if (!deepseekApiKey) {
@@ -77,7 +77,7 @@ async function callDeepSeek(messages: any[], maxTokens = 800, retries = 2) {
         body: JSON.stringify({
           model: 'deepseek-chat',
           messages,
-          temperature: 0.3,
+          temperature: 0.5,
           max_tokens: maxTokens,
         }),
       });
@@ -241,7 +241,6 @@ function calculateConfidenceScore(
 }
 
 Deno.serve(async (req: Request) => {
-  // Gestion CORS
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -255,7 +254,6 @@ Deno.serve(async (req: Request) => {
   let enrichmentContext = "initialization";
 
   try {
-    // Vérification des variables d'environnement
     enrichmentContext = "environment_validation";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -297,7 +295,6 @@ Deno.serve(async (req: Request) => {
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Parse du body avec gestion d'erreur
     enrichmentContext = "request_parsing";
     try {
       requestBody = await req.json();
@@ -334,7 +331,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Récupération du produit
     enrichmentContext = "product_fetch";
     console.log("🔍 Fetching product from database...");
 
@@ -374,7 +370,6 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to fetch product: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
     }
 
-    // Récupération des images
     enrichmentContext = "images_fetch";
     let images: any[] = [];
     try {
@@ -396,7 +391,6 @@ Deno.serve(async (req: Request) => {
       console.warn("⚠️ Exception fetching images (continuing without images):", imgError);
     }
 
-    // Nettoyage de la description
     let cleanDescription = product.description
       ? product.description
           .replace(/<[^>]*>/g, ' ')
@@ -413,7 +407,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("📝 Description cleaned");
 
-    // Analyse de texte avec DeepSeek
     enrichmentContext = "text_analysis";
     console.log("🧠 Starting text analysis with DeepSeek...");
     let textAnalysis: any = {};
@@ -428,7 +421,7 @@ Deno.serve(async (req: Request) => {
           role: "user",
           content: createTextAnalysisPrompt(product, cleanDescription),
         },
-      ], 800);
+      ], 500);
 
       const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
       console.log("📄 DeepSeek response received");
@@ -450,7 +443,6 @@ Deno.serve(async (req: Request) => {
       const errorMessage = textError instanceof Error ? textError.message : String(textError);
       console.error("Text analysis error details:", errorMessage);
 
-      // Use fallback values but don't fail the entire enrichment
       textAnalysis = {
         category: product.product_type || "Non catégorisé",
         sub_category: "",
@@ -467,7 +459,6 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // Extraction des dimensions avec regex
     if (!textAnalysis.dimensions_text) {
       const regexDimensions = extractDimensionsWithRegex(product.title, product.description || "");
       if (regexDimensions) {
@@ -477,7 +468,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Analyse d'image en parallèle
     const visionPromise = (async () => {
       if (!images || images.length === 0) {
         console.log("⏭️ No images for vision analysis");
@@ -520,8 +510,8 @@ Deno.serve(async (req: Request) => {
                   ],
                 },
               ],
-              max_tokens: 250,
-              temperature: 0.2,
+              max_tokens: 150,
+              temperature: 0.3,
             }),
           }
         );
@@ -550,7 +540,6 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
-    // Génération SEO en parallèle
     const seoPromise = (async () => {
       try {
         console.log("📝 Generating SEO content...");
@@ -564,7 +553,7 @@ Deno.serve(async (req: Request) => {
             role: "user",
             content: createSEOPrompt(product, textAnalysis),
           },
-        ], 300);
+        ], 200);
 
         const seoContent = seoResponse.choices[0].message.content;
         const seoData = parseAIResponse(seoContent);
@@ -581,7 +570,6 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
-    // Attente des appels parallèles
     enrichmentContext = "parallel_api_calls";
     console.log("⏳ Waiting for parallel API calls...");
 
@@ -604,12 +592,10 @@ Deno.serve(async (req: Request) => {
       console.log("✅ Parallel API calls completed");
     } catch (parallelError) {
       console.error("❌ Error in parallel API calls:", parallelError);
-      // Continue with empty data - don't fail the enrichment
     }
 
     const { visionAnalysis, imageInsights } = visionData;
 
-    // Fusion des données
     const finalColor = visionAnalysis.color_detected || textAnalysis.color || product.ai_color || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || product.ai_material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
@@ -632,7 +618,6 @@ Deno.serve(async (req: Request) => {
     const confidenceScore = calculateConfidenceScore(textAnalysis, images?.length || 0, visionAnalysis);
     console.log("📊 Confidence score:", confidenceScore);
 
-    // Préparation des données de mise à jour
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
@@ -656,7 +641,6 @@ Deno.serve(async (req: Request) => {
       seo_synced_to_shopify: false,
     };
 
-    // Mise à jour en base de données
     enrichmentContext = "database_update";
     console.log("💾 Updating product in database...");
 
@@ -701,7 +685,6 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("💥 ENRICHMENT PROCESS FAILED:", error);
 
-    // Log detailed error information
     const errorDetails: any = {
       timestamp: new Date().toISOString(),
       productId: requestBody?.productId || 'unknown',
@@ -722,7 +705,6 @@ Deno.serve(async (req: Request) => {
       console.error("Error context:", enrichmentContext);
     }
 
-    // Try to determine the failure context
     console.error("Error context details:", JSON.stringify(errorDetails, null, 2));
 
     return new Response(
@@ -732,7 +714,6 @@ Deno.serve(async (req: Request) => {
         errorType: error instanceof Error ? error.name : 'UnknownError',
         context: enrichmentContext,
         timestamp: errorDetails.timestamp,
-        // Include limited debugging info (safe for production)
         debug: {
           hasProductId: !!requestBody?.productId,
           errorName: error instanceof Error ? error.name : 'Unknown',

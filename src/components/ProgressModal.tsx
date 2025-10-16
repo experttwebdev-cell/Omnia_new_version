@@ -1,4 +1,5 @@
-import { CheckCircle, Loader2, Package, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, Loader2, Package, Image as ImageIcon, Clock, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface ProgressModalProps {
   isOpen: boolean;
@@ -23,9 +24,32 @@ export function ProgressModal({
   isComplete = false,
   onClose,
 }: ProgressModalProps) {
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime, setStartTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isOpen && !isComplete) {
+      if (!startTime) {
+        setStartTime(Date.now());
+      }
+
+      const interval = setInterval(() => {
+        if (startTime) {
+          setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setStartTime(null);
+      setElapsedTime(0);
+    }
+  }, [isOpen, isComplete, startTime]);
+
   if (!isOpen) return null;
 
   const progress = total > 0 ? (current / total) * 100 : 0;
+  const showWarning = elapsedTime > 45 && !isComplete;
 
   const getIcon = () => {
     if (isComplete) {
@@ -72,6 +96,23 @@ export function ProgressModal({
                   {Math.round(progress)}%
                 </div>
               </div>
+
+              <div className="flex items-center justify-center gap-2 mb-4 text-gray-600">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  Elapsed time: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+
+              {showWarning && (
+                <div className="w-full p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-semibold mb-1">Processing is taking longer than usual</p>
+                    <p className="text-xs">This may be due to slow AI API responses. The system will timeout after 2 minutes if needed.</p>
+                  </div>
+                </div>
+              )}
 
               {currentItem && (
                 <div className="w-full p-4 bg-purple-50 rounded-lg border border-purple-200 animate-pulse">
