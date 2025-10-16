@@ -149,6 +149,7 @@ Extract and provide the following in JSON format:
   "category": "Main product category (e.g., 'Table basse', 'Canapé', 'Chaise')",
   "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
   "functionality": "Key functionality or type (e.g., 'Convertible', '3 places', 'Relevable', 'Avec rangement', 'Modulable', 'Extensible')",
+  "characteristics": "Comma-separated list of technical characteristics from description (e.g., 'Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, Traitement anti-taches')",
   "color": "Main color of the product (always provide if visible or mentioned)",
   "material": "Primary material (if mentioned)",
   "style": "Product style in the same language as the title (e.g., 'Moderne', 'Scandinave', 'Industriel', 'Classique', 'Rustique')",
@@ -177,6 +178,7 @@ IMPORTANT INSTRUCTIONS:
 - category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
 - functionality: Extract key functionality like "Convertible", "3 places", "Modulable", "Avec rangement", "Extensible", "Relevable", etc.
+- characteristics: Extract ALL technical characteristics from description: "Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, etc."
 - style: Infer the design style in the same language as the title (e.g., for French: "Moderne", "Scandinave", "Industriel", "Classique", "Rustique", "Minimaliste", "Contemporain")
 - room: Infer typical usage room in the same language as the title (e.g., for French: "Salon", "Chambre", "Salle à manger", "Bureau", "Cuisine", "Salle de bain")
 - ai_vision_analysis: KEEP IT SHORT (2-3 sentences). Based ONLY on title/description. State materials, main feature, and use case. NO marketing language.
@@ -260,17 +262,19 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
             },
           }));
 
-          const visionPrompt = `Analyze ONLY the product images (ignore any text/title). Provide ONLY visual observations in JSON:
+          const visionPrompt = `You are analyzing product images. You do NOT have access to any product title or text description. Analyze ONLY what you SEE in the images.
+
+Provide visual observations in JSON format:
 {
-  "visual_description": "SHORT visual description (1-2 sentences): what you SEE in the images - colors, materials, design features",
-  "color_detected": "Main color(s) visible in images",
-  "material_detected": "Material visible in images (wood, metal, fabric, etc.)",
-  "style_detected": "Design style visible in images",
-  "additional_features": ["visible", "features", "from", "images"]
+  "visual_description": "SHORT description (1-2 sentences) of what you SEE: colors, materials, design",
+  "color_detected": "Main color(s) you SEE in images",
+  "material_detected": "Material you SEE (wood, metal, fabric, glass, etc.)",
+  "style_detected": "Design style you SEE (Modern, Scandinavian, Industrial, Classic, etc.)",
+  "additional_features": ["visible", "features", "you", "see"]
 }
 
-CRITICAL: Base response ONLY on what you SEE in images, NOT on title/text. Keep visual_description SHORT (1-2 sentences).
-Respond in the same language as: ${product.title}`;
+CRITICAL: You have NO context about what this product is called or described as. Base response ONLY on visual observation of images.
+Respond in French.`;
 
           const visionResponse = await fetch(
             "https://api.openai.com/v1/chat/completions",
@@ -391,6 +395,7 @@ Provide response in JSON format:
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
       functionality: textAnalysis.functionality || "",
+      characteristics: textAnalysis.characteristics || "",
       style: finalStyle,
       room: textAnalysis.room || "",
       seo_title: seoTitle,
