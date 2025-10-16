@@ -88,10 +88,18 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       setLoading(true);
 
       // Fetch products for categories
-      const { data: products } = await supabase
+      const { data: products, error: productsError } = await supabase
         .from('shopify_products')
         .select('category')
         .not('category', 'is', null);
+
+      if (productsError) {
+        throw productsError;
+      }
+
+      if (!products || products.length === 0) {
+        setError('Aucun produit trouvé dans votre catalogue. Veuillez importer des produits depuis Shopify via "Paramètres" > "Import Shopify".');
+      }
 
       const uniqueCategories = [...new Set(products?.map(p => p.category).filter(Boolean))].sort();
       setCategories(uniqueCategories as string[]);
@@ -111,7 +119,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       await fetchBlogStats();
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Failed to load data');
+      setError('Échec du chargement des données. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
     }
@@ -219,9 +227,24 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       setError('');
       setSuccess('');
 
+      // Check if products exist first
+      const { data: productCheck, error: productCheckError } = await supabase
+        .from('shopify_products')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+
+      if (productCheckError) {
+        throw productCheckError;
+      }
+
+      if (!productCheck) {
+        throw new Error('Aucun produit trouvé dans votre catalogue. Veuillez d\'abord importer des produits depuis Shopify en utilisant la section "Paramètres" > "Import Shopify".');
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error('Non authentifié. Veuillez vous connecter.');
       }
 
       // Use default settings for quick generation
@@ -249,19 +272,19 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate blog article');
+        throw new Error(errorData.error || 'Échec de la génération de l\'article de blog');
       }
 
       const result = await response.json();
-      setSuccess(`Blog article "${result.title}" generated successfully!`);
-      
+      setSuccess(`Article de blog "${result.article?.title || 'Sans titre'}" généré avec succès!`);
+
       // Refresh stats
       await fetchBlogStats();
-      
+
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       console.error('Error generating blog:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate blog article');
+      setError(err instanceof Error ? err.message : 'Échec de la génération de l\'article de blog');
     } finally {
       setGenerating(false);
     }
