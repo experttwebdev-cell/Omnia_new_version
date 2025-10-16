@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     console.log("Fetching product from database...");
     const { data: product, error: productError } = await supabaseClient
       .from("shopify_products")
-      .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material")
+      .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material, ai_vision_analysis")
       .eq("id", productId)
       .maybeSingle();
 
@@ -404,15 +404,23 @@ Return ONLY valid JSON:
     console.log("Parallel API calls completed");
 
     const { visionAnalysis, imageInsights } = visionResult;
-    const finalColor = visionAnalysis.color_detected || "";
+
+    // Conserver les valeurs existantes si Vision n'a rien retourné
+    const visionColor = visionAnalysis.color_detected || "";
+    const finalColor = visionColor || product.ai_color || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
 
+    const visionDescription = imageInsights || visionAnalysis.visual_description || "";
+    const finalAiVisionAnalysis = visionDescription || product.ai_vision_analysis || "";
+
     console.log("=== Final Values ===");
-    console.log("Final Color:", finalColor);
+    console.log("Vision Color returned:", visionColor || "EMPTY");
+    console.log("Final Color (with fallback):", finalColor);
     console.log("Final Material:", finalMaterial);
     console.log("Final Style:", finalStyle);
-    console.log("Final AI Vision Analysis:", imageInsights || visionAnalysis.visual_description || "");
+    console.log("Vision Description returned:", visionDescription || "EMPTY");
+    console.log("Final AI Vision Analysis (with fallback):", finalAiVisionAnalysis.substring(0, 100) + "...");
     console.log("Google Brand (from vendor):", product.vendor || "");
 
     const allKeywords = [
@@ -439,8 +447,6 @@ Return ONLY valid JSON:
       textAnalysis,
       images?.length || 0
     );
-
-    const finalAiVisionAnalysis = imageInsights || visionAnalysis.visual_description || "";
 
     const updateData: any = {
       category: textAnalysis.category || "",
