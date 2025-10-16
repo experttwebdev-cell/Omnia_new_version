@@ -293,9 +293,15 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
         </div>
 
         <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-          <div className="text-blue-600 text-xs mb-1">
-            https://{product.shop_name}.myshopify.com/products/{product.handle}
-          </div>
+          {product.handle ? (
+            <div className="text-blue-600 text-xs mb-1">
+              https://yourstore.myshopify.com/products/{product.handle}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-xs mb-1 italic">
+              Product URL preview (handle not available)
+            </div>
+          )}
           <div className="text-lg font-semibold text-blue-800 mb-1 hover:underline cursor-pointer">
             {product.seo_title || product.title}
           </div>

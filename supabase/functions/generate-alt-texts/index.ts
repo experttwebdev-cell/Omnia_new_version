@@ -96,6 +96,42 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
 
+    const hasEnrichmentData = product.ai_color || product.ai_material || product.ai_style || product.functionality || product.characteristics || product.ai_vision_analysis;
+
+    if (!hasEnrichmentData) {
+      console.log(`⚠️ Product ${product.title} has no AI enrichment data. Triggering enrichment...`);
+
+      try {
+        const enrichUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/enrich-product-with-ai`;
+        const enrichResponse = await fetch(enrichUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ productId: image.product_id })
+        });
+
+        if (enrichResponse.ok) {
+          console.log(`✅ Product enriched successfully`);
+
+          const { data: enrichedProduct } = await supabaseClient
+            .from("shopify_products")
+            .select("title, description, product_type, category, sub_category, ai_color, ai_material, ai_style, functionality, characteristics, ai_vision_analysis")
+            .eq("id", image.product_id)
+            .maybeSingle();
+
+          if (enrichedProduct) {
+            Object.assign(product, enrichedProduct);
+          }
+        } else {
+          console.log(`⚠️ Enrichment failed, continuing with available data`);
+        }
+      } catch (enrichError) {
+        console.log(`⚠️ Enrichment error:`, enrichError);
+      }
+    }
+
     const visionInfo = product.ai_vision_analysis || "";
     const functionalityInfo = product.functionality || "";
     const characteristicsInfo = product.characteristics || "";
@@ -105,22 +141,25 @@ Deno.serve(async (req: Request) => {
 PRODUIT:
 Titre: ${product.title}
 Type: ${product.product_type || "meuble"}
-Catégorie: ${product.category || ""}
-Sous-catégorie: ${product.sub_category || ""}
+Catégorie: ${product.category || "non spécifiée"}
+Sous-catégorie: ${product.sub_category || "non spécifiée"}
 
-ANALYSE AI VISION:
-Couleur détectée: ${product.ai_color || "non spécifiée"}
-Matière détectée: ${product.ai_material || "non spécifiée"}
-Style: ${product.ai_style || "non spécifié"}
-Analyse visuelle: ${visionInfo}
+ANALYSE AI VISION (données enrichies par IA):
+Couleur détectée: ${product.ai_color || "À déduire du titre/description"}
+Matière détectée: ${product.ai_material || "À déduire du titre/description"}
+Style: ${product.ai_style || "À déduire du titre/description"}
+${visionInfo ? `Analyse visuelle détaillée: ${visionInfo}` : ""}
 
 FONCTIONNALITÉ:
-${functionalityInfo}
+${functionalityInfo || "À déduire du titre/description"}
 
 CARACTÉRISTIQUES:
-${characteristicsInfo}
+${characteristicsInfo || "À déduire du titre/description"}
 
-POSITION IMAGE: ${image.position === 1 ? "Image principale" : `Vue supplémentaire n°${image.position}`}
+DESCRIPTION COMPLÈTE:
+${product.description ? product.description.substring(0, 300) : "Non fournie"}
+
+POSITION IMAGE: ${image.position === 1 ? "Image principale (vue d'ensemble)" : `Vue supplémentaire n°${image.position} (détail ou angle différent)`}
 
 INSTRUCTIONS:
 - Maximum 125 caractères
