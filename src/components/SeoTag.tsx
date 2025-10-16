@@ -126,7 +126,7 @@ export function SeoTag() {
   const handleGenerateForAll = async () => {
     const productsToGenerate = selectedProducts.size > 0
       ? products.filter(p => selectedProducts.has(p.id))
-      : products.filter(p => !p.tags || p.tags.trim() === '');
+      : products.filter(p => p.enrichment_status !== 'enriched');
 
     if (productsToGenerate.length === 0) {
       addNotification({
@@ -146,7 +146,7 @@ export function SeoTag() {
     setShowConfirm(false);
     const productsToGenerate = selectedProducts.size > 0
       ? products.filter(p => selectedProducts.has(p.id))
-      : products.filter(p => !p.tags || p.tags.trim() === '');
+      : products.filter(p => p.enrichment_status !== 'enriched');
 
     setGeneratingAll(true);
     setIsProcessingComplete(false);

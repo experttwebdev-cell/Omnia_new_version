@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
-import { Search, RefreshCw, Image as ImageIcon, Sparkles, Upload, Loader2, Package, CheckCircle, Clock, Check } from 'lucide-react';
+import { Search, RefreshCw, Image as ImageIcon, Sparkles, Upload, Loader2, Package, CheckCircle, Clock, Check, Grid3x3, List } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { ProgressModal } from './ProgressModal';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -30,6 +30,7 @@ export function SeoAltImage() {
   const [confirmAction, setConfirmAction] = useState<'generate' | 'sync' | null>(null);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const IMAGES_PER_PAGE = 50;
@@ -547,6 +548,22 @@ export function SeoAltImage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 transition ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                title="Grid View"
+              >
+                <Grid3x3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 transition ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                title="List View"
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
             <button
               onClick={fetchProductsWithImages}
               className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -629,58 +646,115 @@ export function SeoAltImage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
-            {paginatedImages.map((image) => (
-              <div
-                key={image.id}
-                className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition ${
-                  selectedImages.has(image.id)
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleSelectImage(image.id)}
-              >
-                <div className="aspect-square bg-gray-50 relative">
-                  <img
-                    src={image.src}
-                    alt={image.alt_text || `Image ${image.position}`}
-                    className="w-full h-full object-cover"
-                  />
-                  {selectedImages.has(image.id) && (
-                    <div className="absolute inset-0 bg-blue-600 bg-opacity-20 flex items-center justify-center">
-                      <div className="bg-blue-600 rounded-full p-2">
-                        <Check className="w-6 h-6 text-white" />
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
+              {paginatedImages.map((image) => (
+                <div
+                  key={image.id}
+                  className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition ${
+                    selectedImages.has(image.id)
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => handleSelectImage(image.id)}
+                >
+                  <div className="aspect-square bg-gray-50 relative">
+                    <img
+                      src={image.src}
+                      alt={image.alt_text || `Image ${image.position}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {selectedImages.has(image.id) && (
+                      <div className="absolute inset-0 bg-blue-600 bg-opacity-20 flex items-center justify-center">
+                        <div className="bg-blue-600 rounded-full p-2">
+                          <Check className="w-6 h-6 text-white" />
+                        </div>
                       </div>
+                    )}
+                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
+                      #{image.position}
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
-                    #{image.position}
+                    {image.alt_text && image.alt_text.trim() !== '' ? (
+                      <div className="absolute bottom-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        ALT
+                      </div>
+                    ) : (
+                      <div className="absolute bottom-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        No ALT
+                      </div>
+                    )}
                   </div>
-                  {image.alt_text && image.alt_text.trim() !== '' ? (
-                    <div className="absolute bottom-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      ALT
-                    </div>
-                  ) : (
-                    <div className="absolute bottom-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      No ALT
-                    </div>
-                  )}
-                </div>
-                <div className="p-2 bg-white">
-                  <p className="text-xs text-gray-700 font-medium truncate" title={image.productTitle}>
-                    {image.productTitle}
-                  </p>
-                  {image.alt_text && (
-                    <p className="text-xs text-gray-500 truncate mt-1" title={image.alt_text}>
-                      {image.alt_text}
+                  <div className="p-2 bg-white">
+                    <p className="text-xs text-gray-700 font-medium truncate" title={image.productTitle}>
+                      {image.productTitle}
                     </p>
-                  )}
+                    {image.alt_text && (
+                      <p className="text-xs text-gray-500 truncate mt-1" title={image.alt_text}>
+                        {image.alt_text}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {paginatedImages.map((image) => (
+                <div
+                  key={image.id}
+                  className={`flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer transition ${
+                    selectedImages.has(image.id) ? 'bg-blue-50' : ''
+                  }`}
+                  onClick={() => handleSelectImage(image.id)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedImages.has(image.id)}
+                    onChange={() => handleSelectImage(image.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                    <img
+                      src={image.src}
+                      alt={image.alt_text || `Image ${image.position}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium text-gray-900 truncate">
+                        {image.productTitle}
+                      </h4>
+                      <span className="text-xs text-gray-500 flex-shrink-0">
+                        Position #{image.position}
+                      </span>
+                    </div>
+                    {image.alt_text && image.alt_text.trim() !== '' ? (
+                      <p className="text-sm text-gray-600 line-clamp-2">{image.alt_text}</p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">No ALT text</p>
+                    )}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {image.alt_text && image.alt_text.trim() !== '' ? (
+                      <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                        <CheckCircle className="w-3 h-3" />
+                        Has ALT
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                        <Clock className="w-3 h-3" />
+                        Needs ALT
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
