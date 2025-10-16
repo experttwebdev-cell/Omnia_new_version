@@ -176,19 +176,22 @@ function createVisionPrompt(): string {
   return `ANALYSE VISUELLE STRICTE - Tu analyses des IMAGES de produit.
 
 RÈGLES ABSOLUES:
-1. Tu vois UNE SEULE UNITÉ de produit dans l'image
-2. Tu n'as AUCUN contexte sur le titre, la description ou l'emballage
-3. Tu décris UNIQUEMENT ce qui est VISUELLEMENT OBSERVABLE
-4. INTERDIT: mentionner "lot", "set", "ensemble", "pack", nombres de pièces
-5. INTERDIT: nommer le type d'objet (pas de "chaise", "table", "canapé")
-6. AUTORISÉ: couleurs, textures, matériaux, finitions, style visuel
+1. FOCALISE-TOI UNIQUEMENT sur le PRODUIT PRINCIPAL au centre de l'image
+2. IGNORE COMPLÈTEMENT l'arrière-plan, les supports, les présentoirs, le décor
+3. Tu décris UNE SEULE UNITÉ du produit principal
+4. Tu n'as AUCUN contexte sur le titre, la description ou l'emballage
+5. Tu décris UNIQUEMENT ce qui est VISUELLEMENT OBSERVABLE sur le produit principal
+6. INTERDIT: mentionner "lot", "set", "ensemble", "pack", nombres de pièces
+7. INTERDIT: nommer le type d'objet (pas de "chaise", "table", "canapé")
+8. INTERDIT: décrire les supports, présentoirs, surfaces de présentation
+9. AUTORISÉ: couleurs, textures, matériaux, finitions, style visuel DU PRODUIT PRINCIPAL UNIQUEMENT
 
 RÉPONDS EN JSON (français):
 {
-  "color_detected": "Couleur(s) principale(s) observée(s)",
-  "material_detected": "Matériau(x) visible(s)",
-  "style_detected": "Style visuel",
-  "visual_description": "Description concise des attributs visuels d'UNE unité"
+  "color_detected": "Couleur(s) principale(s) du produit principal",
+  "material_detected": "Matériau(x) visible(s) du produit principal",
+  "style_detected": "Style visuel du produit principal",
+  "visual_description": "Description concise des attributs visuels du produit principal (ignore l'arrière-plan)"
 }`;
 }
 
