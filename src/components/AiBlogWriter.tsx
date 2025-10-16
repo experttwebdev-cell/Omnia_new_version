@@ -14,7 +14,13 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  Wand2
+  Wand2,
+  BookOpen,
+  TrendingUp,
+  BarChart3,
+  Target,
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { LoadingAnimation } from './LoadingAnimation';
 import { BlogWizard } from './BlogWizard';
@@ -33,6 +39,14 @@ interface BlogSettings {
   max_internal_links: number;
 }
 
+interface BlogStats {
+  total_articles: number;
+  published_articles: number;
+  draft_articles: number;
+  last_generated: string | null;
+  next_schedule: string | null;
+}
+
 interface AiBlogWriterProps {
   onNavigateToCampaigns?: () => void;
 }
@@ -45,6 +59,13 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
   const [success, setSuccess] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [stats, setStats] = useState<BlogStats>({
+    total_articles: 0,
+    published_articles: 0,
+    draft_articles: 0,
+    last_generated: null,
+    next_schedule: null
+  });
   const [settings, setSettings] = useState<BlogSettings>({
     mode: 'automatic',
     frequency: 'daily',
@@ -57,11 +78,6 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
     internal_linking: true,
     max_internal_links: 5
   });
-  const [manualInputs, setManualInputs] = useState({
-    category: '',
-    subcategory: '',
-    keywords: ''
-  });
 
   useEffect(() => {
     fetchInitialData();
@@ -71,13 +87,16 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
     try {
       setLoading(true);
 
+      // Fetch products for categories
       const { data: products } = await supabase
         .from('shopify_products')
-        .select('category');
+        .select('category')
+        .not('category', 'is', null);
 
       const uniqueCategories = [...new Set(products?.map(p => p.category).filter(Boolean))].sort();
       setCategories(uniqueCategories as string[]);
 
+      // Fetch store settings
       const { data: storeSettings } = await supabase
         .from('shopify_stores')
         .select('*')
@@ -87,11 +106,70 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       if (storeSettings?.blog_auto_settings) {
         setSettings(storeSettings.blog_auto_settings);
       }
+
+      // Fetch blog statistics
+      await fetchBlogStats();
     } catch (err) {
       console.error('Error fetching data:', err);
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchBlogStats = async () => {
+    try {
+      const { data: articles, error } = await supabase
+        .from('blog_articles')
+        .select('id, published, created_at, sync_status');
+
+      if (error) throw error;
+
+      const total_articles = articles?.length || 0;
+      const published_articles = articles?.filter(a => a.published || a.sync_status === 'synced').length || 0;
+      const draft_articles = total_articles - published_articles;
+
+      // Get latest article date
+      const last_generated = articles && articles.length > 0 
+        ? new Date(Math.max(...articles.map(a => new Date(a.created_at).getTime()))).toISOString()
+        : null;
+
+      setStats({
+        total_articles,
+        published_articles,
+        draft_articles,
+        last_generated,
+        next_schedule: calculateNextSchedule()
+      });
+    } catch (err) {
+      console.error('Error fetching blog stats:', err);
+    }
+  };
+
+  const calculateNextSchedule = () => {
+    const now = new Date();
+    const next = new Date(now);
+    
+    switch (settings.frequency) {
+      case 'daily':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'twice-weekly':
+        next.setDate(next.getDate() + 3); // Every 3-4 days
+        break;
+      case 'weekly':
+        next.setDate(next.getDate() + 7);
+        break;
+      case 'bi-weekly':
+        next.setDate(next.getDate() + 14);
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + 1);
+        break;
+    }
+    
+    next.setHours(settings.schedule_hour, 0, 0, 0);
+    return next.toISOString();
   };
 
   const handleSaveSettings = async () => {
@@ -111,13 +189,22 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
       const { error: updateError } = await supabase
         .from('shopify_stores')
-        .update({ blog_auto_settings: settings })
+        .update({ 
+          blog_auto_settings: settings,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', stores[0].id);
 
       if (updateError) throw updateError;
 
       setSuccess('Settings saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
+      
+      // Update next schedule
+      setStats(prev => ({
+        ...prev,
+        next_schedule: calculateNextSchedule()
+      }));
     } catch (err) {
       console.error('Error saving settings:', err);
       setError(err instanceof Error ? err.message : 'Failed to save settings');
@@ -126,7 +213,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
     }
   };
 
-  const handleGenerateNow = async () => {
+  const handleQuickGenerate = async () => {
     try {
       setGenerating(true);
       setError('');
@@ -137,37 +224,23 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
         throw new Error('Not authenticated');
       }
 
-      const token = session.access_token;
-
-      const payload = settings.mode === 'manual'
-        ? {
-            mode: 'manual',
-            category: manualInputs.category,
-            subcategory: manualInputs.subcategory || null,
-            keywords: manualInputs.keywords.split(',').map(k => k.trim()).filter(Boolean),
-            language: settings.language,
-            word_count_min: settings.word_count_min,
-            word_count_max: settings.word_count_max,
-            output_format: settings.output_format,
-            internal_linking: settings.internal_linking,
-            max_internal_links: settings.max_internal_links
-          }
-        : {
-            mode: 'automatic',
-            language: settings.language,
-            word_count_min: settings.word_count_min,
-            word_count_max: settings.word_count_max,
-            output_format: settings.output_format,
-            internal_linking: settings.internal_linking,
-            max_internal_links: settings.max_internal_links
-          };
+      // Use default settings for quick generation
+      const payload = {
+        mode: 'automatic',
+        language: settings.language,
+        word_count_min: 800,
+        word_count_max: 1200,
+        output_format: 'html',
+        internal_linking: true,
+        max_internal_links: 3
+      };
 
       const response = await fetch(
         `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
@@ -181,6 +254,10 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
       const result = await response.json();
       setSuccess(`Blog article "${result.title}" generated successfully!`);
+      
+      // Refresh stats
+      await fetchBlogStats();
+      
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
       console.error('Error generating blog:', err);
@@ -191,12 +268,22 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
   };
 
   const frequencyOptions = [
-    { value: 'daily', label: 'Daily (1 article per day)', icon: '📅' },
-    { value: 'twice-weekly', label: 'Twice Weekly (2 articles per week)', icon: '📆' },
-    { value: 'weekly', label: 'Weekly (1 article per week)', icon: '🗓️' },
-    { value: 'bi-weekly', label: 'Bi-weekly (1 article every 2 weeks)', icon: '📋' },
-    { value: 'monthly', label: 'Monthly (1 article per month)', icon: '📊' }
+    { value: 'daily', label: 'Daily', description: '1 article per day', icon: '📅' },
+    { value: 'twice-weekly', label: 'Twice Weekly', description: '2 articles per week', icon: '📆' },
+    { value: 'weekly', label: 'Weekly', description: '1 article per week', icon: '🗓️' },
+    { value: 'bi-weekly', label: 'Bi-weekly', description: '1 article every 2 weeks', icon: '📋' },
+    { value: 'monthly', label: 'Monthly', description: '1 article per month', icon: '📊' }
   ];
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   if (loading) {
     return <LoadingAnimation type="content" />;
@@ -204,32 +291,64 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-center mb-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2 justify-center">
-            <Sparkles className="w-7 h-7 text-purple-600" />
-            AI Blog Auto Writer
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Automatic blog article generation with SEO optimization and internal linking
-          </p>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800">AI Blog Writer</h2>
+            <p className="text-gray-600 mt-1">
+              Automatic blog article generation with SEO optimization
+            </p>
+          </div>
         </div>
+        
+        <button
+          onClick={fetchInitialData}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition"
+          title="Refresh data"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Refresh
+        </button>
       </div>
 
+      {/* Notifications */}
       {error && (
-        <div className="flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">{error}</p>
+          <div className="flex-1">
+            <p className="text-sm text-red-800 font-medium">Error</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button
+            onClick={() => setError('')}
+            className="text-red-600 hover:text-red-800"
+          >
+            <span className="text-lg">×</span>
+          </button>
         </div>
       )}
 
       {success && (
-        <div className="flex items-start gap-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
           <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-green-800">{success}</p>
+          <div className="flex-1">
+            <p className="text-sm text-green-800 font-medium">Success</p>
+            <p className="text-sm text-green-700 mt-1">{success}</p>
+          </div>
+          <button
+            onClick={() => setSuccess('')}
+            className="text-green-600 hover:text-green-800"
+          >
+            <span className="text-lg">×</span>
+          </button>
         </div>
       )}
 
+      {/* Wizard Modal */}
       {showWizard && (
         <BlogWizard
           onClose={() => {
@@ -240,42 +359,259 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
         />
       )}
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 max-w-3xl mx-auto">
-        <div className="flex items-center gap-2 mb-6 justify-center">
-          <SettingsIcon className="w-6 h-6 text-gray-700" />
-          <h3 className="text-xl font-semibold text-gray-800">Generation Mode</h3>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">Total Articles</p>
+              <p className="text-3xl font-bold mt-1">{stats.total_articles}</p>
+            </div>
+            <BookOpen className="w-8 h-8 text-blue-200" />
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
-              Mode
-            </label>
-            <div className="grid grid-cols-2 gap-6">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium">Published</p>
+              <p className="text-3xl font-bold mt-1">{stats.published_articles}</p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-green-200" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-yellow-100 text-sm font-medium">Drafts</p>
+              <p className="text-3xl font-bold mt-1">{stats.draft_articles}</p>
+            </div>
+            <FileText className="w-8 h-8 text-yellow-200" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium">Last Generated</p>
+              <p className="text-lg font-bold mt-1">{formatDate(stats.last_generated)}</p>
+            </div>
+            <Clock className="w-8 h-8 text-purple-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Generation Modes */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Zap className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800">Generation Mode</h3>
+              <p className="text-gray-600 mt-1">Choose how you want to create content</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Automatic Mode */}
+            <div 
+              className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${
+                settings.mode === 'automatic' 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 bg-white hover:border-blue-300'
+              }`}
+              onClick={onNavigateToCampaigns}
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Sparkles className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-semibold text-gray-800 text-lg">Automatic Campaigns</h4>
+                    {settings.mode === 'automatic' && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 mb-3">
+                    Set up AI-powered campaigns that automatically generate and publish content based on your schedule
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      Scheduled publishing
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Target className="w-4 h-4" />
+                      Smart topic selection
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Manual Mode */}
+            <div 
+              className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${
+                settings.mode === 'manual' 
+                  ? 'border-purple-500 bg-purple-50' 
+                  : 'border-gray-200 bg-white hover:border-purple-300'
+              }`}
+              onClick={() => {
+                setSettings({ ...settings, mode: 'manual' });
+                setShowWizard(true);
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <FileText className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-semibold text-gray-800 text-lg">Manual Creation</h4>
+                    {settings.mode === 'manual' && (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600 mb-3">
+                    Create individual blog articles with full control over topics, products, and keywords
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <TagIcon className="w-4 h-4" />
+                      Custom keywords
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <LinkIcon className="w-4 h-4" />
+                      Product integration
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-1">Quick Generate</h4>
+                <p className="text-sm text-gray-600">Create an article with default settings</p>
+              </div>
               <button
-                onClick={() => {
-                  if (onNavigateToCampaigns) {
-                    onNavigateToCampaigns();
-                  }
-                }}
-                className="p-8 rounded-lg border-2 border-gray-200 bg-white text-gray-700 hover:border-blue-500 hover:bg-blue-50 transition group"
+                onClick={handleQuickGenerate}
+                disabled={generating}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 transition shadow-md"
               >
-                <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-600 group-hover:text-blue-600" />
-                <div className="font-semibold text-lg">Automatic</div>
-                <div className="text-sm mt-2 text-gray-600">Create AI campaigns</div>
-              </button>
-              <button
-                onClick={() => {
-                  setSettings({ ...settings, mode: 'manual' });
-                  setShowWizard(true);
-                }}
-                className="p-8 rounded-lg border-2 border-gray-200 bg-white text-gray-700 hover:border-blue-500 hover:bg-blue-50 transition group"
-              >
-                <FileText className="w-12 h-12 mx-auto mb-3 text-blue-600 group-hover:text-blue-700" />
-                <div className="font-semibold text-lg">Manual</div>
-                <div className="text-sm mt-2 text-gray-600">You choose topics</div>
+                {generating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4" />
+                )}
+                {generating ? 'Generating...' : 'Quick Generate'}
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Settings Panel */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <SettingsIcon className="w-6 h-6 text-gray-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800">Settings & Schedule</h3>
+              <p className="text-gray-600 mt-1">Configure automatic generation settings</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Frequency Setting */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Generation Frequency
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {frequencyOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
+                      settings.frequency === option.value
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      value={option.value}
+                      checked={settings.frequency === option.value}
+                      onChange={(e) => setSettings({ ...settings, frequency: e.target.value as any })}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{option.icon}</span>
+                        <span className="font-medium text-gray-800">{option.label}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{option.description}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Schedule Time */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Schedule Time
+              </label>
+              <select
+                value={settings.schedule_hour}
+                onChange={(e) => setSettings({ ...settings, schedule_hour: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i.toString().padStart(2, '0')}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Next Schedule Info */}
+            {stats.next_schedule && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Next Scheduled Generation</p>
+                    <p className="text-sm text-blue-700">{formatDate(stats.next_schedule)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold disabled:opacity-50 transition shadow-md"
+            >
+              {saving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
           </div>
         </div>
       </div>
