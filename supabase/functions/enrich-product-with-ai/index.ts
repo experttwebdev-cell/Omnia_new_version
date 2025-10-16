@@ -265,19 +265,24 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
               },
             }));
 
-            const visionPrompt = `You are analyzing product images. You do NOT have access to any product title or text description. Analyze ONLY what you SEE in the images.
+            const visionPrompt = `TÂCHE : Analyser les ATTRIBUTS VISUELS uniquement (couleur, texture, matériau, style).
 
-Provide visual observations in JSON format:
+INTERDIT :
+- Ne nomme JAMAIS le type d'objet (ne dis pas "canapé", "table", "chaise", etc.)
+- Ne mentionne JAMAIS la fonction de l'objet
+- Décris UNIQUEMENT ce que tu VOIS : couleurs, textures, matériaux, formes, finitions
+
+Réponds en JSON (français) :
 {
-  "visual_description": "SHORT description (1-2 sentences) of what you SEE: colors, materials, design",
-  "color_detected": "Main color(s) you SEE in images",
-  "material_detected": "Material you SEE (wood, metal, fabric, glass, etc.)",
-  "style_detected": "Design style you SEE (Modern, Scandinavian, Industrial, Classic, etc.)",
-  "additional_features": ["visible", "features", "you", "see"]
+  "visual_description": "Courte description (1-2 phrases) des ATTRIBUTS VISUELS : couleurs dominantes, textures visibles, finitions, forme générale (sans nommer l'objet)",
+  "color_detected": "Couleur(s) principale(s) observée(s)",
+  "material_detected": "Matériau(x) visible(s) : bois, métal, tissu, cuir, verre, plastique",
+  "style_detected": "Style visuel : Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
+  "additional_features": ["textures", "finitions", "détails", "visibles"]
 }
 
-CRITICAL: You have NO context about what this product is called or described as. Base response ONLY on visual observation of images.
-Respond in French.`;
+EXEMPLE CORRECT : "Tissu gris clair avec texture mate, structure en bois clair avec finition naturelle, lignes épurées et angles droits"
+EXEMPLE INCORRECT : "Canapé moderne en tissu gris" ❌`;
 
             const visionResponse = await fetch(
               "https://api.openai.com/v1/chat/completions",
