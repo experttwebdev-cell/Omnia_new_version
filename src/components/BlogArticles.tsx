@@ -88,7 +88,7 @@ export function BlogArticles() {
     view: language === 'fr' ? 'Voir' : language === 'es' ? 'Ver' : language === 'de' ? 'Ansehen' : language === 'it' ? 'Visualizza' : 'View',
     edit: language === 'fr' ? 'Modifier' : language === 'es' ? 'Editar' : language === 'de' ? 'Bearbeiten' : language === 'it' ? 'Modifica' : 'Edit',
     delete: language === 'fr' ? 'Supprimer' : language === 'es' ? 'Eliminar' : language === 'de' ? 'Löschen' : language === 'it' ? 'Elimina' : 'Delete',
-    sync: language === 'fr' ? 'Synchroniser avec Shopify' : language === 'es' ? 'Sincronizar con Shopify' : language === 'de' ? 'Mit Shopify synchronisieren' : language === 'it' ? 'Sincronizza con Shopify' : 'Sync to Shopify',
+    sync: language === 'fr' ? 'Synchroniser iavec Shopify' : language === 'es' ? 'Sincronizar con Shopify' : language === 'de' ? 'Mit Shopify synchronisieren' : language === 'it' ? 'Sincronizza con Shopify' : 'Sync to Shopify',
     syncing: language === 'fr' ? 'Synchronisation...' : language === 'es' ? 'Sincronizando...' : language === 'de' ? 'Synchronisierung...' : language === 'it' ? 'Sincronizzazione...' : 'Syncing...'
   };
 
