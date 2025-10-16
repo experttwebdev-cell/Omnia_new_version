@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -370,11 +371,64 @@ ${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment 
 
     allOpportunities.sort((a, b) => b.seo_opportunity_score - a.seo_opportunity_score);
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const opportunitiesToInsert = allOpportunities.map((opp) => ({
+      title: opp.article_title,
+      description: opp.intro_excerpt || opp.meta_description,
+      type: opp.type,
+      target_keywords: [...(opp.primary_keywords || []), ...(opp.secondary_keywords || [])],
+      related_product_ids: opp.product_ids || [],
+      product_language: language,
+      category: opp.category,
+      sub_category: opp.subcategory || null,
+      score: opp.seo_opportunity_score || 50,
+      estimated_word_count: opp.estimated_word_count || 2000,
+      difficulty: opp.difficulty || 'medium',
+      status: 'pending'
+    }));
+
+    const { data: insertedOpportunities, error: insertError } = await supabase
+      .from('blog_opportunities')
+      .upsert(opportunitiesToInsert, {
+        onConflict: 'title',
+        ignoreDuplicates: false
+      })
+      .select();
+
+    if (insertError) {
+      console.error('Error saving opportunities to database:', insertError);
+    } else {
+      console.log(`✅ Saved ${insertedOpportunities?.length || 0} opportunities to database`);
+    }
+
+    const responseOpportunities = (insertedOpportunities || allOpportunities).map((opp: any, index: number) => ({
+      id: opp.id || `temp-${index}`,
+      article_title: opp.title || opp.article_title,
+      title: opp.title || opp.article_title,
+      description: opp.description || opp.intro_excerpt || opp.meta_description,
+      meta_description: opp.description || opp.meta_description,
+      intro_excerpt: opp.description || opp.intro_excerpt,
+      type: opp.type,
+      primary_keywords: Array.isArray(opp.target_keywords) ? opp.target_keywords.slice(0, 5) : (opp.primary_keywords || []),
+      secondary_keywords: Array.isArray(opp.target_keywords) ? opp.target_keywords.slice(5) : (opp.secondary_keywords || []),
+      structure: opp.structure || { h1: opp.title || opp.article_title, h2_sections: [], cta: '' },
+      score: opp.score || opp.seo_opportunity_score || 50,
+      seo_opportunity_score: opp.score || opp.seo_opportunity_score || 50,
+      difficulty: opp.difficulty,
+      estimated_word_count: opp.estimated_word_count,
+      product_count: Array.isArray(opp.related_product_ids) ? opp.related_product_ids.length : (opp.product_count || 0),
+      product_ids: opp.related_product_ids || opp.product_ids || []
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
-        opportunities: allOpportunities,
-        total: allOpportunities.length
+        opportunities: responseOpportunities,
+        total: responseOpportunities.length,
+        saved_to_db: !!insertedOpportunities
       }),
       {
         headers: {

@@ -211,6 +211,7 @@ export function SeoOpportunities() {
       const { data: productsData, error: productsError } = await supabase
         .from('shopify_products')
         .select('*')
+        .order('created_at', { ascending: false })
         .limit(1000);
 
       if (productsError) {
@@ -218,7 +219,20 @@ export function SeoOpportunities() {
         throw productsError;
       }
 
-      console.log(`✅ Found ${(productsData || []).length} products`);
+      const productCount = (productsData || []).length;
+      console.log(`✅ Found ${productCount} products`);
+
+      if (productCount >= 1000) {
+        addNotification({
+          type: 'info',
+          title: language === 'fr' ? 'Limite atteinte' : 'Limit Reached',
+          message: language === 'fr'
+            ? 'Affichage limité à 1000 produits les plus récents'
+            : 'Showing the 1000 most recent products',
+          duration: 5000
+        });
+      }
+
       setProducts(productsData || []);
 
       console.log('🔍 Fetching opportunities from blog_opportunities table...');
@@ -254,7 +268,7 @@ export function SeoOpportunities() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       addNotification({
         type: 'error',
-        title: 'Error',
+        title: language === 'fr' ? 'Erreur' : 'Error',
         message: errorMessage,
         duration: 5000
       });
@@ -263,7 +277,7 @@ export function SeoOpportunities() {
     } finally {
       setLoading(false);
     }
-  }, [addNotification]);
+  }, [addNotification, language]);
 
   useEffect(() => {
     fetchProducts();
@@ -274,20 +288,41 @@ export function SeoOpportunities() {
     setGeneratingSmart(true);
     setShowGenerationProgress(true);
     setIsGenerationComplete(false);
-    setGenerationProgress({ current: 10, total: 100, currentItem: language === 'fr' ? 'Analyse du catalogue produits...' : 'Analyzing product catalog...' });
-    await generateSmartOpportunities(products);
+    setGenerationProgress({ current: 10, total: 100, currentItem: language === 'fr' ? 'Récupération de la langue du magasin...' : 'Fetching store language...' });
+
+    const { data: storeData } = await supabase
+      .from('shopify_stores')
+      .select('language')
+      .limit(1)
+      .maybeSingle();
+
+    const storeLanguage = storeData?.language || language || 'fr';
+
+    setGenerationProgress({ current: 15, total: 100, currentItem: language === 'fr' ? 'Analyse du catalogue produits...' : 'Analyzing product catalog...' });
+    await generateSmartOpportunities(products, 0, storeLanguage);
     setGeneratingSmart(false);
   };
 
-  const generateSmartOpportunities = async (products: Product[]) => {
+  const generateSmartOpportunities = async (products: Product[], retryCount = 0, targetLanguage?: string) => {
+    const MAX_RETRIES = 2;
+
     if (products.length === 0) {
       console.log('⚠️ No products to generate opportunities from');
       setOpportunities([]);
+      setShowGenerationProgress(false);
+      addNotification({
+        type: 'warning',
+        title: language === 'fr' ? 'Aucun produit' : 'No Products',
+        message: language === 'fr' ? 'Importez des produits pour générer des opportunités' : 'Import products to generate opportunities',
+        duration: 5000
+      });
       return;
     }
 
+    const effectiveLanguage = targetLanguage || language || 'fr';
+
     try {
-      console.log(`🚀 Starting opportunity generation with ${products.length} products`);
+      console.log(`🚀 Starting opportunity generation with ${products.length} products in ${effectiveLanguage} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
       setGenerationProgress({ current: 30, total: 100, currentItem: language === 'fr' ? 'Préparation des données produits...' : 'Preparing product data...' });
 
       const productsData = products.map(p => ({
@@ -307,7 +342,11 @@ export function SeoOpportunities() {
       setGenerationProgress({ current: 50, total: 100, currentItem: language === 'fr' ? 'IA en cours d\'analyse...' : 'AI analyzing...' });
 
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-seo-opportunities`;
-      console.log('🔗 Calling API:', apiUrl);
+      console.log('🔗 Calling API:', apiUrl, 'with language:', effectiveLanguage);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -316,28 +355,33 @@ export function SeoOpportunities() {
         },
         body: JSON.stringify({
           products: productsData,
-          language: language
+          language: effectiveLanguage
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API Error:', response.status, errorText);
-        throw new Error(`Failed to generate opportunities: ${response.status} - ${errorText}`);
+        throw new Error(`API returned ${response.status}: ${errorText}`);
       }
 
       console.log('✅ API Response received');
-      setGenerationProgress({ current: 80, total: 100, currentItem: language === 'fr' ? 'Finalisation des opportunités...' : 'Finalizing opportunities...' });
+      setGenerationProgress({ current: 70, total: 100, currentItem: language === 'fr' ? 'Sauvegarde dans la base de données...' : 'Saving to database...' });
 
       const result = await response.json();
       console.log('📊 Result:', result);
 
       if (result.opportunities && Array.isArray(result.opportunities)) {
+        setGenerationProgress({ current: 85, total: 100, currentItem: language === 'fr' ? 'Finalisation des opportunités...' : 'Finalizing opportunities...' });
+
         const formattedOpps: Opportunity[] = result.opportunities.map((opp: any, index: number) => ({
-          id: `smart-opp-${index}`,
+          id: opp.id || `smart-opp-${index}`,
           type: opp.type || 'category-guide',
-          title: opp.article_title,
-          description: opp.intro_excerpt || opp.meta_description,
+          title: opp.article_title || opp.title,
+          description: opp.intro_excerpt || opp.meta_description || opp.description || '',
           targetKeywords: [...(opp.primary_keywords || []), ...(opp.secondary_keywords || [])],
           productCount: opp.product_count || 0,
           relatedProducts: opp.product_ids ? products.filter(p => opp.product_ids.includes(p.id)).map(p => p.title) : [],
@@ -356,22 +400,57 @@ export function SeoOpportunities() {
           setIsGenerationComplete(false);
           addNotification({
             type: 'success',
-            title: 'Opportunités générées',
-            message: `${formattedOpps.length} opportunités SEO intelligentes créées avec succès`,
+            title: language === 'fr' ? 'Opportunités générées' : 'Opportunities Generated',
+            message: language === 'fr'
+              ? `${formattedOpps.length} opportunités SEO intelligentes créées avec succès`
+              : `${formattedOpps.length} smart SEO opportunities created successfully`,
             duration: 5000
           });
         }, 1500);
       } else {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format: missing opportunities array');
       }
     } catch (error) {
       console.error('Error generating smart opportunities:', error);
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏱️ Request timed out');
+        if (retryCount < MAX_RETRIES) {
+          console.log(`🔄 Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+          setGenerationProgress({
+            current: 20,
+            total: 100,
+            currentItem: language === 'fr'
+              ? `Nouvelle tentative ${retryCount + 2}/${MAX_RETRIES + 1}...`
+              : `Retrying ${retryCount + 2}/${MAX_RETRIES + 1}...`
+          });
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return generateSmartOpportunities(products, retryCount + 1, targetLanguage);
+        }
+      }
+
+      if (retryCount < MAX_RETRIES && (!(error instanceof Error) || error.name !== 'AbortError')) {
+        console.log(`🔄 Retrying after error... (${retryCount + 1}/${MAX_RETRIES})`);
+        setGenerationProgress({
+          current: 20,
+          total: 100,
+          currentItem: language === 'fr'
+            ? `Nouvelle tentative ${retryCount + 2}/${MAX_RETRIES + 1}...`
+            : `Retrying ${retryCount + 2}/${MAX_RETRIES + 1}...`
+        });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return generateSmartOpportunities(products, retryCount + 1, targetLanguage);
+      }
+
       setShowGenerationProgress(false);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       addNotification({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de générer les opportunités. Utilisation du mode basique...',
-        duration: 5000
+        type: 'warning',
+        title: language === 'fr' ? 'Mode basique activé' : 'Basic Mode Activated',
+        message: language === 'fr'
+          ? `L'IA n'est pas disponible (${errorMessage}). Génération d'opportunités basiques...`
+          : `AI unavailable (${errorMessage}). Generating basic opportunities...`,
+        duration: 6000
       });
       generateBasicOpportunities(products);
     }
@@ -742,7 +821,7 @@ export function SeoOpportunities() {
       case 'how-to':
         return 'bg-orange-100 text-orange-700';
       case 'product-spotlight':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-pink-100 text-pink-700';
       case 'seasonal':
         return 'bg-teal-100 text-teal-700';
       default:
@@ -853,7 +932,7 @@ export function SeoOpportunities() {
             <button
               onClick={handleGenerateSmartOpportunities}
               disabled={generatingSmart || products.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
             >
               {generatingSmart ? (
                 <>
@@ -918,12 +997,12 @@ export function SeoOpportunities() {
             </p>
           </div>
 
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-2">
-              <Package className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-purple-900">{ui.productSpotlights}</h3>
+              <Package className="w-5 h-5 text-pink-600" />
+              <h3 className="font-semibold text-pink-900">{ui.productSpotlights}</h3>
             </div>
-            <p className="text-2xl font-bold text-purple-900">
+            <p className="text-2xl font-bold text-pink-900">
               {opportunities.filter((o) => o.type === 'product-spotlight').length}
             </p>
           </div>
