@@ -145,40 +145,43 @@ Extract and provide the following in JSON format:
   "material": "Primary material (if mentioned)",
   "style": "Product style (e.g., 'Modern', 'Scandinavian', 'Industrial', 'Classic', 'Rustic')",
   "room": "Typical room usage (e.g., 'Living Room', 'Bedroom', 'Dining Room', 'Office', 'Kitchen')",
-  "length": number or null,
-  "length_unit": "cm, m, inches, etc.",
-  "length_min": number or null (for ranges like 82-98 cm),
-  "length_max": number or null (for ranges),
-  "width": number or null,
-  "width_unit": "unit",
-  "width_min": number or null,
-  "width_max": number or null,
-  "height": number or null,
-  "height_unit": "unit",
-  "height_min": number or null,
-  "height_max": number or null,
-  "other_dimensions": {
-    "seat_height": "value with unit if mentioned",
-    "leg_height": "value with unit if mentioned",
-    "armrest_height": "value with unit if mentioned",
-    "depth": "value with unit if mentioned",
-    "diameter": "value with unit if mentioned"
-  },
+  "smart_length": number or null,
+  "smart_length_unit": "cm, m, inches, etc.",
+  "smart_width": number or null,
+  "smart_width_unit": "unit",
+  "smart_height": number or null,
+  "smart_height_unit": "unit",
+  "smart_depth": number or null,
+  "smart_depth_unit": "unit",
+  "smart_diameter": number or null (for round items like tables, plates, etc.),
+  "smart_diameter_unit": "unit",
+  "smart_weight": number or null,
+  "smart_weight_unit": "kg, g, lb, etc.",
   "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
   "ai_vision_analysis": "Write a detailed, engaging product description (3-4 sentences) that highlights key features, materials, style, and benefits. Make it compelling and informative.",
-  "dimensions_text": "Complete human-readable dimensions text (e.g., 'Length: 120 cm, Width: 80 cm, Height: 45 cm, Seat height: 40 cm') or empty string if no dimensions found"
+  "dimensions_text": "Complete human-readable dimensions text (e.g., 'Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm') or empty string if no dimensions found",
+  "dimensions_source": "title, description, or ai_inference"
 }
 
-IMPORTANT INSTRUCTIONS:
+IMPORTANT INSTRUCTIONS - SMART DIMENSION EXTRACTION:
 - category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
 - style: Infer the design style (Modern, Scandinavian, Industrial, Classic, Rustic, Minimalist, Contemporary, etc.)
 - room: Infer typical usage room (Living Room, Bedroom, Dining Room, Office, Kitchen, Bathroom, etc.)
 - ai_vision_analysis: Write a rich, detailed description that would convince a customer to buy. Include materials, dimensions if mentioned, style characteristics, and practical benefits. Use the same language as the product title.
 - color & material: Extract from both title and description
-- For dimensions with ranges (e.g., "82-98 cm"), provide both min and max values
+
+CRITICAL - SMART DIMENSIONS:
+1. Extract ANY dimension mentioned in title or description (numbers followed by cm, m, inches, mm, etc.)
+2. Look for patterns like: "120x80", "120 x 80", "L120 x W80 x H45", "Ø60" (diameter)
+3. Common French terms: Longueur (length), Largeur (width), Hauteur (height), Profondeur (depth), Diamètre (diameter), Poids (weight)
+4. Common English terms: Length, Width, Height, Depth, Diameter, Weight
+5. If dimensions are in ranges (e.g., "82-98 cm"), take the average or the max value
+6. Always specify the unit found (cm, m, inches, kg, g, lb)
+7. dimensions_source: Set to "title" if found in title, "description" if in description, "ai_inference" if you inferred it
+8. dimensions_text: Create a complete, readable summary like "Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm" in the same language as the title
+
 - keywords: Extract 10-15 relevant SEO keywords from title and description
-- dimensions_text: Create a complete, readable text of ALL dimensions found (length, width, height, depth, diameter, seat height, etc.) with units. Use the same language as the product title.
 - Return ONLY valid JSON, no additional text.`;
 
     const textAnalysisResponse = await callDeepSeek([
@@ -361,45 +364,36 @@ Provide response in JSON format:
       enrichment_error: "",
     };
 
-    // Add dimensions_text only if it's available (migration might not be applied yet)
+    // Add SMART dimensions (new fields)
+    if (textAnalysis.smart_length) {
+      updateData.smart_length = textAnalysis.smart_length;
+      updateData.smart_length_unit = textAnalysis.smart_length_unit || "cm";
+    }
+    if (textAnalysis.smart_width) {
+      updateData.smart_width = textAnalysis.smart_width;
+      updateData.smart_width_unit = textAnalysis.smart_width_unit || "cm";
+    }
+    if (textAnalysis.smart_height) {
+      updateData.smart_height = textAnalysis.smart_height;
+      updateData.smart_height_unit = textAnalysis.smart_height_unit || "cm";
+    }
+    if (textAnalysis.smart_depth) {
+      updateData.smart_depth = textAnalysis.smart_depth;
+      updateData.smart_depth_unit = textAnalysis.smart_depth_unit || "cm";
+    }
+    if (textAnalysis.smart_diameter) {
+      updateData.smart_diameter = textAnalysis.smart_diameter;
+      updateData.smart_diameter_unit = textAnalysis.smart_diameter_unit || "cm";
+    }
+    if (textAnalysis.smart_weight) {
+      updateData.smart_weight = textAnalysis.smart_weight;
+      updateData.smart_weight_unit = textAnalysis.smart_weight_unit || "kg";
+    }
     if (textAnalysis.dimensions_text) {
-      try {
-        updateData.dimensions_text = textAnalysis.dimensions_text;
-      } catch (e) {
-        console.log("dimensions_text field not available yet, skipping");
-      }
+      updateData.dimensions_text = textAnalysis.dimensions_text;
     }
-
-    if (textAnalysis.length) {
-      updateData.length = textAnalysis.length;
-      updateData.length_unit = textAnalysis.length_unit || "cm";
-    }
-    if (textAnalysis.width) {
-      updateData.width = textAnalysis.width;
-      updateData.width_unit = textAnalysis.width_unit || "cm";
-    }
-    if (textAnalysis.height) {
-      updateData.height = textAnalysis.height;
-      updateData.height_unit = textAnalysis.height_unit || "cm";
-    }
-
-    const extendedDimensions: any = {};
-    if (textAnalysis.length_min && textAnalysis.length_max) {
-      extendedDimensions.length_range = { min: textAnalysis.length_min, max: textAnalysis.length_max, unit: textAnalysis.length_unit || "cm" };
-    }
-    if (textAnalysis.width_min && textAnalysis.width_max) {
-      extendedDimensions.width_range = { min: textAnalysis.width_min, max: textAnalysis.width_max, unit: textAnalysis.width_unit || "cm" };
-    }
-    if (textAnalysis.height_min && textAnalysis.height_max) {
-      extendedDimensions.height_range = { min: textAnalysis.height_min, max: textAnalysis.height_max, unit: textAnalysis.height_unit || "cm" };
-    }
-
-    if (textAnalysis.other_dimensions && Object.keys(textAnalysis.other_dimensions).length > 0) {
-      Object.assign(extendedDimensions, textAnalysis.other_dimensions);
-    }
-
-    if (Object.keys(extendedDimensions).length > 0) {
-      updateData.other_dimensions = extendedDimensions;
+    if (textAnalysis.dimensions_source) {
+      updateData.dimensions_source = textAnalysis.dimensions_source;
     }
 
     const { error: updateError } = await supabaseClient

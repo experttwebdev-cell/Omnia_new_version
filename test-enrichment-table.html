@@ -77,6 +77,7 @@
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
+              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">AI Vision</th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">SEO Title</th>
               <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">SEO Desc</th>
@@ -223,6 +224,7 @@
           <td class="px-4 py-3 text-center" id="ai_color-${product.id}">${getStatusBadge(product.ai_color, 'Color')}</td>
           <td class="px-4 py-3 text-center" id="ai_material-${product.id}">${getStatusBadge(product.ai_material, 'Material')}</td>
           <td class="px-4 py-3 text-center" id="tags-${product.id}">${getStatusBadge(product.tags, 'Tags')}</td>
+          <td class="px-4 py-3 text-center" id="dimensions_text-${product.id}">${getStatusBadge(product.dimensions_text, 'Dimensions')}</td>
           <td class="px-4 py-3 text-center" id="ai_vision_analysis-${product.id}">${getStatusBadge(product.ai_vision_analysis, 'AI Vision')}</td>
           <td class="px-4 py-3 text-center" id="seo_title-${product.id}">${getStatusBadge(product.seo_title, 'SEO Title')}</td>
           <td class="px-4 py-3 text-center" id="seo_description-${product.id}">${getStatusBadge(product.seo_description, 'SEO Description')}</td>
@@ -323,6 +325,7 @@
       document.getElementById(`ai_color-${product.id}`).innerHTML = getStatusBadge(product.ai_color, 'Color');
       document.getElementById(`ai_material-${product.id}`).innerHTML = getStatusBadge(product.ai_material, 'Material');
       document.getElementById(`tags-${product.id}`).innerHTML = getStatusBadge(product.tags, 'Tags');
+      document.getElementById(`dimensions_text-${product.id}`).innerHTML = getStatusBadge(product.dimensions_text, 'Dimensions');
       document.getElementById(`ai_vision_analysis-${product.id}`).innerHTML = getStatusBadge(product.ai_vision_analysis, 'AI Vision');
       document.getElementById(`seo_title-${product.id}`).innerHTML = getStatusBadge(product.seo_title, 'SEO Title');
       document.getElementById(`seo_description-${product.id}`).innerHTML = getStatusBadge(product.seo_description, 'SEO Description');
