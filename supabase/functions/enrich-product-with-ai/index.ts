@@ -123,10 +123,17 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Enriching product with DeepSeek: ${product.title}`);
 
+    const cleanDescription = product.description
+      ? product.description
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+      : 'No description provided';
+
     const textAnalysisPrompt = `You are a product enrichment AI expert. Analyze the following product information and extract structured data.
 
 Product Title: ${product.title}
-Product Description: ${product.description || 'No description provided'}
+Product Description: ${cleanDescription}
 Product Type: ${product.product_type || 'Not specified'}
 Vendor: ${product.vendor || 'Not specified'}
 
@@ -158,18 +165,19 @@ Extract and provide the following in JSON format:
     "diameter": "value with unit if mentioned"
   },
   "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
-  "ai_vision_analysis": "Brief product description based on the title and description (2-3 sentences)"
+  "ai_vision_analysis": "Write a detailed, engaging product description (3-4 sentences) that highlights key features, materials, style, and benefits. Make it compelling and informative."
 }
 
-IMPORTANT CATEGORY LOGIC:
-- category: The base product type (e.g., if it's a wooden coffee table, category = "Table basse")
+IMPORTANT INSTRUCTIONS:
+- category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
-- style: Infer from product name and description (Modern, Scandinavian, Industrial, Classic, Rustic, Minimalist, etc.)
-- room: Infer typical usage room from product type
-- ai_vision_analysis: Create a brief but informative description
+- style: Infer the design style (Modern, Scandinavian, Industrial, Classic, Rustic, Minimalist, Contemporary, etc.)
+- room: Infer typical usage room (Living Room, Bedroom, Dining Room, Office, Kitchen, Bathroom, etc.)
+- ai_vision_analysis: Write a rich, detailed description that would convince a customer to buy. Include materials, dimensions if mentioned, style characteristics, and practical benefits. Use the same language as the product title.
+- color & material: Extract from both title and description
 - For dimensions with ranges (e.g., "82-98 cm"), provide both min and max values
-- Always try to detect color even if not explicitly stated
-- Return valid JSON only.`;
+- keywords: Extract 10-15 relevant SEO keywords from title and description
+- Return ONLY valid JSON, no additional text.`;
 
     const textAnalysisResponse = await callDeepSeek([
       {
@@ -206,16 +214,19 @@ IMPORTANT CATEGORY LOGIC:
     const seoPrompt = `Generate SEO-optimized title and description for this product:
 
 Product: ${product.title}
-Description: ${product.description || ''}
+Description: ${cleanDescription}
 Color: ${textAnalysis.color || ''}
 Material: ${textAnalysis.material || ''}
 Style: ${textAnalysis.style || ''}
 Type: ${product.product_type || ''}
+Category: ${textAnalysis.category || ''}
+
+Generate compelling SEO content in the SAME LANGUAGE as the product title.
 
 Provide response in JSON format:
 {
-  "seo_title": "SEO title (60-70 characters)",
-  "seo_description": "SEO description (150-160 characters)"
+  "seo_title": "SEO title (55-65 characters, include main keyword and benefit)",
+  "seo_description": "SEO description (145-155 characters, include CTA and key features)"
 }`;
 
     const seoResponse = await callDeepSeek([
