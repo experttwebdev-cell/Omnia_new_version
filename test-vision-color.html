@@ -222,7 +222,16 @@
 
         if (enrichError) {
           addLog(`❌ Erreur: ${enrichError.message}`, 'error');
+          addLog(`❌ Détails complets:`, 'error');
+          addLog(JSON.stringify(enrichError, null, 2), 'error');
+          addLog(`❌ Data reçue:`, 'error');
+          addLog(JSON.stringify(result, null, 2), 'error');
           throw enrichError;
+        }
+
+        if (result && !result.success) {
+          addLog(`⚠️ Fonction retournée avec succès mais success=false`, 'warning');
+          addLog(`Details: ${JSON.stringify(result, null, 2)}`, 'warning');
         }
 
         addLog('✅ Enrichissement terminé', 'success');
