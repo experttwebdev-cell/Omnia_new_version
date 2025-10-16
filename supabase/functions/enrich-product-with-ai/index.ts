@@ -207,7 +207,7 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
         role: "user",
         content: textAnalysisPrompt,
       },
-    ], 1000);
+    ], 800);
 
     console.log("DeepSeek response received");
     const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
@@ -247,22 +247,25 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
       };
     }
 
-    let visionAnalysis: any = {};
-    let imageInsights = "";
+    console.log("Starting parallel API calls (Vision + SEO)...");
 
-    if (images && images.length > 0) {
-      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+    const visionPromise = (async () => {
+      let visionAnalysis: any = {};
+      let imageInsights = "";
 
-      if (openaiApiKey) {
-        try {
-          const imageContents = images.slice(0, 3).map((img: ImageData) => ({
-            type: "image_url",
-            image_url: {
-              url: img.src,
-            },
-          }));
+      if (images && images.length > 0) {
+        const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 
-          const visionPrompt = `You are analyzing product images. You do NOT have access to any product title or text description. Analyze ONLY what you SEE in the images.
+        if (openaiApiKey) {
+          try {
+            const imageContents = images.slice(0, 3).map((img: ImageData) => ({
+              type: "image_url",
+              image_url: {
+                url: img.src,
+              },
+            }));
+
+            const visionPrompt = `You are analyzing product images. You do NOT have access to any product title or text description. Analyze ONLY what you SEE in the images.
 
 Provide visual observations in JSON format:
 {
@@ -276,62 +279,54 @@ Provide visual observations in JSON format:
 CRITICAL: You have NO context about what this product is called or described as. Base response ONLY on visual observation of images.
 Respond in French.`;
 
-          const visionResponse = await fetch(
-            "https://api.openai.com/v1/chat/completions",
-            {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${openaiApiKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "gpt-4o",
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      {
-                        type: "text",
-                        text: visionPrompt,
-                      },
-                      ...imageContents,
-                    ],
-                  },
-                ],
-                max_tokens: 250,
-                temperature: 0.3,
-              }),
-            }
-          );
+            const visionResponse = await fetch(
+              "https://api.openai.com/v1/chat/completions",
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${openaiApiKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "gpt-4o",
+                  messages: [
+                    {
+                      role: "user",
+                      content: [
+                        {
+                          type: "text",
+                          text: visionPrompt,
+                        },
+                        ...imageContents,
+                      ],
+                    },
+                  ],
+                  max_tokens: 200,
+                  temperature: 0.3,
+                }),
+              }
+            );
 
-          if (visionResponse.ok) {
-            const visionData = await visionResponse.json();
-            const visionContent = visionData.choices[0].message.content;
+            if (visionResponse.ok) {
+              const visionData = await visionResponse.json();
+              const visionContent = visionData.choices[0].message.content;
 
-            try {
-              visionAnalysis = JSON.parse(visionContent);
-              imageInsights = visionAnalysis.visual_description || "";
-            } catch (e) {
-              console.error("Failed to parse vision analysis JSON:", visionContent);
-              imageInsights = visionContent || "";
+              try {
+                visionAnalysis = JSON.parse(visionContent);
+                imageInsights = visionAnalysis.visual_description || "";
+              } catch (e) {
+                console.error("Failed to parse vision analysis JSON:", visionContent);
+                imageInsights = visionContent || "";
+              }
             }
+          } catch (error) {
+            console.error("OpenAI Vision API error:", error);
           }
-        } catch (error) {
-          console.error("OpenAI Vision API error:", error);
         }
       }
-    }
 
-    const finalColor = visionAnalysis.color_detected || textAnalysis.color || "";
-    const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
-    const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
-
-    const allKeywords = [
-      ...(textAnalysis.keywords || []),
-      ...(visionAnalysis.additional_features || []),
-    ];
-    const uniqueKeywords = [...new Set(allKeywords)];
-    const finalTags = uniqueKeywords.join(", ");
+      return { visionAnalysis, imageInsights };
+    })();
 
     const seoPrompt = `Generate SEO-optimized title and meta description for this product:
 
@@ -358,7 +353,7 @@ Provide response in JSON format:
   "seo_description": "Natural description with features and CTA (140-155 chars, PLAIN TEXT ONLY)"
 }`;
 
-    const seoResponse = await callDeepSeek([
+    const seoPromise = callDeepSeek([
       {
         role: "system",
         content: "You are an SEO expert. Generate clean, plain-text SEO content WITHOUT any HTML tags. Always respond with valid JSON only.",
@@ -367,7 +362,23 @@ Provide response in JSON format:
         role: "user",
         content: seoPrompt,
       },
-    ], 600);
+    ], 500);
+
+    const [visionResult, seoResponse] = await Promise.all([visionPromise, seoPromise]);
+
+    console.log("Parallel API calls completed");
+
+    const { visionAnalysis, imageInsights } = visionResult;
+    const finalColor = visionAnalysis.color_detected || textAnalysis.color || "";
+    const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
+    const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
+
+    const allKeywords = [
+      ...(textAnalysis.keywords || []),
+      ...(visionAnalysis.additional_features || []),
+    ];
+    const uniqueKeywords = [...new Set(allKeywords)];
+    const finalTags = uniqueKeywords.join(", ");
 
     let seoTitle = product.title;
     let seoDescription = product.description?.substring(0, 160) || "";
