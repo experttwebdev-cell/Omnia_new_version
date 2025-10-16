@@ -241,6 +241,10 @@
         addLog(`  - Color: ${updatedProduct.ai_color || 'TOUJOURS VIDE ⚠️'}`, updatedProduct.ai_color ? 'success' : 'error');
         addLog(`  - Vision Analysis: ${updatedProduct.ai_vision_analysis?.substring(0, 80) || 'TOUJOURS VIDE ⚠️'}...`, updatedProduct.ai_vision_analysis ? 'success' : 'error');
         addLog(`  - Google Category: ${updatedProduct.google_product_category || 'TOUJOURS VIDE ⚠️'}`, updatedProduct.google_product_category ? 'success' : 'error');
+        addLog(`  - SEO Title: ${updatedProduct.seo_title || 'VIDE ⚠️'}`, updatedProduct.seo_title ? 'success' : 'error');
+        addLog(`  - SEO Meta: ${updatedProduct.seo_description?.substring(0, 60) || 'VIDE ⚠️'}...`, updatedProduct.seo_description ? 'success' : 'error');
+        addLog(`  - Dimensions: ${updatedProduct.dimensions_text || 'VIDE ⚠️'}`, updatedProduct.dimensions_text ? 'success' : 'error');
+        addLog(`  - Caractéristiques: ${updatedProduct.characteristics?.substring(0, 60) || 'VIDE ⚠️'}...`, updatedProduct.characteristics ? 'success' : 'error');
 
         // Afficher les détails
         const productInfo = document.getElementById('productInfo');
@@ -280,7 +284,27 @@
           </div>
           <div class="field">
             <strong>📐 Dimensions:</strong>
-            <span class="value">${updatedProduct.dimensions_text || 'N/A'}</span>
+            <span class="value ${updatedProduct.dimensions_text ? 'success' : 'error'}">
+              ${updatedProduct.dimensions_text || '❌ Non extraites'}
+            </span>
+          </div>
+          <div class="field">
+            <strong>📝 Caractéristiques:</strong>
+            <span class="value ${updatedProduct.characteristics ? 'success' : 'error'}">
+              ${updatedProduct.characteristics || '❌ Non extraites'}
+            </span>
+          </div>
+          <div class="field">
+            <strong>📄 SEO Title:</strong>
+            <span class="value ${updatedProduct.seo_title ? 'success' : 'error'}">
+              ${updatedProduct.seo_title || '❌ Non généré'}
+            </span>
+          </div>
+          <div class="field">
+            <strong>📝 SEO Meta Description:</strong>
+            <span class="value ${updatedProduct.seo_description ? 'success' : 'error'}">
+              ${updatedProduct.seo_description || '❌ Non généré'}
+            </span>
           </div>
         `;
 

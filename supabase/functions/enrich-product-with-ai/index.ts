@@ -269,24 +269,30 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
 
             console.log("Processing", imageContents.length, "images for vision analysis");
 
-            const visionPrompt = `TÂCHE : Analyser les ATTRIBUTS VISUELS uniquement (couleur, texture, matériau, style).
+            const visionPrompt = `IMPORTANT: Analyze ONLY what you SEE in the image(s). Do NOT infer quantity, do NOT use product title context.
 
-INTERDIT :
-- Ne nomme JAMAIS le type d'objet (ne dis pas "canapé", "table", "chaise", etc.)
-- Ne mentionne JAMAIS la fonction de l'objet
-- Décris UNIQUEMENT ce que tu VOIS : couleurs, textures, matériaux, formes, finitions
+TASK: Extract VISUAL ATTRIBUTES only (color, texture, material, style).
 
-Réponds en JSON (français) :
+FORBIDDEN:
+- NEVER name the object type (don't say "sofa", "table", "chair", etc.)
+- NEVER mention quantity (don't say "set of 4", "lot de 4", etc.)
+- NEVER mention function or use
+- Describe ONLY what you SEE: colors, textures, materials, shapes, finishes
+
+Respond in JSON (in French):
 {
-  "visual_description": "Courte description (1-2 phrases) des ATTRIBUTS VISUELS : couleurs dominantes, textures visibles, finitions, forme générale (sans nommer l'objet)",
-  "color_detected": "Couleur(s) principale(s) observée(s)",
-  "material_detected": "Matériau(x) visible(s) : bois, métal, tissu, cuir, verre, plastique",
-  "style_detected": "Style visuel : Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
-  "additional_features": ["textures", "finitions", "détails", "visibles"]
+  "visual_description": "Brief description (1-2 sentences) of VISUAL ATTRIBUTES: dominant colors, visible textures, finishes, general shape (WITHOUT naming the object or quantity)",
+  "color_detected": "Main color(s) observed",
+  "material_detected": "Visible material(s): wood, metal, fabric, leather, glass, plastic",
+  "style_detected": "Visual style: Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
+  "additional_features": ["textures", "finishes", "visible", "details"]
 }
 
-EXEMPLE CORRECT : "Tissu gris clair avec texture mate, structure en bois clair avec finition naturelle, lignes épurées et angles droits"
-EXEMPLE INCORRECT : "Canapé moderne en tissu gris" ❌`;
+CORRECT EXAMPLE: "Tissu gris clair avec texture mate, structure en métal noir avec finition mate, lignes épurées et design minimaliste"
+INCORRECT EXAMPLES:
+❌ "Lot de 4 chaises de bar en tissu gris"
+❌ "Canapé moderne en tissu gris"
+❌ "Set of 2 chairs with metal legs"`;
 
             const visionResponse = await fetch(
               "https://api.openai.com/v1/chat/completions",
@@ -431,12 +437,18 @@ Return ONLY valid JSON:
     const finalTags = uniqueKeywords.join(", ");
 
     let seoTitle = product.title;
-    let seoDescription = product.description?.substring(0, 160) || "";
+    let seoDescription = cleanDescription.substring(0, 160) || "";
 
     const seoContent = seoResponse.choices[0].message.content;
 
     try {
-      const seoParsed = JSON.parse(seoContent);
+      let jsonContent = seoContent;
+      const jsonMatch = seoContent.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[1];
+      }
+
+      const seoParsed = JSON.parse(jsonContent);
       seoTitle = seoParsed.seo_title || seoTitle;
       seoDescription = seoParsed.seo_description || seoDescription;
     } catch (e) {
