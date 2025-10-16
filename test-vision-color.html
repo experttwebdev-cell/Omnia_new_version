@@ -144,9 +144,9 @@
     </div>
   </div>
 
-  <script type="module">
-    const supabaseUrl = window.ENV?.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-    const supabaseAnonKey = window.ENV?.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+  <script>
+    const supabaseUrl = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
 
     const { createClient } = supabase;
     const sb = createClient(supabaseUrl, supabaseAnonKey);

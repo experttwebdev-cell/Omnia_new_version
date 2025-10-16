@@ -47,6 +47,7 @@ interface BlogArticle {
     dimensions_text?: string;
     characteristics?: string;
     google_product_category?: string;
+    google_brand?: string;
   }>;
 }
 
@@ -102,7 +103,7 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
           if (productIds.length > 0) {
             const { data: productsData, error: productsError } = await supabase
               .from('shopify_products')
-              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, dimensions_text, characteristics, google_product_category')
+              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, dimensions_text, characteristics, google_product_category, google_brand')
               .in('id', productIds);
 
             if (!productsError && productsData) {
@@ -118,7 +119,8 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
                 ai_material: p.ai_material || '',
                 dimensions_text: p.dimensions_text || '',
                 characteristics: p.characteristics || '',
-                google_product_category: p.google_product_category || ''
+                google_product_category: p.google_product_category || '',
+                google_brand: p.google_brand || ''
               }));
             }
           }
@@ -193,6 +195,15 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
             /<\/div>(\s*)<\/div>\s*$/,
             `<div class="mt-2">
               <p class="text-xs text-gray-500"><strong>Google Category:</strong> ${product.google_product_category}</p>
+            </div>$1</div>`
+          );
+        }
+
+        if (product.google_brand) {
+          enrichedCard = enrichedCard.replace(
+            /<\/div>(\s*)<\/div>\s*$/,
+            `<div class="mt-2">
+              <p class="text-xs text-gray-500"><strong>Brand:</strong> ${product.google_brand}</p>
             </div>$1</div>`
           );
         }

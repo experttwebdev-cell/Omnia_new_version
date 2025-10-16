@@ -413,6 +413,7 @@ Return ONLY valid JSON:
     console.log("Final Material:", finalMaterial);
     console.log("Final Style:", finalStyle);
     console.log("Final AI Vision Analysis:", imageInsights || visionAnalysis.visual_description || "");
+    console.log("Google Brand (from vendor):", product.vendor || "");
 
     const allKeywords = [
       ...(textAnalysis.keywords || []),
@@ -449,6 +450,7 @@ Return ONLY valid JSON:
       style: finalStyle,
       room: textAnalysis.room || "",
       google_product_category: textAnalysis.google_product_category || "",
+      google_brand: product.vendor || "",
       seo_title: seoTitle,
       seo_description: seoDescription,
       tags: finalTags,
