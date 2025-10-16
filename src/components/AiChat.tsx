@@ -1,126 +1,141 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, X, Loader2, Bot, User, Sparkles } from 'lucide-react';
-import { supabase, getEnvVar } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
+  ShoppingCart,
+  Eye,
+  Sparkles,
+  MessageCircle,
+  Package,
+  Home,
+  Watch,
+  Shirt
+} from 'lucide-react';
+import { formatPrice } from '../lib/currency';
+import { useLanguage } from '../App';
+import { OmnIAChat } from '../lib/omniaChat';
 
-interface Message {
-  id: string;
+interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
-}
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  image_url?: string;
-  handle: string;
+  products?: any[];
+  selectedProduct?: any;
+  timestamp: string;
+  mode?: 'conversation' | 'product_show';
+  searchFilters?: any;
+  sector?: string;
 }
 
 export function AiChat() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Bonjour! Je suis votre assistant virtuel. Comment puis-je vous aider aujourd\'hui?',
-      timestamp: new Date()
-    }
-  ]);
+  const { t } = useLanguage();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [chatSettings, setChatSettings] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [showProductLanding, setShowProductLanding] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Icônes par secteur
+  const sectorIcons = {
+    meubles: Home,
+    montres: Watch,
+    pret_a_porter: Shirt
+  };
 
   useEffect(() => {
-    if (isOpen) {
-      fetchProducts();
-      scrollToBottom();
+    fetchStoreSettings();
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const fetchStoreSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('shopify_stores')
+        .select('id, chat_enabled, chat_welcome_message, chat_tone, chat_response_length')
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setChatSettings(data);
+        setStoreId(data.id);
+        
+        // Message de bienvenue initial
+        const welcomeMessage: ChatMessage = {
+          role: 'assistant',
+          content: data.chat_welcome_message || "Bonjour ! Je suis OmnIA, votre assistant shopping intelligent. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?",
+          timestamp: new Date().toISOString(),
+          sector: 'meubles'
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (err) {
+      console.error('Error fetching store settings:', err);
     }
-  }, [isOpen, messages]);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchProducts = async () => {
-    try {
-      const { data } = await supabase
-        .from('shopify_products')
-        .select('id, title, price, image_url, handle')
-        .limit(20);
-
-      if (data) {
-        setProducts(data);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
-
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || loading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    const userMessage: ChatMessage = {
       role: 'user',
       content: inputMessage,
-      timestamp: new Date()
+      timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = inputMessage;
     setInputMessage('');
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Calling OmnIA Chat...');
+      const history = messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
+      const settings = chatSettings ? {
+        chat_tone: chatSettings.chat_tone,
+        chat_response_length: chatSettings.chat_response_length
+      } : undefined;
+      
+      const response = await OmnIAChat(currentMessage, history, storeId || undefined, settings);
 
-      const response = await fetch(
-        `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/ai-chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token || getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: inputMessage,
-            products: products.map(p => ({
-              id: p.id,
-              title: p.title,
-              price: p.price
-            }))
-          })
-        }
-      );
+      console.log('OmnIA Response:', response);
 
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
-
-      const result = await response.json();
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: result.response || 'Désolé, je n\'ai pas pu traiter votre demande.',
-        timestamp: new Date()
+        content: response.content,
+        products: response.products || [],
+        timestamp: new Date().toISOString(),
+        mode: response.mode || 'conversation',
+        searchFilters: response.searchFilters,
+        sector: response.sector
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+    } catch (err) {
+      console.error('Error sending message:', err);
+      const errorText = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage: ChatMessage = {
         role: 'assistant',
-        content: 'Désolé, une erreur s\'est produite. Veuillez réessayer.',
-        timestamp: new Date()
+        content: `Désolé, une erreur s'est produite: ${errorText}`,
+        timestamp: new Date().toISOString(),
+        sector: 'meubles'
       };
-
       setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -131,83 +146,125 @@ export function AiChat() {
     }
   };
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-110 z-50"
-        aria-label="Open chat"
-      >
-        <MessageCircle className="w-6 h-6" />
-      </button>
-    );
-  }
+  const SectorIcon = ({ sector }: { sector: string }) => {
+    const IconComponent = sectorIcons[sector] || Home;
+    return <IconComponent className="w-4 h-4" />;
+  };
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-200">
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-2xl">
+    <div className="h-[calc(100vh-200px)] flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg overflow-hidden">
+      {/* Header avec indicateur de secteur */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-lg">
-            <Bot className="w-5 h-5" />
+          <div className="relative">
+            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <Bot className="w-7 h-7 text-blue-600" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
           </div>
           <div>
-            <h3 className="font-semibold">Assistant AI</h3>
-            <p className="text-xs text-blue-100">En ligne</p>
+            <h2 className="text-xl font-bold">OmnIA Shopping</h2>
+            <p className="text-sm text-blue-100">Assistant intelligent multi-secteurs</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="p-2 hover:bg-white/20 rounded-lg transition"
-          aria-label="Close chat"
-        >
-          <X className="w-5 h-5" />
-        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-          >
-            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-              message.role === 'user'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-600'
-            }`}>
-              {message.role === 'user' ? (
-                <User className="w-4 h-4" />
-              ) : (
-                <Bot className="w-4 h-4" />
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.map((message, index) => {
+          const SectorIconComponent = message.sector ? sectorIcons[message.sector] : null;
+          
+          return (
+            <div key={index}>
+              <div className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.role === 'assistant' && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                )}
+
+                <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : ''}`}>
+                  <div className={`rounded-2xl px-4 py-3 shadow-md ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+                      : 'bg-white text-gray-800 border border-gray-200'
+                  }`}>
+                    {message.role === 'assistant' && (
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                        {message.mode === 'conversation' ? (
+                          <>
+                            <MessageCircle className="w-4 h-4 text-blue-500" />
+                            <span className="text-xs font-semibold text-blue-600">Discussion</span>
+                          </>
+                        ) : (
+                          <>
+                            <Package className="w-4 h-4 text-purple-500" />
+                            <span className="text-xs font-semibold text-purple-600">Recherche Produits</span>
+                            {SectorIconComponent && (
+                              <div className="flex items-center gap-1 ml-2 px-2 py-1 bg-white border rounded-full">
+                                <SectorIconComponent />
+                                <span className="text-xs font-medium">
+                                  {message.sector === 'meubles' ? 'Meubles' : 
+                                   message.sector === 'montres' ? 'Montres' : 'Mode'}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {message.products && message.products.length > 0 && (
+                          <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                            {message.products.length} trouvé{message.products.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 px-2">
+                    {new Date(message.timestamp).toLocaleTimeString('fr-FR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+
+                {message.role === 'user' && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center shadow-md">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+
+              {/* Affichage des produits */}
+              {message.products && message.products.length > 0 && (
+                <div className="ml-11 mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {message.products.map((product) => (
+                      <ProductCard 
+                        key={product.id} 
+                        product={product}
+                        onViewDetails={() => {
+                          setSelectedProduct(product);
+                          setShowProductLanding(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-            <div className={`flex-1 ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
-              <div className={`px-4 py-2 rounded-2xl max-w-[80%] ${
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-sm'
-                  : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-              }`}>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              </div>
-              <span className="text-xs text-gray-400 mt-1 px-2">
-                {message.timestamp.toLocaleTimeString('fr-FR', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {isLoading && (
-          <div className="flex gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
-              <Bot className="w-4 h-4" />
+        {loading && (
+          <div className="flex gap-3 justify-start">
+            <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+              <Bot className="w-5 h-5 text-white" />
             </div>
-            <div className="flex-1">
-              <div className="px-4 py-2 rounded-2xl bg-gray-100 text-gray-800 rounded-bl-sm inline-flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Réflexion...</span>
+            <div className="bg-white rounded-2xl px-4 py-3 shadow-md border border-gray-200">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <span className="text-sm text-gray-600">L'assistant réfléchit...</span>
               </div>
             </div>
           </div>
@@ -216,30 +273,109 @@ export function AiChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Posez votre question..."
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:cursor-not-allowed"
-          />
+      {/* Input avec suggestions par secteur */}
+      <div className="border-t border-gray-200 bg-white px-6 py-4">
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Décrivez ce que vous recherchez (meubles, montres, vêtements...)"
+              disabled={loading}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            <div className="flex items-center gap-4 mt-2">
+              <MessageCircle className="w-4 h-4 text-gray-400" />
+              <div className="flex gap-3 text-xs text-gray-500">
+                <span>Exemples:</span>
+                <span>"Canapé scandinave pour salon"</span>
+                <span>"Montre automatique en acier"</span>
+                <span>"Robe de soirée élégante"</span>
+              </div>
+            </div>
+          </div>
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isLoading}
-            className="px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            aria-label="Send message"
+            disabled={loading || !inputMessage.trim()}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg disabled:shadow-none"
           >
-            <Send className="w-5 h-5" />
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+            <span className="font-medium">Envoyer</span>
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2 text-center flex items-center justify-center gap-1">
-          <Sparkles className="w-3 h-3" />
-          Propulsé par l'IA
-        </p>
+      </div>
+
+      {/* Landing Page Produit */}
+      {showProductLanding && selectedProduct && (
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <ProductLandingPage 
+            product={selectedProduct} 
+            onClose={() => setShowProductLanding(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Composant ProductCard simplifié pour l'exemple
+function ProductCard({ product, onViewDetails }: any) {
+  return (
+    <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition group">
+      <div className="relative w-full h-40 bg-gray-100 overflow-hidden cursor-pointer" onClick={onViewDetails}>
+        <img
+          src={product.image_url}
+          alt={product.title}
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+        />
+        {product.enrichment_status === 'enriched' && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-purple-600 text-white rounded-full text-xs font-medium">
+            <Sparkles className="w-3 h-3" />
+            IA
+          </div>
+        )}
+      </div>
+      <div className="p-3">
+        <h5 className="font-semibold text-gray-900 mb-2 text-sm line-clamp-2 cursor-pointer" onClick={onViewDetails}>
+          {product.title}
+        </h5>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-lg font-bold text-blue-600">
+            {formatPrice(Number(product.price), product.currency || 'EUR')}
+          </span>
+          {product.compare_at_price && Number(product.compare_at_price) > Number(product.price) && (
+            <span className="text-sm text-gray-400 line-through">
+              {formatPrice(Number(product.compare_at_price), product.currency || 'EUR')}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onViewDetails}
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-xs font-medium"
+          >
+            <Eye className="w-3 h-3" />
+            Voir
+          </button>
+          <button
+            onClick={() => {
+              if (product.shop_name && product.handle) {
+                window.open(`https://${product.shop_name}/products/${product.handle}`, '_blank');
+              }
+            }}
+            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition text-xs font-medium"
+          >
+            <ShoppingCart className="w-3 h-3" />
+            Acheter
+          </button>
+        </div>
       </div>
     </div>
   );
