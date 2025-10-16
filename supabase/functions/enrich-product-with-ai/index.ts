@@ -635,7 +635,7 @@ Deno.serve(async (req: Request) => {
       ai_material: finalMaterial,
       dimensions_text: textAnalysis.dimensions_text || null,
       dimensions_source: textAnalysis.dimensions_source || null,
-      confidence_score: confidenceScore,
+      ai_confidence_score: confidenceScore,
       enrichment_status: "completed",
       last_enriched_at: new Date().toISOString(),
       seo_synced_to_shopify: false,
@@ -673,7 +673,7 @@ Deno.serve(async (req: Request) => {
           material: updateData.ai_material,
           color: updateData.ai_color,
           dimensions: updateData.dimensions_text,
-          confidence: updateData.confidence_score
+          confidence: updateData.ai_confidence_score
         }
       }),
       {
