@@ -106,9 +106,14 @@ Deno.serve(async (req: Request) => {
     });
 
     const allOpportunities = [];
+    const MAX_CATEGORIES = 5;
+    let processedCategories = 0;
 
     for (const [category, categoryProducts] of categoryGroups.entries()) {
+      if (processedCategories >= MAX_CATEGORIES) break;
+
       if (categoryProducts.length >= 3) {
+        processedCategories++;
         const sampleProducts = categoryProducts.slice(0, 5);
         const keywords = [...new Set(
           categoryProducts
@@ -174,75 +179,94 @@ ${language === 'fr' ? 'Réponds UNIQUEMENT en JSON valide avec ce format exact' 
 
 ${langInstr.toneText}`;
 
-        const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${deepseekKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              {
-                role: "system",
-                content: langInstr.expertRole
-              },
-              {
-                role: "user",
-                content: prompt
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 2000,
-          }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-        if (!deepseekResponse.ok) {
-          console.error("DeepSeek API error:", await deepseekResponse.text());
-          continue;
-        }
-
-        const deepseekData = await deepseekResponse.json();
-        const content = deepseekData.choices[0].message.content;
-
-        let parsedContent;
         try {
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsedContent = JSON.parse(jsonMatch[0]);
-          } else {
-            parsedContent = JSON.parse(content);
-          }
-        } catch (e) {
-          console.error("Failed to parse DeepSeek response:", content);
-          continue;
-        }
-
-        if (parsedContent.opportunities && Array.isArray(parsedContent.opportunities)) {
-          parsedContent.opportunities.forEach((opp: any) => {
-            allOpportunities.push({
-              category: category,
-              subcategory: '',
-              product_ids: categoryProducts.map(p => p.id),
-              article_title: opp.article_title,
-              meta_description: opp.meta_description,
-              type: opp.type,
-              primary_keywords: opp.primary_keywords,
-              secondary_keywords: opp.secondary_keywords,
-              structure: opp.structure,
-              seo_opportunity_score: opp.seo_opportunity_score,
-              difficulty: opp.difficulty,
-              intro_excerpt: opp.intro_excerpt,
-              estimated_word_count: opp.estimated_word_count,
-              product_count: categoryProducts.length,
-            });
+          const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${deepseekKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "deepseek-chat",
+              messages: [
+                {
+                  role: "system",
+                  content: langInstr.expertRole
+                },
+                {
+                  role: "user",
+                  content: prompt
+                }
+              ],
+              temperature: 0.7,
+              max_tokens: 1500,
+            }),
+            signal: controller.signal,
           });
+
+          clearTimeout(timeoutId);
+
+          if (!deepseekResponse.ok) {
+            console.error("DeepSeek API error:", await deepseekResponse.text());
+            continue;
+          }
+
+          const deepseekData = await deepseekResponse.json();
+          const content = deepseekData.choices[0].message.content;
+
+          let parsedContent;
+          try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              parsedContent = JSON.parse(jsonMatch[0]);
+            } else {
+              parsedContent = JSON.parse(content);
+            }
+          } catch (e) {
+            console.error("Failed to parse DeepSeek response:", content);
+            continue;
+          }
+
+          if (parsedContent.opportunities && Array.isArray(parsedContent.opportunities)) {
+            parsedContent.opportunities.forEach((opp: any) => {
+              allOpportunities.push({
+                category: category,
+                subcategory: '',
+                product_ids: categoryProducts.map(p => p.id),
+                article_title: opp.article_title,
+                meta_description: opp.meta_description,
+                type: opp.type,
+                primary_keywords: opp.primary_keywords,
+                secondary_keywords: opp.secondary_keywords,
+                structure: opp.structure,
+                seo_opportunity_score: opp.seo_opportunity_score,
+                difficulty: opp.difficulty,
+                intro_excerpt: opp.intro_excerpt,
+                estimated_word_count: opp.estimated_word_count,
+                product_count: categoryProducts.length,
+              });
+            });
+          }
+        } catch (error) {
+          clearTimeout(timeoutId);
+          console.error("Timeout or error fetching from DeepSeek:", error);
+          continue;
         }
       }
     }
 
+    const MAX_SUBCATEGORIES = 3;
+    let processedSubCategories = 0;
+
     for (const [key, subCatProducts] of subCategoryGroups.entries()) {
-      if (subCatProducts.length >= 3 && allOpportunities.length < 20) {
+      if (processedSubCategories >= MAX_SUBCATEGORIES) break;
+      if (allOpportunities.length >= 15) break;
+
+      if (subCatProducts.length >= 3) {
+        processedSubCategories++;
         const [category, subCategory] = key.split(':');
         const sampleProducts = subCatProducts.slice(0, 3);
         const keywords = [...new Set(
@@ -275,36 +299,43 @@ ${language === 'fr' ? 'Génère 1 idée d\'article de blog SEO optimisé spécif
 
 ${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment (1 seule opportunité).' : language === 'es' ? 'Responde en JSON con el mismo formato que antes (1 sola oportunidad).' : language === 'de' ? 'Antworten Sie in JSON mit dem gleichen Format wie zuvor (1 Gelegenheit).' : language === 'it' ? 'Rispondi in JSON con lo stesso formato di prima (1 sola opportunità).' : 'Respond in JSON with the same format as before (1 opportunity only).'}`;
 
-        const deepseekResponse2 = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${deepseekKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              {
-                role: "system",
-                content: `${langInstr.expertRole} ${language === 'fr' ? 'Réponds uniquement en JSON valide.' : language === 'es' ? 'Responde solo en JSON válido.' : language === 'de' ? 'Antworten Sie nur in gültigem JSON.' : language === 'it' ? 'Rispondi solo in JSON valido.' : 'Respond only in valid JSON.'}`
-              },
-              {
-                role: "user",
-                content: prompt
-              }
-            ],
-            temperature: 0.7,
-            max_tokens: 1000,
-          }),
-        });
+        const controller2 = new AbortController();
+        const timeoutId2 = setTimeout(() => controller2.abort(), 20000);
 
-        if (deepseekResponse2.ok) {
-          const deepseekData2 = await deepseekResponse2.json();
-          const content = deepseekData2.choices[0].message.content;
+        try {
+          const deepseekResponse2 = await fetch("https://api.deepseek.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${deepseekKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "deepseek-chat",
+              messages: [
+                {
+                  role: "system",
+                  content: `${langInstr.expertRole} ${language === 'fr' ? 'Réponds uniquement en JSON valide.' : language === 'es' ? 'Responde solo en JSON válido.' : language === 'de' ? 'Antworten Sie nur in gültigem JSON.' : language === 'it' ? 'Rispondi solo in JSON valido.' : 'Respond only in valid JSON.'}`
+                },
+                {
+                  role: "user",
+                  content: prompt
+                }
+              ],
+              temperature: 0.7,
+              max_tokens: 1000,
+            }),
+            signal: controller2.signal,
+          });
 
-          try {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            const parsedContent = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+          clearTimeout(timeoutId2);
+
+          if (deepseekResponse2.ok) {
+            const deepseekData2 = await deepseekResponse2.json();
+            const content = deepseekData2.choices[0].message.content;
+
+            try {
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              const parsedContent = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
 
             if (parsedContent.opportunities && Array.isArray(parsedContent.opportunities)) {
               parsedContent.opportunities.forEach((opp: any) => {
@@ -326,9 +357,13 @@ ${language === 'fr' ? 'Réponds en JSON avec le même format que précédemment 
                 });
               });
             }
-          } catch (e) {
-            console.error("Failed to parse subcategory response:", content);
+            } catch (e) {
+              console.error("Failed to parse subcategory response:", content);
+            }
           }
+        } catch (error) {
+          clearTimeout(timeoutId2);
+          console.error("Timeout or error fetching subcategory from DeepSeek:", error);
         }
       }
     }
