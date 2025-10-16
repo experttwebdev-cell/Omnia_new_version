@@ -354,13 +354,21 @@ Provide response in JSON format:
       ai_vision_analysis: finalAiVisionAnalysis,
       ai_color: finalColor,
       ai_material: finalMaterial,
-      dimensions_text: textAnalysis.dimensions_text || "",
       ai_confidence_score: confidenceScore,
       enrichment_status: "enriched",
       last_enriched_at: new Date().toISOString(),
       seo_synced_to_shopify: false,
       enrichment_error: "",
     };
+
+    // Add dimensions_text only if it's available (migration might not be applied yet)
+    if (textAnalysis.dimensions_text) {
+      try {
+        updateData.dimensions_text = textAnalysis.dimensions_text;
+      } catch (e) {
+        console.log("dimensions_text field not available yet, skipping");
+      }
+    }
 
     if (textAnalysis.length) {
       updateData.length = textAnalysis.length;
@@ -418,7 +426,6 @@ Provide response in JSON format:
           style: finalStyle,
           room: textAnalysis.room || "",
           ai_vision_analysis: finalAiVisionAnalysis,
-          dimensions_text: textAnalysis.dimensions_text || "",
           ai_confidence_score: confidenceScore,
         },
       }),
