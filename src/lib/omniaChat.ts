@@ -368,16 +368,15 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   console.log('📊 [SEARCH] Initial results:', results.length, 'products');
 
   // Filtrage secondaire côté client pour style, couleur, matériau
+  // Important: On applique TOUJOURS le filtre si spécifié, même si résultat vide
   if (filters.style && results.length > 0) {
     console.log('🎨 [SEARCH] Applying style filter:', filters.style);
     const styleFiltered = results.filter(p =>
       p.style?.toLowerCase().includes(filters.style!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.style!.toLowerCase())
     );
-    if (styleFiltered.length > 0) {
-      console.log('✅ [SEARCH] Style filtered:', styleFiltered.length, 'products');
-      results = styleFiltered;
-    }
+    console.log('📊 [SEARCH] Style filter result:', styleFiltered.length, 'products');
+    results = styleFiltered;
   }
 
   if (filters.color && results.length > 0) {
@@ -387,10 +386,8 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
       p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
     );
-    if (colorFiltered.length > 0) {
-      console.log('✅ [SEARCH] Color filtered:', colorFiltered.length, 'products');
-      results = colorFiltered;
-    }
+    console.log('📊 [SEARCH] Color filter result:', colorFiltered.length, 'products');
+    results = colorFiltered;
   }
 
   if (filters.material && results.length > 0) {
@@ -400,10 +397,8 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
       p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
     );
-    if (materialFiltered.length > 0) {
-      console.log('✅ [SEARCH] Material filtered:', materialFiltered.length, 'products');
-      results = materialFiltered;
-    }
+    console.log('📊 [SEARCH] Material filter result:', materialFiltered.length, 'products');
+    results = materialFiltered;
   }
 
   const finalResults = results.slice(0, 8);
