@@ -68,14 +68,7 @@ Deno.serve(async (req: Request) => {
 
         const normalizedStoreUrl = normalizeStoreUrl(store.store_url);
 
-        const metafields = [
-          {
-            namespace: 'mm-google-shopping',
-            key: 'custom_product',
-            value: product.google_custom_product ? 'true' : 'false',
-            type: 'boolean',
-          },
-        ];
+        const metafields = [];
 
         if (product.google_product_category) {
           metafields.push({
@@ -84,6 +77,27 @@ Deno.serve(async (req: Request) => {
             value: product.google_product_category,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_product_category: ${product.google_product_category}`);
+        }
+
+        if (product.google_brand) {
+          metafields.push({
+            namespace: 'custom',
+            key: 'google_brand',
+            value: product.google_brand,
+            type: 'single_line_text_field',
+          });
+          console.log(`✓ Adding google_brand: ${product.google_brand}`);
+        }
+
+        if (product.google_gtin) {
+          metafields.push({
+            namespace: 'custom',
+            key: 'google_gtin',
+            value: product.google_gtin,
+            type: 'single_line_text_field',
+          });
+          console.log(`✓ Adding google_gtin: ${product.google_gtin}`);
         }
 
         if (product.google_gender) {
@@ -93,6 +107,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_gender,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_gender: ${product.google_gender}`);
         }
 
         if (product.google_age_group) {
@@ -102,6 +117,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_age_group,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_age_group: ${product.google_age_group}`);
         }
 
         if (product.google_mpn) {
@@ -111,6 +127,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_mpn,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_mpn: ${product.google_mpn}`);
         }
 
         if (product.google_condition) {
@@ -120,6 +137,27 @@ Deno.serve(async (req: Request) => {
             value: product.google_condition,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_condition: ${product.google_condition}`);
+        }
+
+        if (product.google_availability) {
+          metafields.push({
+            namespace: 'custom',
+            key: 'google_availability',
+            value: product.google_availability,
+            type: 'single_line_text_field',
+          });
+          console.log(`✓ Adding google_availability: ${product.google_availability}`);
+        }
+
+        if (product.google_custom_product !== null && product.google_custom_product !== undefined) {
+          metafields.push({
+            namespace: 'custom',
+            key: 'google_custom_product',
+            value: product.google_custom_product ? 'true' : 'false',
+            type: 'single_line_text_field',
+          });
+          console.log(`✓ Adding google_custom_product: ${product.google_custom_product}`);
         }
 
         if (product.google_custom_label_0) {
@@ -129,6 +167,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_custom_label_0,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_custom_label_0: ${product.google_custom_label_0}`);
         }
 
         if (product.google_custom_label_1) {
@@ -138,6 +177,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_custom_label_1,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_custom_label_1: ${product.google_custom_label_1}`);
         }
 
         if (product.google_custom_label_2) {
@@ -147,6 +187,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_custom_label_2,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_custom_label_2: ${product.google_custom_label_2}`);
         }
 
         if (product.google_custom_label_3) {
@@ -156,6 +197,7 @@ Deno.serve(async (req: Request) => {
             value: product.google_custom_label_3,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_custom_label_3: ${product.google_custom_label_3}`);
         }
 
         if (product.google_custom_label_4) {
@@ -165,27 +207,44 @@ Deno.serve(async (req: Request) => {
             value: product.google_custom_label_4,
             type: 'single_line_text_field',
           });
+          console.log(`✓ Adding google_custom_label_4: ${product.google_custom_label_4}`);
         }
 
         const shopifyUrl = `https://${normalizedStoreUrl}/admin/api/2024-01/products/${product.shopify_id}/metafields.json`;
 
-        console.log('Syncing Google Shopping data to:', shopifyUrl);
+        console.log(`\n🔄 Syncing ${metafields.length} Google Shopping fields to Shopify for product ${product.shopify_id}`);
+        console.log('Shopify URL:', shopifyUrl);
+
+        let successCount = 0;
+        let failCount = 0;
 
         for (const metafield of metafields) {
-          const response = await fetch(shopifyUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Access-Token': store.api_token,
-            },
-            body: JSON.stringify({ metafield }),
-          });
+          try {
+            console.log(`\n  📤 Syncing ${metafield.key}...`);
+            const response = await fetch(shopifyUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': store.api_token,
+              },
+              body: JSON.stringify({ metafield }),
+            });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Failed to sync metafield ${metafield.key}:`, errorText);
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`  ❌ Failed to sync metafield ${metafield.key}:`, errorText);
+              failCount++;
+            } else {
+              console.log(`  ✅ Successfully synced ${metafield.key}`);
+              successCount++;
+            }
+          } catch (error) {
+            console.error(`  ❌ Exception syncing metafield ${metafield.key}:`, error);
+            failCount++;
           }
         }
+
+        console.log(`\n✅ Sync complete for product ${product.shopify_id}: ${successCount} success, ${failCount} failed`);
 
         await supabase
           .from('shopify_products')
@@ -195,7 +254,9 @@ Deno.serve(async (req: Request) => {
         results.push({
           productId,
           success: true,
-          syncedFields: metafields.length,
+          syncedFields: successCount,
+          failedFields: failCount,
+          totalFields: metafields.length,
         });
       } catch (error) {
         results.push({

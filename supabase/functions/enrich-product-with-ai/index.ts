@@ -618,6 +618,8 @@ Deno.serve(async (req: Request) => {
     const confidenceScore = calculateConfidenceScore(textAnalysis, images?.length || 0, visionAnalysis);
     console.log("📊 Confidence score:", confidenceScore);
 
+    const finalGoogleBrand = product.vendor || textAnalysis.material || "";
+
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
@@ -626,7 +628,7 @@ Deno.serve(async (req: Request) => {
       style: finalStyle,
       room: textAnalysis.room || "",
       google_product_category: textAnalysis.google_product_category || "Home & Garden > Furniture",
-      google_brand: product.vendor || "",
+      google_brand: finalGoogleBrand,
       seo_title: seoTitle,
       seo_description: seoDescription,
       tags: allKeywords.join(", "),
@@ -640,6 +642,18 @@ Deno.serve(async (req: Request) => {
       last_enriched_at: new Date().toISOString(),
       seo_synced_to_shopify: false,
     };
+
+    console.log("📊 Final enrichment data:", {
+      category: updateData.category,
+      style: updateData.style,
+      room: updateData.room,
+      google_brand: updateData.google_brand,
+      google_product_category: updateData.google_product_category,
+      ai_color: updateData.ai_color,
+      ai_material: updateData.ai_material,
+      dimensions: updateData.dimensions_text,
+      confidence: updateData.ai_confidence_score
+    });
 
     enrichmentContext = "database_update";
     console.log("💾 Updating product in database...");

@@ -44,8 +44,11 @@ interface BlogArticle {
     sub_category?: string;
     ai_color?: string;
     ai_material?: string;
+    ai_vision_analysis?: string;
     dimensions_text?: string;
+    dimensions_source?: string;
     characteristics?: string;
+    functionality?: string;
     google_product_category?: string;
     google_brand?: string;
   }>;
@@ -102,39 +105,67 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
 
           if (productIds.length > 0) {
             console.log('Fetching enriched product data for', productIds.length, 'products');
-            const { data: productsData, error: productsError } = await supabase
+            const { data, error: productsError } = await supabase
               .from('shopify_products')
-              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, dimensions_text, characteristics, google_product_category, google_brand, enrichment_status')
+              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, ai_vision_analysis, dimensions_text, dimensions_source, characteristics, functionality, google_product_category, google_brand, vendor, enrichment_status')
               .in('id', productIds);
+
+            const productsData = data as Array<{
+              id: string;
+              shopify_id: number;
+              title: string;
+              handle: string | null;
+              image_url: string | null;
+              price: number | null;
+              category: string | null;
+              sub_category: string | null;
+              ai_color: string | null;
+              ai_material: string | null;
+              ai_vision_analysis: string | null;
+              dimensions_text: string | null;
+              dimensions_source: string | null;
+              characteristics: string | null;
+              functionality: string | null;
+              google_product_category: string | null;
+              google_brand: string | null;
+              vendor: string | null;
+              enrichment_status: string | null;
+            }> | null;
 
             if (productsError) {
               console.error('Error fetching product data:', productsError);
             }
 
             if (!productsError && productsData) {
-              console.log('Product data fetched:', productsData.length, 'products');
+              console.log('✅ Product data fetched:', productsData.length, 'products');
               productsData.forEach(p => {
-                console.log(`Product: ${p.title} - Enriched: ${p.enrichment_status === 'enriched' ? 'Yes' : 'No'}`);
-                if (p.dimensions_text) console.log(`  - Has dimensions: ${p.dimensions_text}`);
-                if (p.characteristics) console.log(`  - Has characteristics: ${p.characteristics}`);
-                if (p.ai_color) console.log(`  - Has color: ${p.ai_color}`);
-                if (p.ai_material) console.log(`  - Has material: ${p.ai_material}`);
+                console.log(`📦 Product: ${p.title}`);
+                console.log(`   Enrichment Status: ${p.enrichment_status === 'enriched' ? '✅ Enriched' : '⏳ Not Enriched'}`);
+                console.log(`   🎨 Color: ${p.ai_color || 'N/A'}`);
+                console.log(`   🧱 Material: ${p.ai_material || 'N/A'}`);
+                console.log(`   📏 Dimensions: ${p.dimensions_text || 'N/A'}`);
+                console.log(`   ✨ Characteristics: ${p.characteristics || 'N/A'}`);
+                console.log(`   🏷️ Google Category: ${p.google_product_category || 'N/A'}`);
+                console.log(`   🏢 Brand: ${p.google_brand || p.vendor || 'N/A'}`);
               });
 
               articleData.product_links = productsData.map(p => ({
                 product_id: p.id,
                 title: p.title,
-                handle: p.handle,
-                image_url: p.image_url,
-                price: p.price,
+                handle: p.handle || '',
+                image_url: p.image_url || '',
+                price: p.price || 0,
                 category: p.category || '',
                 sub_category: p.sub_category || '',
                 ai_color: p.ai_color || '',
                 ai_material: p.ai_material || '',
+                ai_vision_analysis: p.ai_vision_analysis || '',
                 dimensions_text: p.dimensions_text || '',
+                dimensions_source: p.dimensions_source || '',
                 characteristics: p.characteristics || '',
+                functionality: p.functionality || '',
                 google_product_category: p.google_product_category || '',
-                google_brand: p.google_brand || ''
+                google_brand: p.google_brand || p.vendor || ''
               }));
             }
           }
@@ -170,16 +201,27 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
 
   const enrichArticleContent = (htmlContent: string): string => {
     if (!article?.product_links || article.product_links.length === 0) {
-      console.log('No product links to enrich');
+      console.log('⚠️ No product links to enrich');
       return htmlContent;
     }
 
-    console.log(`Enriching article content with ${article.product_links.length} products`);
+    console.log(`🔧 Starting enrichment for ${article.product_links.length} products`);
     let enrichedContent = htmlContent;
     let enrichmentCount = 0;
 
     article.product_links.forEach((product, index) => {
       try {
+        console.log(`\n📦 Processing product ${index + 1}/${article.product_links!.length}: ${product.title}`);
+        console.log(`   Available data:`, {
+          ai_color: product.ai_color || 'N/A',
+          ai_material: product.ai_material || 'N/A',
+          dimensions_text: product.dimensions_text || 'N/A',
+          characteristics: product.characteristics || 'N/A',
+          functionality: product.functionality || 'N/A',
+          google_category: product.google_product_category || 'N/A',
+          google_brand: product.google_brand || 'N/A'
+        });
+
         const escapedTitle = product.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
         const productCardRegex = new RegExp(
@@ -190,42 +232,54 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
         const existingCard = enrichedContent.match(productCardRegex);
 
         if (existingCard && existingCard[0]) {
-          console.log(`Found product card for: ${product.title}`);
+          console.log(`   ✅ Product card found in HTML`);
           let enrichedCard = existingCard[0];
           let hasEnrichments = false;
 
           const enrichmentData = [];
 
-          if (product.dimensions_text) {
-            enrichmentData.push(`<div class="text-sm text-gray-600 mb-2"><strong>📏 Dimensions:</strong> ${product.dimensions_text}</div>`);
-            hasEnrichments = true;
-          }
-
-          if (product.characteristics) {
-            enrichmentData.push(`<div class="text-sm text-gray-600 mb-2"><strong>✨ Caractéristiques:</strong> ${product.characteristics}</div>`);
-            hasEnrichments = true;
-          }
-
           if (product.ai_color) {
-            enrichmentData.push(`<div class="text-sm text-gray-600 mb-2"><strong>🎨 Couleur:</strong> ${product.ai_color}</div>`);
+            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🎨 Couleur:</strong> <span>${product.ai_color}</span></div>`);
             hasEnrichments = true;
+            console.log(`   ✅ Added color: ${product.ai_color}`);
           }
 
           if (product.ai_material) {
-            enrichmentData.push(`<div class="text-sm text-gray-600 mb-2"><strong>🧱 Matériau:</strong> ${product.ai_material}</div>`);
+            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🧱 Matériau:</strong> <span>${product.ai_material}</span></div>`);
             hasEnrichments = true;
+            console.log(`   ✅ Added material: ${product.ai_material}`);
           }
 
-          if (product.google_product_category) {
-            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>Catégorie:</strong> ${product.google_product_category}</div>`);
+          if (product.dimensions_text) {
+            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">📏 Dimensions:</strong> <span>${product.dimensions_text}</span></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added dimensions: ${product.dimensions_text}`);
+          }
+
+          if (product.functionality) {
+            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">⚙️ Fonctionnalité:</strong> <span>${product.functionality}</span></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added functionality: ${product.functionality}`);
+          }
+
+          if (product.characteristics) {
+            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2"><strong class="text-blue-600">✨ Caractéristiques:</strong> <span class="ml-1">${product.characteristics}</span></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added characteristics`);
           }
 
           if (product.google_brand) {
-            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>Marque:</strong> ${product.google_brand}</div>`);
+            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏢 Marque:</strong> ${product.google_brand}</div>`);
+            console.log(`   ✅ Added brand: ${product.google_brand}`);
+          }
+
+          if (product.google_product_category) {
+            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏷️ Catégorie:</strong> ${product.google_product_category}</div>`);
+            console.log(`   ✅ Added category: ${product.google_product_category}`);
           }
 
           if (hasEnrichments && enrichmentData.length > 0) {
-            const enrichmentBlock = `<div class="mt-3 pt-3 border-t border-blue-100 bg-blue-50 p-3 rounded-lg">${enrichmentData.join('')}</div>`;
+            const enrichmentBlock = `<div class="mt-4 pt-4 border-t-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">${enrichmentData.join('')}</div>`;
 
             const closingDivMatches = enrichedCard.match(/<\/div>/g);
             if (closingDivMatches && closingDivMatches.length >= 2) {
@@ -240,19 +294,19 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
 
             enrichedContent = enrichedContent.replace(existingCard[0], enrichedCard);
             enrichmentCount++;
-            console.log(`✅ Enriched product ${index + 1}: ${product.title}`);
+            console.log(`   ✅ SUCCESSFULLY ENRICHED product ${index + 1}: ${enrichmentData.length} fields added`);
           } else {
-            console.log(`⚠️ No enrichment data for product ${index + 1}: ${product.title}`);
+            console.log(`   ⚠️ No enrichment data available for product ${index + 1}`);
           }
         } else {
-          console.warn(`❌ Product card not found in content for: ${product.title}`);
+          console.warn(`   ❌ Product card not found in HTML content for: ${product.title}`);
         }
       } catch (error) {
-        console.error(`Error enriching product ${index + 1}:`, error, product);
+        console.error(`   ❌ Error enriching product ${index + 1}:`, error, product);
       }
     });
 
-    console.log(`Enrichment complete: ${enrichmentCount}/${article.product_links.length} products enriched`);
+    console.log(`\n🎉 Enrichment complete: ${enrichmentCount}/${article.product_links.length} products enriched with AI data`);
     return enrichedContent;
   };
 
