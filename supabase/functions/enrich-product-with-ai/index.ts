@@ -11,7 +11,6 @@ interface EnrichmentRequest {
   productId: string;
 }
 
-// Fonction utilitaire pour parser les réponses JSON de l'IA
 function parseAIResponse(responseContent: string): any {
   console.log("🔧 Parsing AI response...");
 
@@ -21,12 +20,10 @@ function parseAIResponse(responseContent: string): any {
   }
 
   try {
-    // Essayer de parser directement d'abord
     return JSON.parse(responseContent);
   } catch (directError) {
     console.log("Direct parse failed, trying to extract JSON...");
 
-    // Tentatives d'extraction de JSON
     const patterns = [
       /```json\s*([\s\S]*?)\s*```/,
       /```\s*([\s\S]*?)\s*```/,
@@ -47,7 +44,6 @@ function parseAIResponse(responseContent: string): any {
       }
     }
 
-    // Dernière tentative : nettoyer et essayer de parser
     try {
       const cleaned = responseContent
         .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
@@ -102,14 +98,12 @@ async function callDeepSeek(messages: any[], maxTokens = 800, retries = 2) {
   }
 }
 
-// Extraction regex des dimensions en fallback
 function extractDimensionsWithRegex(title: string, description: string): { text: string; source: string } | null {
   console.log("🔍 Extracting dimensions with regex...");
 
   const combinedText = `${title} ${description}`.toLowerCase();
   const dimensions: string[] = [];
 
-  // Patterns pour dimensions
   const patterns = [
     /(\d+)\s*x\s*(\d+)\s*x?\s*(\d+)?\s*(cm|m|mm|inches?|in)/gi,
     /l[.:]?\s*(\d+)\s*(cm|m)/gi,
@@ -143,7 +137,6 @@ function extractDimensionsWithRegex(title: string, description: string): { text:
   return null;
 }
 
-// Prompt amélioré et plus structuré
 function createTextAnalysisPrompt(product: any, cleanDescription: string): string {
   return `Tu es un expert en analyse de produits e-commerce. Analyse le produit suivant et extrais les données structurées.
 
@@ -238,7 +231,6 @@ function calculateConfidenceScore(
 ): number {
   let score = 0;
 
-  // Points pour l'analyse textuelle
   if (textAnalysis.category && textAnalysis.category !== "Non catégorisé") score += 20;
   if (textAnalysis.sub_category) score += 15;
   if (textAnalysis.material) score += 10;
@@ -247,12 +239,10 @@ function calculateConfidenceScore(
   if (textAnalysis.characteristics) score += 5;
   if (textAnalysis.dimensions_text) score += 10;
 
-  // Points pour l'analyse visuelle
   if (visionAnalysis.color_detected) score += 10;
   if (visionAnalysis.material_detected) score += 5;
   if (visionAnalysis.style_detected) score += 5;
 
-  // Points pour les images
   if (imageCount > 0) score += Math.min(imageCount * 2, 10);
 
   return Math.min(score, 100);
@@ -284,7 +274,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Récupération du produit
     console.log("🔍 Fetching product from database...");
     const { data: product, error: productError } = await supabaseClient
       .from("shopify_products")
@@ -302,7 +291,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("✅ Product found:", product.title);
 
-    // Récupération des images
     const { data: images } = await supabaseClient
       .from("product_images")
       .select("src, alt_text, position")
@@ -312,7 +300,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`🖼️ Found ${images?.length || 0} images`);
 
-    // Nettoyage de la description
     let cleanDescription = product.description
       ? product.description
           .replace(/<[^>]*>/g, ' ')
@@ -320,7 +307,6 @@ Deno.serve(async (req: Request) => {
           .trim()
       : 'No description provided';
 
-    // Suppression des mentions de quantité
     cleanDescription = cleanDescription
       .replace(/\b(lot|set|pack|ensemble|coffret)\s+(de\s+)?(\d+)\s+/gi, '')
       .replace(/\b(\d+)\s+(pièces?|pieces?|items?|unités?|units?)\s+/gi, '')
@@ -330,7 +316,6 @@ Deno.serve(async (req: Request) => {
 
     console.log("📝 Description cleaned");
 
-    // ANALYSE TEXTUELLE avec DeepSeek
     console.log("🧠 Starting text analysis with DeepSeek...");
     let textAnalysis: any = {};
 
@@ -379,7 +364,6 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // Extraction regex des dimensions en fallback
     if (!textAnalysis.dimensions_text) {
       const regexDimensions = extractDimensionsWithRegex(product.title, product.description || "");
       if (regexDimensions) {
@@ -389,7 +373,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ANALYSE VISUELLE en parallèle
     const visionPromise = (async () => {
       if (!images || images.length === 0) {
         console.log("⏭️ No images for vision analysis");
@@ -405,34 +388,20 @@ Deno.serve(async (req: Request) => {
       try {
         console.log("👁️ Analyzing images with OpenAI Vision...");
 
-        const imageContents = await Promise.all(
-          images.slice(0, 2).map(async (img: any) => {
-            try {
-              const imageResponse = await fetch(img.src);
-              if (!imageResponse.ok) return null;
+        const imageContents = images.slice(0, 2).map((img: any) => ({
+          type: "image_url",
+          image_url: {
+            url: img.src,
+            detail: "low",
+          },
+        }));
 
-              const imageBuffer = await imageResponse.arrayBuffer();
-              const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-
-              return {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`,
-                  detail: "low",
-                },
-              };
-            } catch (error) {
-              console.error("Error processing image:", error);
-              return null;
-            }
-          })
-        );
-
-        const validImages = imageContents.filter(img => img !== null);
-        if (validImages.length === 0) {
-          console.log("⚠️ No valid images processed");
+        if (imageContents.length === 0) {
+          console.log("⚠️ No images to process");
           return { visionAnalysis: {}, imageInsights: "" };
         }
+
+        console.log(`📸 Processing ${imageContents.length} images...`);
 
         const visionResponse = await fetch(
           "https://api.openai.com/v1/chat/completions",
@@ -449,7 +418,7 @@ Deno.serve(async (req: Request) => {
                   role: "user",
                   content: [
                     { type: "text", text: createVisionPrompt() },
-                    ...validImages,
+                    ...imageContents,
                   ],
                 },
               ],
@@ -482,7 +451,6 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
-    // GÉNÉRATION SEO en parallèle
     const seoPromise = (async () => {
       try {
         console.log("📝 Generating SEO content...");
@@ -513,7 +481,6 @@ Deno.serve(async (req: Request) => {
       }
     })();
 
-    // Attendre les résultats parallèles
     console.log("⏳ Waiting for parallel API calls...");
     const [visionResult, seoResult] = await Promise.allSettled([visionPromise, seoPromise]);
 
@@ -522,20 +489,16 @@ Deno.serve(async (req: Request) => {
 
     console.log("✅ Parallel API calls completed");
 
-    // FUSION DES DONNÉES avec priorités claires
     const { visionAnalysis, imageInsights } = visionData;
 
-    // Priorité: Vision > Analyse texte > Données existantes > ""
     const finalColor = visionAnalysis.color_detected || textAnalysis.color || product.ai_color || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || product.ai_material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
     const finalAiVisionAnalysis = imageInsights || product.ai_vision_analysis || "";
 
-    // Fusion des keywords
     const baseKeywords = Array.isArray(textAnalysis.keywords) ? textAnalysis.keywords : [];
     const allKeywords = [...new Set(baseKeywords)].slice(0, 15);
 
-    // Données SEO avec fallback
     const seoTitle = seoData.seo_title || product.title;
     const seoDescription = seoData.seo_description || cleanDescription.substring(0, 155);
 
@@ -547,11 +510,9 @@ Deno.serve(async (req: Request) => {
       dimensions: textAnalysis.dimensions_text || "none"
     });
 
-    // Calcul du score de confiance
     const confidenceScore = calculateConfidenceScore(textAnalysis, images?.length || 0, visionAnalysis);
     console.log("📊 Confidence score:", confidenceScore);
 
-    // Préparation des données de mise à jour
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
@@ -575,7 +536,6 @@ Deno.serve(async (req: Request) => {
       seo_synced_to_shopify: false,
     };
 
-    // Mise à jour dans la base
     console.log("💾 Updating product in database...");
     const { error: updateError } = await supabaseClient
       .from("shopify_products")
