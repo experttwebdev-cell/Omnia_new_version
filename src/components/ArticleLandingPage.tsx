@@ -47,6 +47,18 @@ interface BlogArticle {
     ai_vision_analysis?: string;
     dimensions_text?: string;
     dimensions_source?: string;
+    smart_length?: number;
+    smart_length_unit?: string;
+    smart_width?: number;
+    smart_width_unit?: string;
+    smart_height?: number;
+    smart_height_unit?: string;
+    smart_depth?: number;
+    smart_depth_unit?: string;
+    smart_diameter?: number;
+    smart_diameter_unit?: string;
+    smart_weight?: number;
+    smart_weight_unit?: string;
     characteristics?: string;
     functionality?: string;
     google_product_category?: string;
@@ -107,7 +119,7 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
             console.log('Fetching enriched product data for', productIds.length, 'products');
             const { data, error: productsError } = await supabase
               .from('shopify_products')
-              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, ai_vision_analysis, dimensions_text, dimensions_source, characteristics, functionality, google_product_category, google_brand, vendor, enrichment_status')
+              .select('id, shopify_id, title, handle, image_url, price, category, sub_category, ai_color, ai_material, ai_vision_analysis, dimensions_text, dimensions_source, smart_length, smart_length_unit, smart_width, smart_width_unit, smart_height, smart_height_unit, smart_depth, smart_depth_unit, smart_diameter, smart_diameter_unit, smart_weight, smart_weight_unit, characteristics, functionality, google_product_category, google_brand, vendor, enrichment_status')
               .in('id', productIds);
 
             const productsData = data as Array<{
@@ -124,6 +136,18 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
               ai_vision_analysis: string | null;
               dimensions_text: string | null;
               dimensions_source: string | null;
+              smart_length: number | null;
+              smart_length_unit: string | null;
+              smart_width: number | null;
+              smart_width_unit: string | null;
+              smart_height: number | null;
+              smart_height_unit: string | null;
+              smart_depth: number | null;
+              smart_depth_unit: string | null;
+              smart_diameter: number | null;
+              smart_diameter_unit: string | null;
+              smart_weight: number | null;
+              smart_weight_unit: string | null;
               characteristics: string | null;
               functionality: string | null;
               google_product_category: string | null;
@@ -162,6 +186,18 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
                 ai_vision_analysis: p.ai_vision_analysis || '',
                 dimensions_text: p.dimensions_text || '',
                 dimensions_source: p.dimensions_source || '',
+                smart_length: p.smart_length || undefined,
+                smart_length_unit: p.smart_length_unit || 'cm',
+                smart_width: p.smart_width || undefined,
+                smart_width_unit: p.smart_width_unit || 'cm',
+                smart_height: p.smart_height || undefined,
+                smart_height_unit: p.smart_height_unit || 'cm',
+                smart_depth: p.smart_depth || undefined,
+                smart_depth_unit: p.smart_depth_unit || 'cm',
+                smart_diameter: p.smart_diameter || undefined,
+                smart_diameter_unit: p.smart_diameter_unit || 'cm',
+                smart_weight: p.smart_weight || undefined,
+                smart_weight_unit: p.smart_weight_unit || 'kg',
                 characteristics: p.characteristics || '',
                 functionality: p.functionality || '',
                 google_product_category: p.google_product_category || '',
@@ -238,44 +274,98 @@ export function ArticleLandingPage({ articleId }: ArticleLandingPageProps) {
 
           const enrichmentData = [];
 
-          if (product.ai_color) {
-            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🎨 Couleur:</strong> <span>${product.ai_color}</span></div>`);
+          const physicalProperties = [];
+          const visualProperties = [];
+          const functionalProperties = [];
+          const metaInfo = [];
+
+          if (product.smart_length || product.smart_width || product.smart_height || product.smart_depth || product.smart_diameter) {
+            const dimensionParts = [];
+            if (product.smart_length) {
+              dimensionParts.push(`<div class="flex items-center gap-1"><span class="font-semibold text-gray-700">L:</span> <span class="text-gray-900">${product.smart_length} ${product.smart_length_unit}</span></div>`);
+            }
+            if (product.smart_width) {
+              dimensionParts.push(`<div class="flex items-center gap-1"><span class="font-semibold text-gray-700">l:</span> <span class="text-gray-900">${product.smart_width} ${product.smart_width_unit}</span></div>`);
+            }
+            if (product.smart_height) {
+              dimensionParts.push(`<div class="flex items-center gap-1"><span class="font-semibold text-gray-700">H:</span> <span class="text-gray-900">${product.smart_height} ${product.smart_height_unit}</span></div>`);
+            }
+            if (product.smart_depth) {
+              dimensionParts.push(`<div class="flex items-center gap-1"><span class="font-semibold text-gray-700">P:</span> <span class="text-gray-900">${product.smart_depth} ${product.smart_depth_unit}</span></div>`);
+            }
+            if (product.smart_diameter) {
+              dimensionParts.push(`<div class="flex items-center gap-1"><span class="font-semibold text-gray-700">Ø:</span> <span class="text-gray-900">${product.smart_diameter} ${product.smart_diameter_unit}</span></div>`);
+            }
+
+            physicalProperties.push(`<div class="mb-3"><div class="font-semibold text-blue-700 mb-2 flex items-center gap-2"><span>📏</span> Dimensions Intelligentes</div><div class="grid grid-cols-2 gap-2 text-sm">${dimensionParts.join('')}</div></div>`);
             hasEnrichments = true;
-            console.log(`   ✅ Added color: ${product.ai_color}`);
+            console.log(`   ✅ Added smart dimensions`);
+          } else if (product.dimensions_text) {
+            physicalProperties.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">📏 Dimensions:</strong> <span>${product.dimensions_text}</span></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added dimensions text: ${product.dimensions_text}`);
+          }
+
+          if (product.smart_weight) {
+            physicalProperties.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">⚖️ Poids:</strong> <span>${product.smart_weight} ${product.smart_weight_unit}</span></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added weight: ${product.smart_weight} ${product.smart_weight_unit}`);
           }
 
           if (product.ai_material) {
-            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🧱 Matériau:</strong> <span>${product.ai_material}</span></div>`);
+            physicalProperties.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🧱 Matériau:</strong> <span>${product.ai_material}</span></div>`);
             hasEnrichments = true;
             console.log(`   ✅ Added material: ${product.ai_material}`);
           }
 
-          if (product.dimensions_text) {
-            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">📏 Dimensions:</strong> <span>${product.dimensions_text}</span></div>`);
+          if (product.ai_color) {
+            visualProperties.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">🎨 Couleur:</strong> <span>${product.ai_color}</span></div>`);
             hasEnrichments = true;
-            console.log(`   ✅ Added dimensions: ${product.dimensions_text}`);
+            console.log(`   ✅ Added color: ${product.ai_color}`);
+          }
+
+          if (product.ai_vision_analysis) {
+            visualProperties.push(`<div class="text-sm text-gray-700 mb-3"><div class="font-semibold text-blue-700 mb-1 flex items-center gap-2"><span>👁️</span> Analyse AI Vision (OpenAI)</div><div class="text-gray-600 bg-blue-50 p-3 rounded-md border border-blue-200 italic">${product.ai_vision_analysis}</div></div>`);
+            hasEnrichments = true;
+            console.log(`   ✅ Added AI vision analysis`);
           }
 
           if (product.functionality) {
-            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">⚙️ Fonctionnalité:</strong> <span>${product.functionality}</span></div>`);
+            functionalProperties.push(`<div class="text-sm text-gray-700 mb-2 flex items-center gap-2"><strong class="text-blue-600">⚙️ Fonctionnalité:</strong> <span>${product.functionality}</span></div>`);
             hasEnrichments = true;
             console.log(`   ✅ Added functionality: ${product.functionality}`);
           }
 
           if (product.characteristics) {
-            enrichmentData.push(`<div class="text-sm text-gray-700 mb-2"><strong class="text-blue-600">✨ Caractéristiques:</strong> <span class="ml-1">${product.characteristics}</span></div>`);
+            functionalProperties.push(`<div class="text-sm text-gray-700 mb-2"><strong class="text-blue-600">✨ Caractéristiques:</strong> <span class="ml-1">${product.characteristics}</span></div>`);
             hasEnrichments = true;
             console.log(`   ✅ Added characteristics`);
           }
 
           if (product.google_brand) {
-            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏢 Marque:</strong> ${product.google_brand}</div>`);
+            metaInfo.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏢 Marque:</strong> ${product.google_brand}</div>`);
             console.log(`   ✅ Added brand: ${product.google_brand}`);
           }
 
           if (product.google_product_category) {
-            enrichmentData.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏷️ Catégorie:</strong> ${product.google_product_category}</div>`);
+            metaInfo.push(`<div class="text-xs text-gray-500 mb-1"><strong>🏷️ Catégorie:</strong> ${product.google_product_category}</div>`);
             console.log(`   ✅ Added category: ${product.google_product_category}`);
+          }
+
+          if (physicalProperties.length > 0) {
+            enrichmentData.push(`<div class="mb-3 pb-3 border-b border-blue-200"><div class="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">Propriétés Physiques</div>${physicalProperties.join('')}</div>`);
+          }
+
+          if (visualProperties.length > 0) {
+            enrichmentData.push(`<div class="mb-3 pb-3 border-b border-blue-200"><div class="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">Propriétés Visuelles</div>${visualProperties.join('')}</div>`);
+          }
+
+          if (functionalProperties.length > 0) {
+            enrichmentData.push(`<div class="mb-3 pb-3 border-b border-blue-200"><div class="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">Caractéristiques Fonctionnelles</div>${functionalProperties.join('')}</div>`);
+          }
+
+          if (metaInfo.length > 0) {
+            enrichmentData.push(`<div class="mb-2">${metaInfo.join('')}</div>`);
           }
 
           if (hasEnrichments && enrichmentData.length > 0) {
