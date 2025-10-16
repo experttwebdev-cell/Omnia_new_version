@@ -75,7 +75,7 @@ interface NetlinkingRule {
 
 export function BlogWizard({ onClose, categories }: BlogWizardProps) {
   const [mode, setMode] = useState<'quick' | 'advanced'>('quick');
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -115,22 +115,30 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
     const fetchProducts = async () => {
       setLoadingProducts(true);
       try {
+        console.log('🔄 Fetching products from shopify_products...');
+        
         const { data, error } = await supabase
           .from('shopify_products')
           .select('*')
           .order('title')
           .limit(200);
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Supabase error:', error);
+          throw error;
+        }
+
+        console.log('✅ Products loaded:', data?.length || 0);
         
-        if (data) {
+        if (data && data.length > 0) {
+          // Transformer les données pour utiliser les champs category et sub_category
           const transformedProducts: Product[] = data.map(product => ({
             id: product.id,
             title: product.title || 'Sans titre',
             description: product.description || '',
             product_type: product.product_type || '',
-            category: product.product_type || '',
-            sub_category: product.sub_category || '',
+            category: product.category || '', // Utiliser le champ category
+            sub_category: product.sub_category || '', // Utiliser le champ sub_category
             image_url: product.image_url || '/placeholder-product.jpg',
             price: product.price ? parseFloat(product.price) : 0,
             handle: product.handle || '',
@@ -140,10 +148,15 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           }));
 
           setProducts(transformedProducts);
+          console.log('🎯 Transformed products count:', transformedProducts.length);
+          console.log('🏷️ Categories found:', [...new Set(transformedProducts.map(p => p.category).filter(Boolean))]);
+        } else {
+          console.log('📭 No products found in database');
+          setProducts([]);
         }
       } catch (err) {
-        console.error('Error fetching products:', err);
-        setError('Failed to load products');
+        console.error('💥 Error fetching products:', err);
+        setError('Failed to load products from database');
       } finally {
         setLoadingProducts(false);
       }
@@ -180,22 +193,25 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
   const filteredProducts = products.filter(product => {
     const matchesCategory = !formData.category || 
       product.category?.toLowerCase().includes(formData.category.toLowerCase()) ||
-      product.product_type?.toLowerCase().includes(formData.category.toLowerCase());
+      product.sub_category?.toLowerCase().includes(formData.category.toLowerCase());
     
     const matchesSearch = !searchTerm || 
       product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.tags?.toLowerCase().includes(searchTerm.toLowerCase());
+      product.tags?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sub_category?.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesCategory && matchesSearch;
   });
 
-  // Sélection automatique des produits
+  // Sélection automatique des produits basée sur le count
   useEffect(() => {
-    if (formData.category && filteredProducts.length > 0) {
+    if (formData.category && filteredProducts.length > 0 && currentStep >= 2) {
       const autoSelected = filteredProducts.slice(0, formData.productCount);
       setSelectedProducts(autoSelected);
       
+      // Générer automatiquement les règles de netlinking
       const autoRules: NetlinkingRule[] = autoSelected.map((product, index) => ({
         type: 'product',
         target: product.id,
@@ -204,6 +220,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         priority: index + 1
       }));
 
+      // Ajouter une règle pour la catégorie principale
       if (formData.category) {
         autoRules.push({
           type: 'category',
@@ -216,7 +233,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
 
       setNetlinkingRules(autoRules);
     }
-  }, [formData.category, formData.productCount, filteredProducts]);
+  }, [formData.category, formData.productCount, filteredProducts, currentStep]);
 
   // Gestion des keywords en tags
   const addKeyword = () => {
@@ -247,6 +264,8 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    } else if (currentStep === 1) {
+      setCurrentStep(0); // Retour à la sélection du mode
     }
   };
 
@@ -401,6 +420,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
     }
   };
 
+  // Obtenir les catégories uniques depuis les produits
   const productCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
 
   // Écran de sélection du mode
@@ -419,7 +439,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                   setMode('quick');
                   setCurrentStep(1);
                 }}
-                className="p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+                className="p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <Zap className="w-8 h-8 text-blue-600" />
@@ -441,7 +461,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                   setMode('advanced');
                   setCurrentStep(1);
                 }}
-                className="p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
+                className="p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <User className="w-8 h-8 text-purple-600" />
@@ -565,7 +585,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           )}
 
           <div className="min-h-[400px]">
-            {/* Étape 1: Sélection du sujet (identique pour les deux modes) */}
+            {/* Étape 1: Sélection du sujet */}
             {currentStep === 1 && (
               <div className="space-y-6 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -584,7 +604,9 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     >
                       <option value="">Select a category</option>
                       {productCategories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat}>
+                          {cat} ({products.filter(p => p.category === cat).length})
+                        </option>
                       ))}
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
@@ -627,7 +649,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               </div>
             )}
 
-            {/* Étape 2: Sélection des produits (identique pour les deux modes) */}
+            {/* Étape 2: Sélection des produits */}
             {currentStep === 2 && (
               <div className="space-y-6 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-gray-800">
@@ -636,6 +658,24 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quick Selection by Category
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value, productCount: 3 })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                      >
+                        <option value="">All Categories</option>
+                        {productCategories.map(cat => (
+                          <option key={cat} value={cat}>
+                            {cat} ({products.filter(p => p.category === cat).length})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Number of Products
@@ -652,30 +692,32 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         <option value={7}>7 Products</option>
                       </select>
                       <p className="text-sm text-gray-500 mt-2">
-                        {selectedProducts.length} product(s) selected automatically
+                        {selectedProducts.length} product(s) selected
                       </p>
                     </div>
 
-                    {mode === 'quick' && (
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <h4 className="font-semibold text-green-900 mb-2">Auto-Selection</h4>
-                        <p className="text-sm text-green-800">
-                          Products are automatically selected based on your category. 
-                          The AI will naturally integrate them into your article.
-                        </p>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        // Sélection automatique basée sur la catégorie
+                        const categoryProducts = filteredProducts.slice(0, formData.productCount);
+                        setSelectedProducts(categoryProducts);
+                      }}
+                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      Auto-Select {formData.productCount} Products
+                    </button>
                   </div>
 
+                  {/* Recherche et sélection manuelle */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-semibold text-gray-800 mb-3">
-                      Search Products ({filteredProducts.length} found)
+                      Search & Manual Selection
                     </h4>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search products..."
+                        placeholder="Search by product name, category, tags..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -685,52 +727,93 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     {loadingProducts ? (
                       <div className="flex justify-center py-8">
                         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                        <span className="ml-2 text-gray-600">Loading products...</span>
+                      </div>
+                    ) : products.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p>No products found in your catalog</p>
+                        <p className="text-sm mt-1">Please import products from Shopify first</p>
+                        <button
+                          onClick={() => window.open('/settings', '_blank')}
+                          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                        >
+                          Go to Shopify Settings
+                        </button>
                       </div>
                     ) : filteredProducts.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
-                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <p>No products found</p>
+                        <Search className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p>No products match your search</p>
+                        <p className="text-sm mt-1">Try different keywords or category</p>
                       </div>
                     ) : (
-                      <div className="max-h-60 overflow-y-auto space-y-2">
-                        {filteredProducts.slice(0, 10).map(product => (
-                          <div
-                            key={product.id}
-                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
-                              selectedProducts.some(p => p.id === product.id)
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:bg-gray-50'
-                            }`}
-                            onClick={() => toggleProductSelection(product)}
-                          >
-                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
-                              {product.image_url && product.image_url !== '/placeholder-product.jpg' ? (
-                                <img
-                                  src={product.image_url}
-                                  alt={product.title}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              ) : (
-                                <Package className="w-6 h-6 text-gray-400" />
-                              )}
+                      <>
+                        <div className="max-h-60 overflow-y-auto space-y-2 mb-3">
+                          {filteredProducts.slice(0, 20).map(product => (
+                            <div
+                              key={product.id}
+                              className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                                selectedProducts.some(p => p.id === product.id)
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 hover:bg-gray-50'
+                              }`}
+                              onClick={() => toggleProductSelection(product)}
+                            >
+                              <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                                {product.image_url && product.image_url !== '/placeholder-product.jpg' ? (
+                                  <img
+                                    src={product.image_url}
+                                    alt={product.title}
+                                    className="w-12 h-12 object-cover rounded"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                                    }}
+                                  />
+                                ) : (
+                                  <Package className="w-6 h-6 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{product.title}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  {product.category && (
+                                    <span className="bg-gray-100 px-2 py-1 rounded text-xs">{product.category}</span>
+                                  )}
+                                  {product.sub_category && (
+                                    <span className="bg-gray-100 px-2 py-1 rounded text-xs">{product.sub_category}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-gray-900">${product.price}</p>
+                                <p className="text-xs text-gray-500">{product.vendor}</p>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{product.title}</p>
-                              <p className="text-sm text-gray-600 truncate">{product.category}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-900">${product.price}</p>
-                            </div>
+                          ))}
+                        </div>
+                        {filteredProducts.length > 20 && (
+                          <div className="text-center py-2 text-sm text-gray-500 border-t">
+                            +{filteredProducts.length - 20} more products - refine your search to see more
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
 
+                {/* Produits sélectionnés */}
                 {selectedProducts.length > 0 && (
                   <div className="mt-6">
-                    <h4 className="font-semibold text-gray-800 mb-3">Selected Products ({selectedProducts.length})</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-gray-800">Selected Products ({selectedProducts.length})</h4>
+                      <button
+                        onClick={() => setSelectedProducts([])}
+                        className="text-sm text-red-600 hover:text-red-800 transition"
+                      >
+                        Clear All
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {selectedProducts.map(product => (
                         <div key={product.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
@@ -748,10 +831,14 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900 truncate">{product.title}</p>
                             <p className="text-sm text-gray-600">${product.price}</p>
+                            {product.category && (
+                              <p className="text-xs text-gray-500 truncate">{product.category}</p>
+                            )}
                           </div>
                           <button
                             onClick={() => toggleProductSelection(product)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                            title="Remove product"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -932,7 +1019,158 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
             {currentStep === 5 && mode === 'advanced' && (
               <div className="space-y-6 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Configure Settings</h3>
-                {/* Contenu des settings avancés */}
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Min Word Count
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.wordCountMin}
+                        onChange={(e) => setFormData({ ...formData, wordCountMin: parseInt(e.target.value) })}
+                        min="300"
+                        max="2000"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Max Word Count
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.wordCountMax}
+                        onChange={(e) => setFormData({ ...formData, wordCountMax: parseInt(e.target.value) })}
+                        min="300"
+                        max="2000"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Language
+                      </label>
+                      <select
+                        value={formData.language}
+                        onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        <option value="fr">Français</option>
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="de">Deutsch</option>
+                      </select>
+                    </div>
+
+                    {/* Shopify Sync Settings */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <h4 className="font-semibold text-gray-800 mb-3">Shopify Sync</h4>
+                      
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={formData.autoSync}
+                            onChange={(e) => setFormData({ ...formData, autoSync: e.target.checked })}
+                            className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700 flex items-center gap-2">
+                            <Upload className="w-4 h-4" />
+                            Auto-sync to Shopify after generation
+                          </span>
+                        </label>
+
+                        {formData.autoSync && (
+                          <div className="ml-8 space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Shopify Blog
+                              </label>
+                              <select
+                                value={formData.shopifyBlogId}
+                                onChange={(e) => setFormData({ ...formData, shopifyBlogId: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                              >
+                                <option value="">Select a Shopify blog</option>
+                                {shopifyBlogs.map(blog => (
+                                  <option key={blog.id} value={blog.id}>
+                                    {blog.title}
+                                  </option>
+                                ))}
+                              </select>
+                              {shopifyBlogs.length === 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  No Shopify blogs found. Make sure your store is connected.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <p className="text-sm text-blue-800">
+                                Article will be automatically published to your selected Shopify blog immediately after generation.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Image Strategy
+                      </label>
+                      <select
+                        value={formData.imageStrategy}
+                        onChange={(e) => setFormData({ ...formData, imageStrategy: e.target.value as any })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        <option value="auto">Auto-generate Images</option>
+                        <option value="mixed">Use Product Images + AI</option>
+                        <option value="manual">Manual Image Selection</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.internalLinking}
+                          onChange={(e) => setFormData({ ...formData, internalLinking: e.target.checked })}
+                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">Enable internal linking</span>
+                      </label>
+                      {formData.internalLinking && (
+                        <div className="ml-8">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Max Internal Links
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.maxInternalLinks}
+                            onChange={(e) => setFormData({ ...formData, maxInternalLinks: parseInt(e.target.value) })}
+                            min="1"
+                            max="10"
+                            className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-semibold text-blue-900 mb-2">Image Sources</h4>
+                      <p className="text-sm text-blue-800">
+                        {formData.imageStrategy === 'auto' && 'AI will generate relevant images based on content'}
+                        {formData.imageStrategy === 'mixed' && 'Will use selected product images + AI-generated images'}
+                        {formData.imageStrategy === 'manual' && 'You will need to manually add images after generation'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -960,6 +1198,14 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         <span className="font-medium text-gray-700">Word Count:</span>
                         <span className="text-gray-900">800-1200 words</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Language:</span>
+                        <span className="text-gray-900">
+                          {formData.language === 'fr' ? 'Français' : 
+                           formData.language === 'en' ? 'English' :
+                           formData.language === 'es' ? 'Español' : 'Deutsch'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -976,8 +1222,137 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         <li>• Mobile optimization</li>
                       </ul>
                     </div>
+
+                    {generating && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-8">
+                        <div className="flex flex-col items-center gap-4">
+                          <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
+                          <div className="text-center">
+                            <p className="text-lg font-semibold text-gray-800 mb-2">Generating your article...</p>
+                            <p className="text-sm text-gray-600">AI is creating high-quality content</p>
+                          </div>
+                          <div className="w-full max-w-md">
+                            <div className="bg-gray-200 h-3 rounded-full overflow-hidden">
+                              <div
+                                className="bg-blue-600 h-full transition-all duration-500 ease-out"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <p className="text-center text-sm text-gray-600 mt-2">{progress}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {currentStep === 6 && mode === 'advanced' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Review & Generate</h3>
+                
+                {!generating && !success && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3">
+                        <h4 className="font-semibold text-gray-800 mb-3">Article Details</h4>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Category:</span>
+                          <span className="text-gray-900">{formData.category}</span>
+                        </div>
+                        {formData.subcategory && (
+                          <div className="flex justify-between">
+                            <span className="font-medium text-gray-700">Subcategory:</span>
+                            <span className="text-gray-900">{formData.subcategory}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Keywords:</span>
+                          <span className="text-gray-900">{formData.keywords.split(',').length} keywords</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Word Count:</span>
+                          <span className="text-gray-900">{formData.wordCountMin} - {formData.wordCountMax}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Language:</span>
+                          <span className="text-gray-900">
+                            {formData.language === 'fr' ? 'Français' : 
+                             formData.language === 'en' ? 'English' :
+                             formData.language === 'es' ? 'Español' : 'Deutsch'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Structure:</span>
+                          <span className="text-gray-900 capitalize">{formData.contentStructure}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3">
+                        <h4 className="font-semibold text-gray-800 mb-3">Products & Linking</h4>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Products:</span>
+                          <span className="text-gray-900">{selectedProducts.length} selected</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Netlinking:</span>
+                          <span className="text-gray-900 capitalize">{formData.netlinkingDepth}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Link Rules:</span>
+                          <span className="text-gray-900">{netlinkingRules.length} rules</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Image Strategy:</span>
+                          <span className="text-gray-900 capitalize">{formData.imageStrategy}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">Internal Links:</span>
+                          <span className="text-gray-900">{formData.internalLinking ? `Yes (max ${formData.maxInternalLinks})` : 'No'}</span>
+                        </div>
+                        {formData.autoSync && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="font-medium text-gray-700">Shopify Sync:</span>
+                              <span className="text-gray-900">Auto-publish</span>
+                            </div>
+                            {formData.shopifyBlogId && (
+                              <div className="flex justify-between">
+                                <span className="font-medium text-gray-700">Target Blog:</span>
+                                <span className="text-gray-900">
+                                  {shopifyBlogs.find(b => b.id === formData.shopifyBlogId)?.title || 'Unknown'}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className={`p-4 rounded-lg border ${
+                        formData.autoSync 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-blue-50 border-blue-200'
+                      }`}>
+                        <h4 className={`font-semibold mb-2 ${
+                          formData.autoSync ? 'text-green-900' : 'text-blue-900'
+                        }`}>
+                          {formData.autoSync ? 'Ready to Generate & Publish' : 'Ready to Generate'}
+                        </h4>
+                        <p className={`text-sm ${
+                          formData.autoSync ? 'text-green-800' : 'text-blue-800'
+                        }`}>
+                          {formData.autoSync 
+                            ? 'The AI will create a comprehensive blog article and automatically publish it to your Shopify store.'
+                            : 'The AI will create a comprehensive blog article featuring your selected products with natural integration and SEO optimization.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {generating && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-8">
@@ -985,7 +1360,12 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                       <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
                       <div className="text-center">
                         <p className="text-lg font-semibold text-gray-800 mb-2">Generating your article...</p>
-                        <p className="text-sm text-gray-600">AI is creating high-quality content</p>
+                        <p className="text-sm text-gray-600">
+                          {formData.autoSync 
+                            ? 'AI is creating high-quality content and will automatically publish to Shopify'
+                            : 'AI is creating high-quality content with product integration'
+                          }
+                        </p>
                       </div>
                       <div className="w-full max-w-md">
                         <div className="bg-gray-200 h-3 rounded-full overflow-hidden">
@@ -999,13 +1379,6 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {currentStep === 6 && mode === 'advanced' && (
-              <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Review & Generate</h3>
-                {/* Contenu de review avancé */}
               </div>
             )}
           </div>
