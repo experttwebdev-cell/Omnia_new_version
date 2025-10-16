@@ -150,8 +150,8 @@ Extract and provide the following in JSON format:
   "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
   "color": "Main color of the product (always provide if visible or mentioned)",
   "material": "Primary material (if mentioned)",
-  "style": "Product style (e.g., 'Modern', 'Scandinavian', 'Industrial', 'Classic', 'Rustic')",
-  "room": "Typical room usage (e.g., 'Living Room', 'Bedroom', 'Dining Room', 'Office', 'Kitchen')",
+  "style": "Product style in the same language as the title (e.g., 'Moderne', 'Scandinave', 'Industriel', 'Classique', 'Rustique')",
+  "room": "Typical room usage in the same language as the title (e.g., 'Salon', 'Chambre', 'Salle à manger', 'Bureau', 'Cuisine')",
   "smart_length": number or null,
   "smart_length_unit": "cm, m, inches, etc.",
   "smart_width": number or null,
@@ -173,9 +173,9 @@ Extract and provide the following in JSON format:
 IMPORTANT INSTRUCTIONS - SMART DIMENSION EXTRACTION:
 - category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
-- style: Infer the design style (Modern, Scandinavian, Industrial, Classic, Rustic, Minimalist, Contemporary, etc.)
-- room: Infer typical usage room (Living Room, Bedroom, Dining Room, Office, Kitchen, Bathroom, etc.)
-- ai_vision_analysis: Write a rich, detailed description that would convince a customer to buy. Include materials, dimensions if mentioned, style characteristics, and practical benefits. Use the same language as the product title.
+- style: Infer the design style in the same language as the title (e.g., for French: "Moderne", "Scandinave", "Industriel", "Classique", "Rustique", "Minimaliste", "Contemporain")
+- room: Infer typical usage room in the same language as the title (e.g., for French: "Salon", "Chambre", "Salle à manger", "Bureau", "Cuisine", "Salle de bain")
+- ai_vision_analysis: Write a rich, detailed description based on title and description ONLY (vision analysis from images will be added separately). Include materials, dimensions if mentioned, style characteristics, and practical benefits. Use the same language as the product title.
 - color & material: Extract from both title and description
 
 CRITICAL - SMART DIMENSIONS:
@@ -211,7 +211,6 @@ CRITICAL - SMART DIMENSIONS:
     let textAnalysis;
 
     try {
-      // Try to extract JSON from markdown code blocks if present
       let jsonContent = textAnalysisContent;
       const jsonMatch = textAnalysisContent.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
@@ -373,7 +372,7 @@ Provide response in JSON format:
     );
 
     const finalAiVisionAnalysis = imageInsights
-      ? `${textAnalysis.ai_vision_analysis || ""}\n\nVisual Analysis: ${imageInsights}`
+      ? `${textAnalysis.ai_vision_analysis || ""}\n\n[Analyse visuelle OpenAI des photos du produit]: ${imageInsights}`
       : textAnalysis.ai_vision_analysis || "";
 
     const updateData: any = {
@@ -394,7 +393,6 @@ Provide response in JSON format:
       enrichment_error: "",
     };
 
-    // Add SMART dimensions (new fields)
     if (textAnalysis.smart_length) {
       updateData.smart_length = textAnalysis.smart_length;
       updateData.smart_length_unit = textAnalysis.smart_length_unit || "cm";
