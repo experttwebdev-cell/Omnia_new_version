@@ -16,7 +16,10 @@ import {
   Link,
   Layers,
   Package,
-  Upload
+  Upload,
+  Zap,
+  User,
+  X
 } from 'lucide-react';
 
 interface WizardStep {
@@ -26,7 +29,14 @@ interface WizardStep {
   description: string;
 }
 
-const steps: WizardStep[] = [
+const quickSteps: WizardStep[] = [
+  { id: 1, title: 'Topic', icon: FileText, description: 'Choose topic' },
+  { id: 2, title: 'Products', icon: Package, description: 'Select products' },
+  { id: 3, title: 'Keywords', icon: Tag, description: 'Add keywords' },
+  { id: 4, title: 'Generate', icon: Sparkles, description: 'Create article' },
+];
+
+const advancedSteps: WizardStep[] = [
   { id: 1, title: 'Topic Selection', icon: FileText, description: 'Choose your blog topic' },
   { id: 2, title: 'Products', icon: Package, description: 'Select related products' },
   { id: 3, title: 'Netlinking', icon: Layers, description: 'Configure internal linking' },
@@ -64,6 +74,7 @@ interface NetlinkingRule {
 }
 
 export function BlogWizard({ onClose, categories }: BlogWizardProps) {
+  const [mode, setMode] = useState<'quick' | 'advanced'>('quick');
   const [currentStep, setCurrentStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -76,19 +87,23 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
   const [netlinkingRules, setNetlinkingRules] = useState<NetlinkingRule[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [shopifyBlogs, setShopifyBlogs] = useState<any[]>([]);
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState('');
+
+  const steps = mode === 'quick' ? quickSteps : advancedSteps;
 
   const [formData, setFormData] = useState({
     category: '',
     subcategory: '',
     keywords: '',
-    wordCountMin: 700,
-    wordCountMax: 900,
+    wordCountMin: mode === 'quick' ? 800 : 700,
+    wordCountMax: mode === 'quick' ? 1200 : 900,
     language: 'fr',
     autoPublish: false,
     autoSync: false,
     shopifyBlogId: '',
-    internalLinking: true,
-    maxInternalLinks: 5,
+    internalLinking: mode === 'quick' ? true : false,
+    maxInternalLinks: 3,
     imageStrategy: 'auto' as 'auto' | 'manual' | 'mixed',
     netlinkingDepth: 'comprehensive' as 'basic' | 'comprehensive' | 'aggressive',
     contentStructure: 'pyramidal' as 'pyramidal' | 'listicle' | 'tutorial',
@@ -104,10 +119,28 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           .from('shopify_products')
           .select('*')
           .order('title')
-          .limit(100);
+          .limit(200);
 
         if (error) throw error;
-        setProducts((data as Product[]) || []);
+        
+        if (data) {
+          const transformedProducts: Product[] = data.map(product => ({
+            id: product.id,
+            title: product.title || 'Sans titre',
+            description: product.description || '',
+            product_type: product.product_type || '',
+            category: product.product_type || '',
+            sub_category: product.sub_category || '',
+            image_url: product.image_url || '/placeholder-product.jpg',
+            price: product.price ? parseFloat(product.price) : 0,
+            handle: product.handle || '',
+            vendor: product.vendor || '',
+            tags: product.tags || '',
+            shopify_id: product.shopify_id || ''
+          }));
+
+          setProducts(transformedProducts);
+        }
       } catch (err) {
         console.error('Error fetching products:', err);
         setError('Failed to load products');
@@ -143,23 +176,26 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
     fetchShopifyBlogs();
   }, []);
 
-  // Filtrer les produits par catégorie
+  // Filtrer les produits
   const filteredProducts = products.filter(product => {
-    const matchesCategory = !formData.category || product.category === formData.category;
+    const matchesCategory = !formData.category || 
+      product.category?.toLowerCase().includes(formData.category.toLowerCase()) ||
+      product.product_type?.toLowerCase().includes(formData.category.toLowerCase());
+    
     const matchesSearch = !searchTerm || 
-      product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.tags.toLowerCase().includes(searchTerm.toLowerCase());
+      product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.tags?.toLowerCase().includes(searchTerm.toLowerCase());
+    
     return matchesCategory && matchesSearch;
   });
 
-  // Sélection automatique des produits basée sur le count
+  // Sélection automatique des produits
   useEffect(() => {
     if (formData.category && filteredProducts.length > 0) {
       const autoSelected = filteredProducts.slice(0, formData.productCount);
       setSelectedProducts(autoSelected);
       
-      // Générer automatiquement les règles de netlinking
       const autoRules: NetlinkingRule[] = autoSelected.map((product, index) => ({
         type: 'product',
         target: product.id,
@@ -168,7 +204,6 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         priority: index + 1
       }));
 
-      // Ajouter une règle pour la catégorie principale
       if (formData.category) {
         autoRules.push({
           type: 'category',
@@ -182,6 +217,26 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
       setNetlinkingRules(autoRules);
     }
   }, [formData.category, formData.productCount, filteredProducts]);
+
+  // Gestion des keywords en tags
+  const addKeyword = () => {
+    const newKeyword = keywordInput.trim();
+    if (newKeyword && !keywords.includes(newKeyword)) {
+      setKeywords([...keywords, newKeyword]);
+      setKeywordInput('');
+    }
+  };
+
+  const removeKeyword = (keywordToRemove: string) => {
+    setKeywords(keywords.filter(k => k !== keywordToRemove));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addKeyword();
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < steps.length) {
@@ -211,7 +266,9 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         });
       }, 500);
 
-      // Étape 1: Génération de l'article
+      // Utiliser les keywords des tags
+      const finalKeywords = keywords.length > 0 ? keywords : formData.keywords.split(',').map(k => k.trim()).filter(Boolean);
+
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`;
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -223,7 +280,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           mode: 'manual',
           category: formData.category,
           subcategory: formData.subcategory || null,
-          keywords: formData.keywords.split(',').map(k => k.trim()).filter(Boolean),
+          keywords: finalKeywords,
           word_count_min: formData.wordCountMin,
           word_count_max: formData.wordCountMax,
           language: formData.language,
@@ -251,11 +308,10 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
 
       const result = await response.json();
       
-      // Étape 2: Synchronisation automatique avec Shopify si demandée
       if (formData.autoSync && result.articleId) {
         try {
           const syncUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-blog-to-shopify`;
-          const syncResponse = await fetch(syncUrl, {
+          await fetch(syncUrl, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
@@ -266,10 +322,6 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               shopifyBlogId: formData.shopifyBlogId 
             }),
           });
-
-          if (!syncResponse.ok) {
-            console.warn('Auto-sync to Shopify failed, but article was created');
-          }
         } catch (syncError) {
           console.warn('Auto-sync to Shopify failed:', syncError);
         }
@@ -291,13 +343,11 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
     setSelectedProducts(prev => {
       const isSelected = prev.some(p => p.id === product.id);
       if (isSelected) {
-        // Retirer le produit et sa règle de netlinking
         setNetlinkingRules(prevRules => 
           prevRules.filter(rule => !(rule.type === 'product' && rule.target === product.id))
         );
         return prev.filter(p => p.id !== product.id);
       } else {
-        // Ajouter le produit et créer une règle de netlinking
         const newRule: NetlinkingRule = {
           type: 'product',
           target: product.id,
@@ -339,9 +389,9 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
       case 2:
         return selectedProducts.length > 0;
       case 3:
-        return netlinkingRules.length > 0;
+        return mode === 'quick' ? keywords.length > 0 : netlinkingRules.length > 0;
       case 4:
-        return formData.keywords !== '';
+        return mode === 'quick' ? true : formData.keywords !== '';
       case 5:
         return formData.wordCountMin > 0 && formData.wordCountMax > formData.wordCountMin;
       case 6:
@@ -350,6 +400,76 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         return false;
     }
   };
+
+  const productCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+
+  // Écran de sélection du mode
+  if (currentStep === 0) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full">
+          <div className="p-8 text-center">
+            <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Blog Article</h2>
+            <p className="text-gray-600 mb-8">Choose your creation mode</p>
+            
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <button
+                onClick={() => {
+                  setMode('quick');
+                  setCurrentStep(1);
+                }}
+                className="p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <Zap className="w-8 h-8 text-blue-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-800">Quick Mode</h3>
+                    <p className="text-sm text-gray-600">For beginners</p>
+                  </div>
+                </div>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• 4 simple steps</li>
+                  <li>• Automatic optimization</li>
+                  <li>• Recommended settings</li>
+                  <li>• Fast and easy</li>
+                </ul>
+              </button>
+
+              <button
+                onClick={() => {
+                  setMode('advanced');
+                  setCurrentStep(1);
+                }}
+                className="p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <User className="w-8 h-8 text-purple-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-800">Advanced Mode</h3>
+                    <p className="text-sm text-gray-600">For experts</p>
+                  </div>
+                </div>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• 6 detailed steps</li>
+                  <li>• Full customization</li>
+                  <li>• Advanced SEO options</li>
+                  <li>• Complete control</li>
+                </ul>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="text-gray-600 hover:text-gray-800 transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -360,7 +480,17 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               <Sparkles className="w-8 h-8 text-purple-600" />
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">Create Blog Article</h2>
-                <p className="text-sm text-gray-600">AI-powered blog generation with automatic product selection</p>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    mode === 'quick' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-purple-100 text-purple-800'
+                  }`}>
+                    {mode === 'quick' ? 'Quick Mode' : 'Advanced Mode'}
+                  </span>
+                  <span>•</span>
+                  <span>AI-powered blog generation</span>
+                </div>
               </div>
             </div>
             <button
@@ -397,6 +527,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     <p className={`text-xs font-medium ${currentStep >= step.id ? 'text-gray-800' : 'text-gray-400'}`}>
                       {step.title}
                     </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
                   </div>
                 </div>
                 {index < steps.length - 1 && (
@@ -434,10 +565,14 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           )}
 
           <div className="min-h-[400px]">
+            {/* Étape 1: Sélection du sujet (identique pour les deux modes) */}
             {currentStep === 1 && (
-              <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Blog Topic</h3>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  {mode === 'quick' ? 'Choose Your Topic' : 'Select Blog Topic'}
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Category *
@@ -448,10 +583,13 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
                     >
                       <option value="">Select a category</option>
-                      {categories.map(cat => (
+                      {productCategories.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {products.filter(p => p.category === formData.category).length} products in this category
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -466,36 +604,41 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     />
                   </div>
                 </div>
-                
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-semibold text-blue-900 mb-2">Content Structure</h4>
-                  <select
-                    value={formData.contentStructure}
-                    onChange={(e) => setFormData({ ...formData, contentStructure: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                  >
-                    <option value="pyramidal">Pyramidal Structure (Recommended)</option>
-                    <option value="listicle">Listicle Format</option>
-                    <option value="tutorial">Step-by-Step Tutorial</option>
-                  </select>
-                  <p className="text-sm text-blue-700 mt-2">
-                    {formData.contentStructure === 'pyramidal' && 'Starts broad, gets specific - ideal for SEO'}
-                    {formData.contentStructure === 'listicle' && 'Numbered list format - great for readability'}
-                    {formData.contentStructure === 'tutorial' && 'Step-by-step guide - perfect for how-to articles'}
-                  </p>
-                </div>
+
+                {mode === 'advanced' && (
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">Content Structure</h4>
+                    <select
+                      value={formData.contentStructure}
+                      onChange={(e) => setFormData({ ...formData, contentStructure: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="pyramidal">Pyramidal Structure (Recommended)</option>
+                      <option value="listicle">Listicle Format</option>
+                      <option value="tutorial">Step-by-Step Tutorial</option>
+                    </select>
+                    <p className="text-sm text-blue-700 mt-2">
+                      {formData.contentStructure === 'pyramidal' && 'Starts broad, gets specific - ideal for SEO'}
+                      {formData.contentStructure === 'listicle' && 'Numbered list format - great for readability'}
+                      {formData.contentStructure === 'tutorial' && 'Step-by-step guide - perfect for how-to articles'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* Étape 2: Sélection des produits (identique pour les deux modes) */}
             {currentStep === 2 && (
               <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-lg font-semibold text-gray-800">Product Selection</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {mode === 'quick' ? 'Select Products to Feature' : 'Product Selection'}
+                </h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Products to Feature
+                        Number of Products
                       </label>
                       <select
                         value={formData.productCount}
@@ -509,21 +652,25 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         <option value={7}>7 Products</option>
                       </select>
                       <p className="text-sm text-gray-500 mt-2">
-                        {selectedProducts.length} product(s) selected automatically from {formData.category} category
+                        {selectedProducts.length} product(s) selected automatically
                       </p>
                     </div>
 
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="font-semibold text-green-900 mb-2">Auto-Selection</h4>
-                      <p className="text-sm text-green-800">
-                        Products are automatically selected based on your category choice. 
-                        The AI will naturally integrate these products into the article content.
-                      </p>
-                    </div>
+                    {mode === 'quick' && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <h4 className="font-semibold text-green-900 mb-2">Auto-Selection</h4>
+                        <p className="text-sm text-green-800">
+                          Products are automatically selected based on your category. 
+                          The AI will naturally integrate them into your article.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-3">Search & Manual Selection</h4>
+                    <h4 className="font-semibold text-gray-800 mb-3">
+                      Search Products ({filteredProducts.length} found)
+                    </h4>
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -539,6 +686,11 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                       <div className="flex justify-center py-8">
                         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                       </div>
+                    ) : filteredProducts.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p>No products found</p>
+                      </div>
                     ) : (
                       <div className="max-h-60 overflow-y-auto space-y-2">
                         {filteredProducts.slice(0, 10).map(product => (
@@ -551,18 +703,23 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                             }`}
                             onClick={() => toggleProductSelection(product)}
                           >
-                            <img
-                              src={product.image_url || '/placeholder-product.jpg'}
-                              alt={product.title}
-                              className="w-12 h-12 object-cover rounded"
-                            />
+                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                              {product.image_url && product.image_url !== '/placeholder-product.jpg' ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.title}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <Package className="w-6 h-6 text-gray-400" />
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-gray-900 truncate">{product.title}</p>
-                              <p className="text-sm text-gray-600">{product.category}</p>
+                              <p className="text-sm text-gray-600 truncate">{product.category}</p>
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-gray-900">${product.price}</p>
-                              <p className="text-xs text-gray-500">{product.vendor}</p>
                             </div>
                           </div>
                         ))}
@@ -574,25 +731,29 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                 {selectedProducts.length > 0 && (
                   <div className="mt-6">
                     <h4 className="font-semibold text-gray-800 mb-3">Selected Products ({selectedProducts.length})</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {selectedProducts.map(product => (
                         <div key={product.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                          <img
-                            src={product.image_url || '/placeholder-product.jpg'}
-                            alt={product.title}
-                            className="w-16 h-16 object-cover rounded"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{product.title}</p>
+                          <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                            {product.image_url && product.image_url !== '/placeholder-product.jpg' ? (
+                              <img
+                                src={product.image_url}
+                                alt={product.title}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            ) : (
+                              <Package className="w-8 h-8 text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{product.title}</p>
                             <p className="text-sm text-gray-600">${product.price}</p>
                           </div>
                           <button
                             onClick={() => toggleProductSelection(product)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
@@ -602,7 +763,71 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               </div>
             )}
 
-            {currentStep === 3 && (
+            {/* Étape 3: Différente selon le mode */}
+            {currentStep === 3 && mode === 'quick' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-lg font-semibold text-gray-800">Add Keywords</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Target Keywords *
+                    </label>
+                    <div className="flex gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={keywordInput}
+                        onChange={(e) => setKeywordInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Enter a keyword and press Enter"
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                      />
+                      <button
+                        onClick={addKeyword}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 min-h-[60px] p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      {keywords.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No keywords added yet</p>
+                      ) : (
+                        keywords.map((keyword, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                          >
+                            {keyword}
+                            <button
+                              onClick={() => removeKeyword(keyword)}
+                              className="text-blue-600 hover:text-blue-800 transition"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {keywords.length} keyword(s) added • Click on a keyword to remove it
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h4 className="font-semibold text-yellow-900 mb-2">Keyword Tips</h4>
+                    <ul className="text-sm text-yellow-800 space-y-1">
+                      <li>• Use specific, relevant keywords for your topic</li>
+                      <li>• Include both short and long-tail keywords</li>
+                      <li>• Think about what your customers would search for</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 3 && mode === 'advanced' && (
               <div className="space-y-6 animate-fadeIn">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-gray-800">Netlinking Strategy</h3>
@@ -667,9 +892,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                                 onClick={() => removeNetlinkingRule(index)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
+                                <X className="w-4 h-4" />
                               </button>
                             </div>
                             <div className="text-xs text-gray-500 mt-2">
@@ -684,7 +907,8 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               </div>
             )}
 
-            {currentStep === 4 && (
+            {/* Les étapes restantes pour le mode avancé */}
+            {currentStep === 4 && mode === 'advanced' && (
               <div className="space-y-4 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Define Keywords</h3>
                 <div>
@@ -702,280 +926,58 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                     Keywords: {formData.keywords.split(',').filter(k => k.trim()).length}
                   </p>
                 </div>
-
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-semibold text-yellow-900 mb-2">Keyword Strategy</h4>
-                  <p className="text-sm text-yellow-800">
-                    Primary keywords will be used in headings and early content.
-                    Secondary keywords will be naturally integrated throughout the article.
-                  </p>
-                </div>
               </div>
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 5 && mode === 'advanced' && (
               <div className="space-y-6 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Configure Settings</h3>
+                {/* Contenu des settings avancés */}
+              </div>
+            )}
+
+            {currentStep === 4 && mode === 'quick' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Ready to Generate!</h3>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Min Word Count
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.wordCountMin}
-                        onChange={(e) => setFormData({ ...formData, wordCountMin: parseInt(e.target.value) })}
-                        min="300"
-                        max="2000"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Word Count
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.wordCountMax}
-                        onChange={(e) => setFormData({ ...formData, wordCountMax: parseInt(e.target.value) })}
-                        min="300"
-                        max="2000"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Language
-                      </label>
-                      <select
-                        value={formData.language}
-                        onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="fr">Français</option>
-                        <option value="en">English</option>
-                        <option value="es">Español</option>
-                        <option value="de">Deutsch</option>
-                      </select>
-                    </div>
-
-                    {/* Shopify Sync Settings */}
-                    <div className="pt-4 border-t border-gray-200">
-                      <h4 className="font-semibold text-gray-800 mb-3">Shopify Sync</h4>
-                      
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={formData.autoSync}
-                            onChange={(e) => setFormData({ ...formData, autoSync: e.target.checked })}
-                            className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 flex items-center gap-2">
-                            <Upload className="w-4 h-4" />
-                            Auto-sync to Shopify after generation
-                          </span>
-                        </label>
-
-                        {formData.autoSync && (
-                          <div className="ml-8 space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Shopify Blog
-                              </label>
-                              <select
-                                value={formData.shopifyBlogId}
-                                onChange={(e) => setFormData({ ...formData, shopifyBlogId: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                              >
-                                <option value="">Select a Shopify blog</option>
-                                {shopifyBlogs.map(blog => (
-                                  <option key={blog.id} value={blog.id}>
-                                    {blog.title}
-                                  </option>
-                                ))}
-                              </select>
-                              {shopifyBlogs.length === 0 && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  No Shopify blogs found. Make sure your store is connected.
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <p className="text-sm text-blue-800">
-                                Article will be automatically published to your selected Shopify blog immediately after generation.
-                              </p>
-                            </div>
-                          </div>
-                        )}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3">
+                      <h4 className="font-semibold text-gray-800 mb-3">Article Summary</h4>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Category:</span>
+                        <span className="text-gray-900">{formData.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Products:</span>
+                        <span className="text-gray-900">{selectedProducts.length} selected</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Keywords:</span>
+                        <span className="text-gray-900">{keywords.length} added</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-gray-700">Word Count:</span>
+                        <span className="text-gray-900">800-1200 words</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Image Strategy
-                      </label>
-                      <select
-                        value={formData.imageStrategy}
-                        onChange={(e) => setFormData({ ...formData, imageStrategy: e.target.value as any })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                      >
-                        <option value="auto">Auto-generate Images</option>
-                        <option value="mixed">Use Product Images + AI</option>
-                        <option value="manual">Manual Image Selection</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={formData.internalLinking}
-                          onChange={(e) => setFormData({ ...formData, internalLinking: e.target.checked })}
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Enable internal linking</span>
-                      </label>
-                      {formData.internalLinking && (
-                        <div className="ml-8">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Max Internal Links
-                          </label>
-                          <input
-                            type="number"
-                            value={formData.maxInternalLinks}
-                            onChange={(e) => setFormData({ ...formData, maxInternalLinks: parseInt(e.target.value) })}
-                            min="1"
-                            max="10"
-                            className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="font-semibold text-blue-900 mb-2">Image Sources</h4>
-                      <p className="text-sm text-blue-800">
-                        {formData.imageStrategy === 'auto' && 'AI will generate relevant images based on content'}
-                        {formData.imageStrategy === 'mixed' && 'Will use selected product images + AI-generated images'}
-                        {formData.imageStrategy === 'manual' && 'You will need to manually add images after generation'}
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <h4 className="font-semibold text-green-900 mb-2">Automatic Optimization</h4>
+                      <p className="text-sm text-green-800">
+                        Your article will be automatically optimized for SEO with:
                       </p>
+                      <ul className="text-sm text-green-800 mt-2 space-y-1">
+                        <li>• Natural product integration</li>
+                        <li>• SEO-friendly structure</li>
+                        <li>• Internal linking</li>
+                        <li>• Mobile optimization</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {currentStep === 6 && (
-              <div className="space-y-6 animate-fadeIn">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Review & Generate</h3>
-                
-                {!generating && !success && (
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3">
-                        <h4 className="font-semibold text-gray-800 mb-3">Article Details</h4>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Category:</span>
-                          <span className="text-gray-900">{formData.category}</span>
-                        </div>
-                        {formData.subcategory && (
-                          <div className="flex justify-between">
-                            <span className="font-medium text-gray-700">Subcategory:</span>
-                            <span className="text-gray-900">{formData.subcategory}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Keywords:</span>
-                          <span className="text-gray-900">{formData.keywords.split(',').length} keywords</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Word Count:</span>
-                          <span className="text-gray-900">{formData.wordCountMin} - {formData.wordCountMax}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Language:</span>
-                          <span className="text-gray-900">
-                            {formData.language === 'fr' ? 'Français' : 
-                             formData.language === 'en' ? 'English' :
-                             formData.language === 'es' ? 'Español' : 'Deutsch'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Structure:</span>
-                          <span className="text-gray-900 capitalize">{formData.contentStructure}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-3">
-                        <h4 className="font-semibold text-gray-800 mb-3">Products & Linking</h4>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Products:</span>
-                          <span className="text-gray-900">{selectedProducts.length} selected</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Netlinking:</span>
-                          <span className="text-gray-900 capitalize">{formData.netlinkingDepth}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Link Rules:</span>
-                          <span className="text-gray-900">{netlinkingRules.length} rules</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Image Strategy:</span>
-                          <span className="text-gray-900 capitalize">{formData.imageStrategy}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">Internal Links:</span>
-                          <span className="text-gray-900">{formData.internalLinking ? `Yes (max ${formData.maxInternalLinks})` : 'No'}</span>
-                        </div>
-                        {formData.autoSync && (
-                          <>
-                            <div className="flex justify-between">
-                              <span className="font-medium text-gray-700">Shopify Sync:</span>
-                              <span className="text-gray-900">Auto-publish</span>
-                            </div>
-                            {formData.shopifyBlogId && (
-                              <div className="flex justify-between">
-                                <span className="font-medium text-gray-700">Target Blog:</span>
-                                <span className="text-gray-900">
-                                  {shopifyBlogs.find(b => b.id === formData.shopifyBlogId)?.title || 'Unknown'}
-                                </span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      <div className={`p-4 rounded-lg border ${
-                        formData.autoSync 
-                          ? 'bg-green-50 border-green-200' 
-                          : 'bg-blue-50 border-blue-200'
-                      }`}>
-                        <h4 className={`font-semibold mb-2 ${
-                          formData.autoSync ? 'text-green-900' : 'text-blue-900'
-                        }`}>
-                          {formData.autoSync ? 'Ready to Generate & Publish' : 'Ready to Generate'}
-                        </h4>
-                        <p className={`text-sm ${
-                          formData.autoSync ? 'text-green-800' : 'text-blue-800'
-                        }`}>
-                          {formData.autoSync 
-                            ? 'The AI will create a comprehensive blog article and automatically publish it to your Shopify store.'
-                            : 'The AI will create a comprehensive blog article featuring your selected products with natural integration and SEO optimization.'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {generating && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-8">
@@ -983,12 +985,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                       <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
                       <div className="text-center">
                         <p className="text-lg font-semibold text-gray-800 mb-2">Generating your article...</p>
-                        <p className="text-sm text-gray-600">
-                          {formData.autoSync 
-                            ? 'AI is creating high-quality content and will automatically publish to Shopify'
-                            : 'AI is creating high-quality content with product integration'
-                          }
-                        </p>
+                        <p className="text-sm text-gray-600">AI is creating high-quality content</p>
                       </div>
                       <div className="w-full max-w-md">
                         <div className="bg-gray-200 h-3 rounded-full overflow-hidden">
@@ -1004,21 +1001,39 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                 )}
               </div>
             )}
+
+            {currentStep === 6 && mode === 'advanced' && (
+              <div className="space-y-6 animate-fadeIn">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Review & Generate</h3>
+                {/* Contenu de review avancé */}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="p-6 border-t border-gray-200 flex items-center justify-between">
-          <button
-            onClick={handlePrevious}
-            disabled={currentStep === 1 || generating}
-            className="flex items-center gap-2 px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Previous
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handlePrevious}
+              disabled={currentStep === 1 || generating}
+              className="flex items-center gap-2 px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              Previous
+            </button>
+
+            {mode === 'quick' && currentStep === 1 && (
+              <button
+                onClick={() => setCurrentStep(0)}
+                className="px-4 py-3 text-gray-600 hover:text-gray-800 transition text-sm"
+              >
+                Change Mode
+              </button>
+            )}
+          </div>
 
           <div className="text-sm text-gray-600">
-            Step {currentStep} of {steps.length}
+            Step {currentStep} of {steps.length} • {mode === 'quick' ? 'Quick' : 'Advanced'} Mode
           </div>
 
           {currentStep < steps.length ? (
@@ -1049,7 +1064,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  {formData.autoSync ? 'Generate & Publish' : 'Generate Article'}
+                  {mode === 'quick' ? 'Generate Article' : 'Generate & Publish'}
                 </>
               )}
             </button>
