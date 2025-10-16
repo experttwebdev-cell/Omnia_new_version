@@ -152,7 +152,7 @@
   <div class="container">
     <div class="card">
       <h1>🔑 Test Connexion OpenAI API</h1>
-      <p class="subtitle">Vérification du quota et de la validité de votre clé API</p>
+      <p class="subtitle">Test avec gpt-3.5-turbo (modèle de base, moins cher)</p>
 
       <div id="statusBox" class="status-box status-waiting">
         ⏳ En attente du test...
@@ -167,7 +167,7 @@
         </div>
         <div class="info-item">
           <div class="info-label">Modèle</div>
-          <div class="info-value">gpt-4o-mini</div>
+          <div class="info-value" id="modelDisplay">gpt-3.5-turbo</div>
         </div>
         <div class="info-item">
           <div class="info-label">Status</div>
@@ -247,13 +247,13 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'gpt-3.5-turbo',
             messages: [{
               role: 'user',
-              content: 'Réponds simplement "API OpenAI fonctionnelle" si tu reçois ce message.'
+              content: 'Test'
             }],
-            max_tokens: 50,
-            temperature: 0.3
+            max_tokens: 10,
+            temperature: 0
           })
         });
 
@@ -284,10 +284,12 @@
 
           log(`❌ Erreur ${response.status}: ${errorMessage}`, 'error');
 
-          if (errorData.error?.code === 'insufficient_quota') {
-            updateStatus('❌ QUOTA DÉPASSÉ - Vous n\'avez plus de crédit OpenAI', 'error');
-            document.getElementById('statusDisplay').textContent = '❌ Quota dépassé';
+          if (errorData.error?.code === 'insufficient_quota' || response.status === 429) {
+            updateStatus('❌ QUOTA/RATE LIMIT - Problème de quota ou limite de requêtes', 'error');
+            document.getElementById('statusDisplay').textContent = '❌ Quota/Rate limit';
             log('💳 Vérifiez votre compte sur: https://platform.openai.com/account/billing', 'warning');
+            log('⏱️ Ou bien: limite de requêtes par minute atteinte', 'warning');
+            log('🔍 Vérifiez votre tier sur: https://platform.openai.com/account/limits', 'warning');
           } else if (response.status === 401) {
             updateStatus('❌ CLÉ API INVALIDE - Vérifiez votre clé OpenAI', 'error');
             document.getElementById('statusDisplay').textContent = '❌ Clé invalide';
