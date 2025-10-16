@@ -86,8 +86,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       const [
         dashboardStatsResult,
         productTypesResult,
-        enrichedProductsResult,
-        performanceResult
+        enrichedProductsResult
       ] = await Promise.all([
         supabase.from('fast_dashboard_cache').select('*').maybeSingle(),
         supabase.from('product_type_statistics_cache').select('*'),
@@ -95,12 +94,18 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           .select('*')
           .eq('enrichment_status', 'enriched')
           .order('last_enriched_at', { ascending: false })
-          .limit(100),
-        // Performance metrics cache is optional - doesn't block dashboard loading
-        supabase.from('performance_metrics_cache').select('*').maybeSingle().catch(() => ({ data: null, error: null }))
+          .limit(100)
       ]);
 
-      // Handle critical errors (performance metrics is optional)
+      // Try to fetch performance metrics, but don't fail if table doesn't exist
+      let performanceResult = { data: null, error: null };
+      try {
+        performanceResult = await supabase.from('performance_metrics_cache').select('*').maybeSingle();
+      } catch (e) {
+        console.warn('Performance metrics not available:', e);
+      }
+
+      // Handle critical errors
       const criticalErrors = [
         dashboardStatsResult.error,
         productTypesResult.error,
@@ -110,11 +115,6 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       if (criticalErrors.length > 0) {
         console.error('Database errors:', criticalErrors);
         throw new Error(`Failed to load dashboard data: ${criticalErrors[0]?.message}`);
-      }
-
-      // Log performance metrics error if any, but don't fail
-      if (performanceResult.error) {
-        console.warn('Performance metrics not available:', performanceResult.error.message);
       }
 
       const statsData = dashboardStatsResult.data;
