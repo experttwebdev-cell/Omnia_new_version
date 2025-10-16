@@ -275,6 +275,16 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
       setError('');
       setProgress(0);
 
+      // Pre-flight validation: Check if products exist
+      if (products.length === 0) {
+        throw new Error('Aucun produit trouvé dans votre catalogue. Veuillez d\'abord importer des produits depuis Shopify en utilisant la section "Paramètres".');
+      }
+
+      // Validate that we have at least some data to work with
+      if (!formData.category && keywords.length === 0 && formData.keywords.trim() === '') {
+        throw new Error('Veuillez fournir au moins une catégorie ou des mots-clés pour générer l\'article.');
+      }
+
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) {
@@ -288,6 +298,18 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
       // Utiliser les keywords des tags
       const finalKeywords = keywords.length > 0 ? keywords : formData.keywords.split(',').map(k => k.trim()).filter(Boolean);
 
+      // Ensure we have at least one keyword
+      if (finalKeywords.length === 0 && formData.category) {
+        finalKeywords.push(formData.category);
+      }
+
+      console.log('🚀 Generating article with:', {
+        category: formData.category,
+        keywords: finalKeywords,
+        selectedProducts: selectedProducts.length,
+        totalProducts: products.length
+      });
+
       const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-blog-article`;
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -297,7 +319,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         },
         body: JSON.stringify({
           mode: 'manual',
-          category: formData.category,
+          category: formData.category || 'Produits',
           subcategory: formData.subcategory || null,
           keywords: finalKeywords,
           word_count_min: formData.wordCountMin,
@@ -322,12 +344,21 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate article');
+        const errorMessage = errorData.error || 'Failed to generate article';
+
+        // Provide more helpful error messages
+        if (errorMessage.includes('Aucun produit trouvé')) {
+          throw new Error('Aucun produit trouvé dans votre catalogue. Veuillez importer des produits depuis Shopify via "Paramètres" > "Import Shopify".');
+        }
+
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      
+      console.log('✅ Article generated successfully:', result.articleId);
+
       if (formData.autoSync && result.articleId) {
+        console.log('🔄 Auto-syncing to Shopify...');
         try {
           const syncUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-blog-to-shopify`;
           await fetch(syncUrl, {
@@ -336,13 +367,14 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
               'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               articleId: result.articleId,
-              shopifyBlogId: formData.shopifyBlogId 
+              shopifyBlogId: formData.shopifyBlogId
             }),
           });
+          console.log('✅ Article synced to Shopify');
         } catch (syncError) {
-          console.warn('Auto-sync to Shopify failed:', syncError);
+          console.warn('⚠️ Auto-sync to Shopify failed:', syncError);
         }
       }
 
@@ -351,7 +383,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
         onClose();
       }, 3000);
     } catch (err) {
-      console.error('Error generating article:', err);
+      console.error('❌ Error generating article:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate article');
     } finally {
       setGenerating(false);
