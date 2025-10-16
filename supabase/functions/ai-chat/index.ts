@@ -1,8 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
 
 // 🧩 --- CONFIGURATION SUPABASE ---
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 🧠 --- CONFIGURATION MULTI-SECTEURS ---
@@ -262,10 +269,16 @@ async function extractProductAttributes(userMessage: string, sector: string) {
   };
 
   try {
+    const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!deepseekKey) {
+      console.warn("DeepSeek API key not configured, using fallback");
+      return extractSectorKeywords(userMessage, sector);
+    }
+
     const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${import.meta.env.VITE_DEEPSEEK_API_KEY}`,
+        "Authorization": `Bearer ${deepseekKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
@@ -567,3 +580,57 @@ export async function getProductById(productId: string, storeId?: string) {
     return null;
   }
 }
+
+// 🚀 --- SERVEUR EDGE FUNCTION ---
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const { message, products, history, storeId, settings } = await req.json();
+
+    if (!message || typeof message !== 'string') {
+      return new Response(
+        JSON.stringify({ error: "Message is required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const result = await OmnIAChat(message, history || [], storeId, settings);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        response: result.content,
+        products: result.products || [],
+        mode: result.mode || 'conversation',
+        searchFilters: result.searchFilters,
+        sector: result.sector
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  } catch (error) {
+    console.error("Error in ai-chat function:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        response: "Désolé, une erreur s'est produite. Pouvez-vous reformuler votre demande ?"
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});
