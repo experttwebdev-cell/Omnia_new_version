@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Fetch Products - DeepSeek Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .header {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 16px;
+    }
+    .test-section {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .test-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 300px;
+      padding: 14px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    button {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    }
+    .btn-info {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+    .logs {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px 0;
+    }
+    .log-info { color: #60a5fa; }
+    .log-success { color: #34d399; }
+    .log-error { color: #f87171; }
+    .log-warning { color: #fbbf24; }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .product-card {
+      background: linear-gradient(135deg, #f6f8fb 0%, #ffffff 100%);
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      border-color: #667eea;
+    }
+    .product-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .product-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    .product-price {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+    .product-meta {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+    .badge-category { background: #dbeafe; color: #1e40af; }
+    .badge-style { background: #fce7f3; color: #9f1239; }
+    .badge-room { background: #dcfce7; color: #166534; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    .stat-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .mode-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .mode-btn {
+      padding: 10px 20px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: #64748b;
+    }
+    .mode-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-color: #667eea;
+    }
+    .query-examples {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+    .query-examples h4 {
+      color: #475569;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .example-query {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 4px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .example-query:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔍 Test Fetch Products - DeepSeek Search</h1>
+      <p class="subtitle">Test de recherche de produits avec l'API AI Chat et recherche directe Supabase</p>
+    </div>
+
+    <div class="test-section">
+      <h3 style="margin-bottom: 20px; color: #1e293b;">Mode de recherche</h3>
+
+      <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode('ai-chat')">🤖 AI Chat (DeepSeek)</button>
+        <button class="mode-btn" onclick="setMode('direct')">📊 Direct Supabase</button>
+        <button class="mode-btn" onclick="setMode('compare')">⚖️ Comparaison</button>
+      </div>
+
+      <div class="test-controls">
+        <input
+          type="text"
+          id="searchQuery"
+          placeholder="Rechercher... (ex: table basse, canapé scandinave, lampe salon)"
+          value="table basse"
+        />
+        <button onclick="searchProducts()" id="searchBtn">🔍 Rechercher</button>
+        <button class="btn-secondary" onclick="clearResults()">🗑️ Effacer</button>
+        <button class="btn-info" onclick="testConnection()">✅ Test Connexion</button>
+      </div>
+
+      <div class="query-examples">
+        <h4>📝 Exemples de requêtes :</h4>
+        <span class="example-query" onclick="setQuery('table basse')">table basse</span>
+        <span class="example-query" onclick="setQuery('canapé scandinave')">canapé scandinave</span>
+        <span class="example-query" onclick="setQuery('lampe salon moderne')">lampe salon moderne</span>
+        <span class="example-query" onclick="setQuery('chaise salle à manger')">chaise salle à manger</span>
+        <span class="example-query" onclick="setQuery('meuble industriel')">meuble industriel</span>
+        <span class="example-query" onclick="setQuery('lit chambre')">lit chambre</span>
+      </div>
+
+      <div class="stats" id="stats" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="productCount">0</div>
+          <div class="stat-label">Produits trouvés</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="searchTime">0ms</div>
+          <div class="stat-label">Temps de recherche</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="mode">-</div>
+          <div class="stat-label">Mode utilisé</div>
+        </div>
+      </div>
+
+      <div class="logs" id="logs"></div>
+
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentMode = 'ai-chat';
+    let supabase;
+
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const timestamp = new Date().toLocaleTimeString();
+      entry.textContent = `[${timestamp}] ${message}`;
+      logs.insertBefore(entry, logs.firstChild);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      log(`Mode changé: ${mode}`, 'info');
+    }
+
+    function setQuery(query) {
+      document.getElementById('searchQuery').value = query;
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('stats').style.display = 'none';
+      log('Résultats effacés', 'info');
+    }
+
+    async function testConnection() {
+      try {
+        log('Test de connexion Supabase...', 'info');
+
+        const { data, error } = await supabase
+          .from('shopify_products')
+          .select('id')
+          .limit(1);
+
+        if (error) throw error;
+
+        log('✅ Connexion Supabase OK', 'success');
+
+        const { data: count } = await supabase
+          .from('shopify_products')
+          .select('id', { count: 'exact', head: true });
+
+        log(`📊 Total produits en base: ${count?.length || 0}`, 'info');
+
+        const chatUrl = `${window.ENV.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+        const chatResponse = await fetch(chatUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${window.ENV.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: 'test', history: [] })
+        });
+
+        if (chatResponse.ok) {
+          log('✅ Edge Function AI Chat accessible', 'success');
+        } else {
+          log(`⚠️ AI Chat retourne ${chatResponse.status}`, 'warning');
+        }
+
+      } catch (error) {
+        log(`❌ Erreur: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function searchProducts() {
+      const query = document.getElementById('searchQuery').value.trim();
+      if (!query) {
+        log('⚠️ Veuillez entrer une recherche', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('searchBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Recherche...';
+
+      const startTime = Date.now();
+
+      try {
+        log(`🔍 Recherche: "${query}" (mode: ${currentMode})`, 'info');
+
+        let products = [];
+
+        if (currentMode === 'ai-chat') {
+          products = await searchWithAIChat(query);
+        } else if (currentMode === 'direct') {
+          products = await searchDirect(query);
+        } else if (currentMode === 'compare') {
+          const aiProducts = await searchWithAIChat(query);
+          const directProducts = await searchDirect(query);
+          log(`📊 Comparaison: AI Chat=${aiProducts.length}, Direct=${directProducts.length}`, 'info');
+          products = aiProducts;
+        }
+
+        const searchTime = Date.now() - startTime;
+
+        log(`✅ ${products.length} produits trouvés en ${searchTime}ms`, 'success');
+
+        displayResults(products);
+        updateStats(products.length, searchTime, currentMode);
+
+      } catch (error) {
+        log(`❌ Erreur: ${error.message}`, 'error');
+        console.error(error);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Rechercher';
+      }
+    }
+
+    async function searchWithAIChat(query) {
+      log('📡 Appel AI Chat...', 'info');
+
+      const apiUrl = `${window.ENV.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${window.ENV.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: query,
+          history: []
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI Chat error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      log(`🤖 Intent détecté: ${data.intent || 'unknown'}`, 'info');
+
+      return data.products || [];
+    }
+
+    async function searchDirect(query) {
+      log('📊 Recherche directe Supabase...', 'info');
+
+      const lowerQuery = query.toLowerCase();
+      const searchTerms = lowerQuery.split(' ').filter(word => word.length > 2);
+
+      let queryBuilder = supabase
+        .from('shopify_products')
+        .select('*')
+        .limit(20);
+
+      if (searchTerms.length > 0) {
+        const conditions = searchTerms.map(term =>
+          `title.ilike.%${term}%,description.ilike.%${term}%,tags.ilike.%${term}%,product_type.ilike.%${term}%,category.ilike.%${term}%`
+        ).join(',');
+        queryBuilder = queryBuilder.or(conditions);
+      }
+
+      const { data, error } = await queryBuilder;
+
+      if (error) throw error;
+
+      return data || [];
+    }
+
+    function displayResults(products) {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+
+      if (products.length === 0) {
+        resultsDiv.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">Aucun produit trouvé</p>';
+        return;
+      }
+
+      products.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+
+        const imageUrl = product.image_url || product.featured_image || 'https://via.placeholder.com/300x200?text=No+Image';
+        const price = product.price ? `${product.price}€` : 'Prix NC';
+
+        card.innerHTML = `
+          <img src="${imageUrl}" alt="${product.title}" class="product-image" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+          <div class="product-title">${product.title}</div>
+          <div class="product-price">${price}</div>
+          ${product.category ? `<span class="badge badge-category">${product.category}</span>` : ''}
+          ${product.ai_style ? `<span class="badge badge-style">${product.ai_style}</span>` : ''}
+          ${product.room_style ? `<span class="badge badge-room">${product.room_style}</span>` : ''}
+          <div class="product-meta">Type: ${product.product_type || 'NC'}</div>
+          ${product.ai_color ? `<div class="product-meta">Couleur: ${product.ai_color}</div>` : ''}
+          ${product.ai_material ? `<div class="product-meta">Matière: ${product.ai_material}</div>` : ''}
+        `;
+
+        resultsDiv.appendChild(card);
+      });
+    }
+
+    function updateStats(count, time, mode) {
+      document.getElementById('stats').style.display = 'grid';
+      document.getElementById('productCount').textContent = count;
+      document.getElementById('searchTime').textContent = time + 'ms';
+      document.getElementById('mode').textContent = mode === 'ai-chat' ? 'AI Chat' : mode === 'direct' ? 'Direct' : 'Compare';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      supabase = window.supabase.createClient(
+        window.ENV.VITE_SUPABASE_URL,
+        window.ENV.VITE_SUPABASE_ANON_KEY
+      );
+
+      log('🚀 Application initialisée', 'success');
+      log('💡 Testez les différents modes de recherche', 'info');
+
+      document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          searchProducts();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
