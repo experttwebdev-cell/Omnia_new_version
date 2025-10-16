@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Enrichment Flow</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+        .log-entry {
+            margin: 4px 0;
+            padding: 4px 0;
+        }
+        .log-entry.error { color: #f48771; }
+        .log-entry.success { color: #89d185; }
+        .log-entry.warning { color: #e5c07b; }
+        .log-entry.info { color: #61afef; }
+        .product-card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+        }
+        .enrichment-data {
+            background: #e7f3ff;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .enrichment-field {
+            margin: 4px 0;
+            display: flex;
+            gap: 8px;
+        }
+        .enrichment-field strong {
+            min-width: 140px;
+            color: #0066cc;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Enrichment Flow</h1>
+
+        <div class="section">
+            <h3>1. Environment Check</h3>
+            <button onclick="checkEnvironment()">Check Environment</button>
+            <div id="envStatus"></div>
+        </div>
+
+        <div class="section">
+            <h3>2. Fetch Products</h3>
+            <button onclick="fetchProducts()">Fetch Products from Database</button>
+            <div id="productsStatus"></div>
+            <div id="productsList"></div>
+        </div>
+
+        <div class="section">
+            <h3>3. Test Enrichment</h3>
+            <button onclick="testEnrichment()" id="enrichBtn" disabled>Enrich Selected Product</button>
+            <select id="productSelect" style="margin-left: 10px; padding: 8px;">
+                <option value="">Select a product...</option>
+            </select>
+            <div id="enrichmentStatus"></div>
+            <div id="enrichmentLog" class="log" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h3>4. Verify Enrichment</h3>
+            <button onclick="verifyEnrichment()" id="verifyBtn" disabled>Verify Enriched Data</button>
+            <div id="verificationStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        let selectedProductId = null;
+        let products = [];
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('enrichmentLog');
+            logDiv.style.display = 'block';
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function checkEnvironment() {
+            const statusDiv = document.getElementById('envStatus');
+            statusDiv.innerHTML = '<p>Checking...</p>';
+
+            const checks = [];
+
+            // Check Supabase URL
+            if (SUPABASE_URL && SUPABASE_URL !== 'https://placeholder.supabase.co') {
+                checks.push(`<div>✅ Supabase URL: <code>${SUPABASE_URL}</code></div>`);
+            } else {
+                checks.push(`<div>❌ Supabase URL not configured</div>`);
+            }
+
+            // Check Supabase Key
+            if (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'placeholder-key') {
+                checks.push(`<div>✅ Supabase Anon Key: <code>${SUPABASE_ANON_KEY.substring(0, 20)}...</code></div>`);
+            } else {
+                checks.push(`<div>❌ Supabase Anon Key not configured</div>`);
+            }
+
+            // Test connection
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY
+                    }
+                });
+
+                if (response.ok || response.status === 404) {
+                    checks.push(`<div>✅ Supabase connection successful</div>`);
+                } else {
+                    checks.push(`<div>❌ Supabase connection failed: ${response.status}</div>`);
+                }
+            } catch (error) {
+                checks.push(`<div>❌ Connection error: ${error.message}</div>`);
+            }
+
+            // Check Edge Function endpoint
+            const functionUrl = `${SUPABASE_URL}/functions/v1/enrich-product-with-ai`;
+            checks.push(`<div>📍 Enrichment endpoint: <code>${functionUrl}</code></div>`);
+
+            statusDiv.innerHTML = checks.join('');
+        }
+
+        async function fetchProducts() {
+            const statusDiv = document.getElementById('productsStatus');
+            const listDiv = document.getElementById('productsList');
+            statusDiv.innerHTML = '<p>Fetching products...</p>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/shopify_products?select=id,title,enrichment_status,ai_color,ai_material,dimensions_text&limit=10`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                products = await response.json();
+
+                statusDiv.innerHTML = `<p class="status success">Found ${products.length} products</p>`;
+
+                const select = document.getElementById('productSelect');
+                select.innerHTML = '<option value="">Select a product...</option>';
+
+                products.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    const enriched = product.enrichment_status === 'completed' || product.enrichment_status === 'enriched';
+                    option.textContent = `${product.title} ${enriched ? '✅' : '❌'}`;
+                    select.appendChild(option);
+                });
+
+                let html = '';
+                products.forEach(product => {
+                    const enriched = product.enrichment_status === 'completed' || product.enrichment_status === 'enriched';
+                    html += `
+                        <div class="product-card">
+                            <strong>${product.title}</strong>
+                            <span class="status ${enriched ? 'success' : 'warning'}">${product.enrichment_status || 'Not enriched'}</span>
+                            ${enriched ? `
+                                <div class="enrichment-data">
+                                    ${product.ai_color ? `<div class="enrichment-field"><strong>Color:</strong> <span>${product.ai_color}</span></div>` : ''}
+                                    ${product.ai_material ? `<div class="enrichment-field"><strong>Material:</strong> <span>${product.ai_material}</span></div>` : ''}
+                                    ${product.dimensions_text ? `<div class="enrichment-field"><strong>Dimensions:</strong> <span>${product.dimensions_text}</span></div>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                listDiv.innerHTML = html;
+                document.getElementById('enrichBtn').disabled = false;
+
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="status error">Error: ${error.message}</p>`;
+                console.error('Fetch error:', error);
+            }
+        }
+
+        document.getElementById('productSelect').addEventListener('change', (e) => {
+            selectedProductId = e.target.value;
+            document.getElementById('enrichBtn').disabled = !selectedProductId;
+        });
+
+        async function testEnrichment() {
+            if (!selectedProductId) {
+                alert('Please select a product first');
+                return;
+            }
+
+            const statusDiv = document.getElementById('enrichmentStatus');
+            const logDiv = document.getElementById('enrichmentLog');
+            logDiv.innerHTML = '';
+            logDiv.style.display = 'block';
+
+            const product = products.find(p => p.id === selectedProductId);
+            log(`Starting enrichment for: ${product.title}`, 'info');
+            statusDiv.innerHTML = '<p class="status info">Enriching product...</p>';
+
+            try {
+                const functionUrl = `${SUPABASE_URL}/functions/v1/enrich-product-with-ai`;
+                log(`Calling: ${functionUrl}`, 'info');
+
+                log('Sending request...', 'info');
+                const response = await fetch(functionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ productId: selectedProductId }),
+                });
+
+                log(`Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+                log('Response data received', 'info');
+
+                if (!response.ok) {
+                    log(`Error: ${data.error || 'Unknown error'}`, 'error');
+                    if (data.details) {
+                        log(`Details: ${data.details}`, 'error');
+                    }
+                    statusDiv.innerHTML = `<p class="status error">Failed: ${data.error || 'Unknown error'}</p>`;
+                    statusDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    log('✅ Enrichment successful!', 'success');
+                    statusDiv.innerHTML = `<p class="status success">Enrichment completed successfully!</p>`;
+                    statusDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                    document.getElementById('verifyBtn').disabled = false;
+                }
+
+            } catch (error) {
+                log(`💥 Exception: ${error.message}`, 'error');
+                statusDiv.innerHTML = `<p class="status error">Exception: ${error.message}</p>`;
+                console.error('Enrichment error:', error);
+            }
+        }
+
+        async function verifyEnrichment() {
+            if (!selectedProductId) return;
+
+            const statusDiv = document.getElementById('verificationStatus');
+            statusDiv.innerHTML = '<p>Verifying...</p>';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/shopify_products?id=eq.${selectedProductId}&select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                const data = await response.json();
+                const product = data[0];
+
+                if (!product) {
+                    statusDiv.innerHTML = '<p class="status error">Product not found</p>';
+                    return;
+                }
+
+                const enrichmentFields = {
+                    'Enrichment Status': product.enrichment_status,
+                    'Category': product.category,
+                    'Sub Category': product.sub_category,
+                    'AI Color': product.ai_color,
+                    'AI Material': product.ai_material,
+                    'Dimensions Text': product.dimensions_text,
+                    'Characteristics': product.characteristics,
+                    'Functionality': product.functionality,
+                    'Style': product.style,
+                    'Room': product.room,
+                    'Google Category': product.google_product_category,
+                    'Google Brand': product.google_brand,
+                    'SEO Title': product.seo_title,
+                    'SEO Description': product.seo_description,
+                    'Confidence Score': product.ai_confidence_score
+                };
+
+                let html = '<div class="enrichment-data">';
+                let hasData = false;
+
+                for (const [key, value] of Object.entries(enrichmentFields)) {
+                    if (value && value !== '') {
+                        hasData = true;
+                        html += `<div class="enrichment-field"><strong>${key}:</strong> <span>${value}</span></div>`;
+                    }
+                }
+                html += '</div>';
+
+                if (hasData) {
+                    statusDiv.innerHTML = `<p class="status success">Product has been enriched!</p>${html}`;
+                } else {
+                    statusDiv.innerHTML = '<p class="status warning">No enrichment data found</p>';
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = `<p class="status error">Error: ${error.message}</p>`;
+                console.error('Verification error:', error);
+            }
+        }
+
+        // Auto-check environment on load
+        window.addEventListener('load', () => {
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>
