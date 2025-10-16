@@ -61,6 +61,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  console.log("=== Enrichment request started ===");
+
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -68,6 +70,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const { productId }: EnrichmentRequest = await req.json();
+    console.log("Product ID:", productId);
 
     if (!productId) {
       return new Response(
@@ -79,6 +82,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log("Fetching product from database...");
     const { data: product, error: productError } = await supabaseClient
       .from("shopify_products")
       .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material")
@@ -86,14 +90,17 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (productError || !product) {
+      console.error("Product not found:", productError);
       return new Response(
-        JSON.stringify({ error: "Product not found" }),
+        JSON.stringify({ error: "Product not found", details: productError?.message }),
         {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    console.log("Product found:", product.title);
 
     const hasBeenEnriched = product.enrichment_status === 'completed' && product.last_enriched_at;
     const hasDataChanged = product.updated_at && product.last_enriched_at &&
@@ -184,6 +191,7 @@ CRITICAL - SMART DIMENSIONS:
 - keywords: Extract 10-15 relevant SEO keywords from title and description
 - Return ONLY valid JSON, no additional text.`;
 
+    console.log("Calling DeepSeek API for text analysis...");
     const textAnalysisResponse = await callDeepSeek([
       {
         role: "system",
@@ -195,11 +203,21 @@ CRITICAL - SMART DIMENSIONS:
       },
     ], 1000);
 
+    console.log("DeepSeek response received");
     const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
+    console.log("Response content length:", textAnalysisContent.length);
+
     let textAnalysis;
 
     try {
       textAnalysis = JSON.parse(textAnalysisContent);
+      console.log("Text analysis parsed successfully");
+      console.log("Extracted data:", {
+        category: textAnalysis.category,
+        sub_category: textAnalysis.sub_category,
+        smart_length: textAnalysis.smart_length,
+        dimensions_text: textAnalysis.dimensions_text
+      });
     } catch (e) {
       console.error("Failed to parse text analysis JSON:", textAnalysisContent);
       textAnalysis = {
@@ -396,14 +414,27 @@ Provide response in JSON format:
       updateData.dimensions_source = textAnalysis.dimensions_source;
     }
 
+    console.log("Updating product in database...");
+    console.log("Update data keys:", Object.keys(updateData));
+    console.log("Sample update data:", {
+      category: updateData.category,
+      sub_category: updateData.sub_category,
+      smart_length: updateData.smart_length,
+      dimensions_text: updateData.dimensions_text,
+      seo_title: updateData.seo_title
+    });
+
     const { error: updateError } = await supabaseClient
       .from("shopify_products")
       .update(updateData)
       .eq("id", productId);
 
     if (updateError) {
+      console.error("Database update error:", updateError);
       throw updateError;
     }
+
+    console.log("Product updated successfully in database");
 
     return new Response(
       JSON.stringify({

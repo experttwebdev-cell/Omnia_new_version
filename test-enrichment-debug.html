@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Enrichment - Step by Step</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">🔍 Debug Enrichment Process</h1>
+      <p class="text-gray-600 mb-6">Step-by-step debugging of product enrichment</p>
+
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Supabase URL</label>
+          <input
+            type="text"
+            id="supabaseUrl"
+            value="https://ufdhzgqrubbnornjdvgv.supabase.co"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Supabase Anon Key</label>
+          <input
+            type="password"
+            id="supabaseKey"
+            placeholder="Enter your anon key"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button
+          onclick="loadFirstProduct()"
+          class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+        >
+          Load First Product
+        </button>
+        <button
+          onclick="testEnrichment()"
+          id="enrichBtn"
+          disabled
+          class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+        >
+          Test Enrichment
+        </button>
+        <button
+          onclick="clearLogs()"
+          class="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition"
+        >
+          Clear Logs
+        </button>
+      </div>
+    </div>
+
+    <div id="productInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <h3 class="font-semibold mb-2">Product Info:</h3>
+      <pre id="productData" class="text-xs bg-white p-3 rounded overflow-x-auto"></pre>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-xl font-bold mb-4">Debug Logs</h2>
+      <div id="logs" class="space-y-2 font-mono text-sm max-h-[600px] overflow-y-auto">
+        <div class="text-gray-500">Waiting for action...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let currentProduct = null;
+
+    function log(message, type = 'info') {
+      const logs = document.getElementById('logs');
+      const timestamp = new Date().toLocaleTimeString();
+      const colors = {
+        info: 'text-blue-600',
+        success: 'text-green-600',
+        error: 'text-red-600',
+        warning: 'text-yellow-600'
+      };
+
+      const logEntry = document.createElement('div');
+      logEntry.className = `${colors[type]} border-l-4 border-${type === 'error' ? 'red' : type === 'success' ? 'green' : type === 'warning' ? 'yellow' : 'blue'}-500 pl-3 py-1`;
+      logEntry.innerHTML = `[${timestamp}] ${message}`;
+
+      logs.appendChild(logEntry);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '<div class="text-gray-500">Logs cleared...</div>';
+    }
+
+    async function loadFirstProduct() {
+      try {
+        const supabaseUrl = document.getElementById('supabaseUrl').value;
+        const supabaseKey = document.getElementById('supabaseKey').value;
+
+        if (!supabaseUrl || !supabaseKey) {
+          log('Please fill in Supabase credentials', 'error');
+          return;
+        }
+
+        log('Connecting to Supabase...', 'info');
+        supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        log('Fetching first product...', 'info');
+        const { data, error } = await supabaseClient
+          .from('shopify_products')
+          .select('*')
+          .limit(1)
+          .single();
+
+        if (error) {
+          log(`Error: ${error.message}`, 'error');
+          return;
+        }
+
+        currentProduct = data;
+        log(`Product loaded: ${data.title}`, 'success');
+        log(`Product ID: ${data.id}`, 'info');
+
+        document.getElementById('productData').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('productInfo').classList.remove('hidden');
+        document.getElementById('enrichBtn').disabled = false;
+
+      } catch (error) {
+        log(`Exception: ${error.message}`, 'error');
+        console.error(error);
+      }
+    }
+
+    async function testEnrichment() {
+      if (!currentProduct) {
+        log('No product loaded', 'error');
+        return;
+      }
+
+      try {
+        const supabaseUrl = document.getElementById('supabaseUrl').value;
+        const supabaseKey = document.getElementById('supabaseKey').value;
+
+        log('=== Starting enrichment process ===', 'info');
+        log(`Product: ${currentProduct.title}`, 'info');
+        log(`Product ID: ${currentProduct.id}`, 'info');
+
+        const apiUrl = `${supabaseUrl}/functions/v1/enrich-product-with-ai`;
+        log(`Calling edge function: ${apiUrl}`, 'info');
+
+        const startTime = Date.now();
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ productId: currentProduct.id }),
+        });
+
+        const responseTime = Date.now() - startTime;
+        log(`Response received in ${responseTime}ms`, 'info');
+        log(`HTTP Status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+        const responseText = await response.text();
+        log(`Response body length: ${responseText.length} bytes`, 'info');
+
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          log('Response JSON parsed successfully', 'success');
+          log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+        } catch (e) {
+          log('Failed to parse response as JSON', 'error');
+          log(`Raw response: ${responseText.substring(0, 500)}`, 'error');
+          return;
+        }
+
+        if (!response.ok) {
+          log(`Error from API: ${data.error || 'Unknown error'}`, 'error');
+          if (data.details) {
+            log(`Details: ${data.details}`, 'error');
+          }
+          return;
+        }
+
+        if (data.skipped) {
+          log('Enrichment was skipped (product already enriched)', 'warning');
+          log('To force re-enrichment, update the product in Supabase', 'warning');
+          return;
+        }
+
+        if (data.success) {
+          log('✅ Enrichment successful!', 'success');
+          log('Fetching updated product...', 'info');
+
+          const { data: updatedProduct, error } = await supabaseClient
+            .from('shopify_products')
+            .select('*')
+            .eq('id', currentProduct.id)
+            .single();
+
+          if (error) {
+            log(`Error fetching updated product: ${error.message}`, 'error');
+          } else {
+            log('Product updated successfully', 'success');
+            log(`Updated fields:`, 'info');
+
+            const fieldsToCheck = [
+              'category', 'sub_category', 'style', 'room',
+              'ai_color', 'ai_material', 'tags',
+              'dimensions_text', 'smart_length', 'smart_width', 'smart_height',
+              'seo_title', 'seo_description', 'ai_vision_analysis'
+            ];
+
+            fieldsToCheck.forEach(field => {
+              const value = updatedProduct[field];
+              if (value) {
+                const displayValue = typeof value === 'string' && value.length > 50
+                  ? value.substring(0, 50) + '...'
+                  : value;
+                log(`  ✓ ${field}: ${displayValue}`, 'success');
+              } else {
+                log(`  ✗ ${field}: NOT SET`, 'warning');
+              }
+            });
+
+            document.getElementById('productData').textContent = JSON.stringify(updatedProduct, null, 2);
+          }
+        }
+
+      } catch (error) {
+        log(`Exception: ${error.message}`, 'error');
+        console.error('Full error:', error);
+      }
+    }
+  </script>
+</body>
+</html>
