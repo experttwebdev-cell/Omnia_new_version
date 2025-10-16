@@ -55,6 +55,7 @@ export function ProductGoogleShoppingTab({ product, onProductUpdate }: ProductGo
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [autoCategorizing, setAutoCategorizing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -133,6 +134,43 @@ export function ProductGoogleShoppingTab({ product, onProductUpdate }: ProductGo
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAutoCategorize = async () => {
+    try {
+      setAutoCategorizing(true);
+      setMessage(null);
+
+      const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/auto-categorize-product`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId: product.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to auto-categorize');
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        google_product_category: result.google_product_category
+      }));
+
+      setMessage({ type: 'success', text: `Catégorie détectée: ${result.google_product_category}` });
+      setTimeout(() => setMessage(null), 5000);
+      onProductUpdate();
+    } catch (err) {
+      console.error('Error auto-categorizing:', err);
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to auto-categorize' });
+    } finally {
+      setAutoCategorizing(false);
     }
   };
 
@@ -239,9 +277,29 @@ export function ProductGoogleShoppingTab({ product, onProductUpdate }: ProductGo
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Google Product Category <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Google Product Category <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoCategorize}
+                  disabled={autoCategorizing}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {autoCategorizing ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Analyse en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3 h-3" />
+                      Auto-catégoriser avec AI
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="relative">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
