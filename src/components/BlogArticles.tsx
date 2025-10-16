@@ -270,7 +270,7 @@ export function BlogArticles() {
   };
 
   if (loading) {
-    return <LoadingAnimation type="content" />;
+    return <LoadingAnimation type="blog" />;
   }
 
   return (

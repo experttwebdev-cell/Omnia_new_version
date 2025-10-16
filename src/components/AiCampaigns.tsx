@@ -220,7 +220,7 @@ export function AiCampaigns() {
   };
 
   if (loading) {
-    return <LoadingAnimation type="content" />;
+    return <LoadingAnimation type="campaigns" />;
   }
 
   return (

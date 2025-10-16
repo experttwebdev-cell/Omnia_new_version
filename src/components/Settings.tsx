@@ -97,7 +97,7 @@ export function Settings() {
   };
 
   if (loading) {
-    return <LoadingAnimation type="content" />;
+    return <LoadingAnimation type="settings" />;
   }
 
   return (

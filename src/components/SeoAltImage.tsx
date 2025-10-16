@@ -56,41 +56,37 @@ export function SeoAltImage() {
       setLoading(true);
       setError('');
 
+      const { data: productsData, error: productsError } = await supabase
+        .from('shopify_products')
+        .select('id, title, vendor, category, shop_name, imported_at')
+        .order('imported_at', { ascending: false });
+
+      if (productsError) throw productsError;
+
       const { data: imagesData, error: imagesError } = await supabase
-        .from('alt_image_tab_cache')
+        .from('product_images')
         .select('*')
-        .order('product_imported_at', { ascending: false });
+        .order('position', { ascending: true });
 
       if (imagesError) throw imagesError;
 
       const productMap = new Map<string, ProductWithImages>();
 
-      (imagesData || []).forEach((img) => {
-        if (!productMap.has(img.product_id)) {
-          productMap.set(img.product_id, {
-            id: img.product_id,
-            title: img.product_title,
-            vendor: img.product_vendor,
-            category: img.product_category,
-            shop_name: img.shop_name,
-            imported_at: img.product_imported_at,
-            images: []
-          } as ProductWithImages);
-        }
-
-        const product = productMap.get(img.product_id)!;
-        product.images.push({
-          id: img.image_id,
-          product_id: img.product_id,
-          src: img.image_url,
-          position: img.image_position,
-          alt_text: img.alt_text,
-          width: img.width,
-          height: img.height
-        } as ProductImage);
+      (productsData || []).forEach((prod) => {
+        productMap.set(prod.id, {
+          ...prod,
+          images: []
+        } as ProductWithImages);
       });
 
-      setProducts(Array.from(productMap.values()));
+      (imagesData || []).forEach((img) => {
+        const product = productMap.get(img.product_id);
+        if (product) {
+          product.images.push(img);
+        }
+      });
+
+      setProducts(Array.from(productMap.values()).filter(p => p.images.length > 0));
       await fetchQuickStats();
     } catch (err) {
       console.error('Error fetching products with images:', err);
@@ -356,8 +352,29 @@ export function SeoAltImage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <ImageIcon className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+            </div>
+          </div>
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Chargement des images</h3>
+        <p className="text-base text-gray-600 mb-6">Analyse des textes alternatifs...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
+        </div>
       </div>
     );
   }

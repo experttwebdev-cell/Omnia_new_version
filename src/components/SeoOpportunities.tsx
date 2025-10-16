@@ -240,12 +240,15 @@ export function SeoOpportunities() {
       }
     } catch (err) {
       console.error('Error fetching products:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       addNotification({
         type: 'error',
         title: 'Error',
-        message: 'Failed to fetch products',
+        message: errorMessage,
         duration: 5000
       });
+      setProducts([]);
+      setOpportunities([]);
     } finally {
       setLoading(false);
     }
@@ -854,7 +857,7 @@ export function SeoOpportunities() {
             </p>
           </div>
         </div>
-        <LoadingAnimation type="content" message="Generating content opportunities..." />
+        <LoadingAnimation type="opportunities" message="Chargement des opportunités de contenu..." />
       </div>
     );
   }
