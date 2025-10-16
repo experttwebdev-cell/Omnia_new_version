@@ -231,6 +231,7 @@
 
             <div class="preset-queries">
                 <button class="preset-btn" onclick="setQuery('bonjour')">Bonjour (greeting)</button>
+                <button class="preset-btn" onclick="setQuery('je cherche une table')">Je cherche une table (chat)</button>
                 <button class="preset-btn" onclick="setQuery('je cherche une table basse travertin moins de 100 euros')">Table travertin &lt; 100€</button>
                 <button class="preset-btn" onclick="setQuery('canapé scandinave')">Canapé scandinave</button>
                 <button class="preset-btn" onclick="setQuery('table basse moderne')">Table basse moderne</button>
@@ -295,6 +296,14 @@
                 log('Salutation détectée - PAS de recherche produit', 'warning');
                 attributes.isGreeting = true;
                 return attributes;
+            }
+
+            // Détection de phrases conversationnelles avec intention de recherche
+            const conversationalPhrases = ['je cherche', 'je veux', 'je voudrais', 'j\'aimerais', 'peux-tu me trouver', 'montre-moi'];
+            attributes.isConversational = conversationalPhrases.some(phrase => msg.includes(phrase));
+
+            if (attributes.isConversational) {
+                log('Phrase conversationnelle détectée - mode CHAT activé', 'info');
             }
 
             // Détection du type de produit
@@ -378,6 +387,11 @@
                     return;
                 }
 
+                // Si c'est une phrase conversationnelle avec produit → mode CHAT (fetch mais ne pas afficher)
+                if (attributes.isConversational && attributes.type) {
+                    log('🤖 MODE CHAT: Recherche de produits pour réponse conversationnelle', 'info');
+                }
+
                 // Construction de la requête
                 let dbQuery = supabase
                     .from('shopify_products')
@@ -413,7 +427,9 @@
                     const before = results.length;
                     results = results.filter(p =>
                         p.style?.toLowerCase().includes(attributes.style.toLowerCase()) ||
-                        p.tags?.toLowerCase().includes(attributes.style.toLowerCase())
+                        p.tags?.toLowerCase().includes(attributes.style.toLowerCase()) ||
+                        p.title?.toLowerCase().includes(attributes.style.toLowerCase()) ||
+                        p.chat_text?.toLowerCase().includes(attributes.style.toLowerCase())
                     );
                     log(`${before} → ${results.length} produits après filtre style`, results.length > 0 ? 'success' : 'warning');
                 }
@@ -425,7 +441,8 @@
                     results = results.filter(p =>
                         p.color?.toLowerCase().includes(attributes.color.toLowerCase()) ||
                         p.ai_color?.toLowerCase().includes(attributes.color.toLowerCase()) ||
-                        p.tags?.toLowerCase().includes(attributes.color.toLowerCase())
+                        p.tags?.toLowerCase().includes(attributes.color.toLowerCase()) ||
+                        p.chat_text?.toLowerCase().includes(attributes.color.toLowerCase())
                     );
                     log(`${before} → ${results.length} produits après filtre couleur`, results.length > 0 ? 'success' : 'warning');
                 }
@@ -435,10 +452,10 @@
                     log(`Filtre matériau: "${attributes.material}"`, 'info');
                     const before = results.length;
                     results = results.filter(p =>
-                        p.material?.toLowerCase().includes(attributes.material.toLowerCase()) ||
                         p.ai_material?.toLowerCase().includes(attributes.material.toLowerCase()) ||
                         p.tags?.toLowerCase().includes(attributes.material.toLowerCase()) ||
-                        p.title?.toLowerCase().includes(attributes.material.toLowerCase())
+                        p.title?.toLowerCase().includes(attributes.material.toLowerCase()) ||
+                        p.chat_text?.toLowerCase().includes(attributes.material.toLowerCase())
                     );
                     log(`${before} → ${results.length} produits après filtre matériau`, results.length > 0 ? 'success' : 'warning');
                 }
@@ -461,8 +478,35 @@
                     setStatus('Aucun produit trouvé', 'error');
                     document.getElementById('results').innerHTML = '<p style="text-align: center; color: #718096; padding: 40px;">Aucun produit ne correspond à votre recherche.</p>';
                 } else {
-                    setStatus(`${finalResults.length} produit(s) trouvé(s)`, 'success');
-                    displayProducts(finalResults);
+                    // Mode conversationnel → afficher message chat avec produits trouvés
+                    if (attributes.isConversational) {
+                        setStatus(`🤖 Mode Chat: ${finalResults.length} produit(s) trouvé(s)`, 'success');
+                        const materialsFound = [...new Set(finalResults.map(p => p.ai_material).filter(Boolean))];
+                        document.getElementById('results').innerHTML = `
+                            <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="color: #0369a1; margin-bottom: 10px;">💬 Réponse du Chat</h3>
+                                <p style="color: #0c4a6e; line-height: 1.6;">
+                                    J'ai trouvé <strong>${finalResults.length} ${attributes.type}</strong> pour vous !
+                                    ${materialsFound.length > 0 ? `Les matériaux disponibles sont: <strong>${materialsFound.join(', ')}</strong>.` : ''}
+                                    ${attributes.maxPrice ? `Certains correspondent à votre budget de moins de ${attributes.maxPrice}€.` : ''}
+                                </p>
+                                <p style="color: #64748b; font-size: 14px; margin-top: 10px;">
+                                    ℹ️ Dans l'application réelle, le chat vous poserait des questions pour affiner votre recherche et vous présenterait les produits de manière conversationnelle.
+                                </p>
+                            </div>
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <strong>🔍 Produits trouvés (masqués dans le chat):</strong>
+                                <ul style="margin-top: 10px; color: #64748b;">
+                                    ${finalResults.slice(0, 5).map(p => `<li>${p.title} - ${p.price}€ ${p.ai_material ? `(${p.ai_material})` : ''}</li>`).join('')}
+                                    ${finalResults.length > 5 ? `<li>...et ${finalResults.length - 5} autres</li>` : ''}
+                                </ul>
+                            </div>
+                        `;
+                    } else {
+                        // Mode recherche directe → afficher grille de produits
+                        setStatus(`${finalResults.length} produit(s) trouvé(s)`, 'success');
+                        displayProducts(finalResults);
+                    }
                 }
 
             } catch (err) {
