@@ -269,7 +269,13 @@
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || `HTTP error! status: ${response.status}`);
+          const errorMsg = data.error || data.message || `HTTP error! status: ${response.status}`;
+          const details = data.details ? `\n\nDetails: ${data.details}` : '';
+          throw new Error(errorMsg + details);
+        }
+
+        if (data.success === false) {
+          throw new Error(data.error || 'Enrichment failed');
         }
 
         showEnrichModal(product.title, 'Fetching updated data...');
@@ -288,8 +294,24 @@
         hideEnrichModal();
       } catch (error) {
         hideEnrichModal();
-        showError(`Error enriching product: ${error.message}`);
-        console.error(error);
+        const errorMsg = error.message || error.toString();
+        showError(`Error enriching product "${product.title}": ${errorMsg}`);
+        console.error('Full error details:', error);
+
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/enrich-product-with-ai`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId }),
+          });
+          const errorData = await response.json();
+          console.error('API Response:', errorData);
+        } catch (e) {
+          console.error('Could not fetch error details:', e);
+        }
       } finally {
         btn.disabled = false;
       }

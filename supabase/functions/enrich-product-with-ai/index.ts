@@ -408,6 +408,8 @@ Provide response in JSON format:
         success: true,
         message: "Product enriched successfully with DeepSeek",
         data: {
+          category: textAnalysis.category || "",
+          sub_category: textAnalysis.sub_category || "",
           seo_title: seoTitle,
           seo_description: seoDescription,
           tags: finalTags,
@@ -426,11 +428,28 @@ Provide response in JSON format:
       }
     );
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error enriching product:", error);
+
+    let errorMessage = "An unknown error occurred";
+    let errorDetails = "";
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      errorDetails = error.stack || "";
+    } else if (typeof error === "string") {
+      errorMessage = error;
+    } else if (error && typeof error === "object") {
+      errorMessage = JSON.stringify(error);
+    }
+
+    console.error("Error message:", errorMessage);
+    console.error("Error details:", errorDetails);
 
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "An unknown error occurred",
+        success: false,
+        error: errorMessage,
+        details: errorDetails.substring(0, 500),
       }),
       {
         status: 500,
