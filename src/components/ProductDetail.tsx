@@ -264,38 +264,34 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
               </div>
             )}
 
-            {product.ai_vision_analysis && (
-              <div className="border-t border-gray-200 pt-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-2 mb-2">
-                    <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <h4 className="text-base font-semibold text-blue-900">AI Vision Analysis</h4>
-                  </div>
-                  <p className="text-sm text-blue-800 leading-relaxed">
-                    {product.ai_vision_analysis}
-                  </p>
+            <div className="border-t border-gray-200 pt-6">
+              <div className={`rounded-lg p-4 ${product.ai_vision_analysis ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}`}>
+                <div className="flex items-start gap-2 mb-2">
+                  <Sparkles className={`w-5 h-5 flex-shrink-0 mt-0.5 ${product.ai_vision_analysis ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <h4 className={`text-base font-semibold ${product.ai_vision_analysis ? 'text-blue-900' : 'text-gray-500'}`}>AI Vision Analysis</h4>
                 </div>
+                <p className={`text-sm leading-relaxed ${product.ai_vision_analysis ? 'text-blue-800' : 'text-gray-400 italic'}`}>
+                  {product.ai_vision_analysis || 'Not yet enriched. Click "Enrich with AI" to generate AI vision analysis.'}
+                </p>
               </div>
-            )}
+            </div>
 
-            {(product.style || product.room) && (
-              <div className="border-t border-gray-200 pt-6">
-                <div className="grid grid-cols-2 gap-4">
-                  {product.style && (
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                      <div className="text-sm text-indigo-600 font-medium mb-1">Style</div>
-                      <div className="text-base font-semibold text-indigo-900">{product.style}</div>
-                    </div>
-                  )}
-                  {product.room && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <div className="text-sm text-emerald-600 font-medium mb-1">Room</div>
-                      <div className="text-base font-semibold text-emerald-900">{product.room}</div>
-                    </div>
-                  )}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className={`rounded-lg p-4 ${product.style ? 'bg-indigo-50 border border-indigo-200' : 'bg-gray-50 border border-gray-200'}`}>
+                  <div className={`text-sm font-medium mb-1 ${product.style ? 'text-indigo-600' : 'text-gray-500'}`}>Style</div>
+                  <div className={`text-base font-semibold ${product.style ? 'text-indigo-900' : 'text-gray-400 italic'}`}>
+                    {product.style || 'Not defined'}
+                  </div>
+                </div>
+                <div className={`rounded-lg p-4 ${product.room ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+                  <div className={`text-sm font-medium mb-1 ${product.room ? 'text-emerald-600' : 'text-gray-500'}`}>Room</div>
+                  <div className={`text-base font-semibold ${product.room ? 'text-emerald-900' : 'text-gray-400 italic'}`}>
+                    {product.room || 'Not defined'}
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Information</h3>

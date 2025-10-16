@@ -24,6 +24,35 @@ interface ImageData {
   alt_text: string;
 }
 
+async function callDeepSeek(messages: any[], maxTokens = 800) {
+  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+
+  if (!deepseekApiKey) {
+    throw new Error('DeepSeek API key not configured');
+  }
+
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${deepseekApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages,
+      temperature: 0.3,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -37,17 +66,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
 
     const { productId }: EnrichmentRequest = await req.json();
 
@@ -103,7 +121,7 @@ Deno.serve(async (req: Request) => {
       .order("position", { ascending: true })
       .limit(5);
 
-    console.log(`Enriching product: ${product.title}`);
+    console.log(`Enriching product with DeepSeek: ${product.title}`);
 
     const textAnalysisPrompt = `You are a product enrichment AI expert. Analyze the following product information and extract structured data.
 
@@ -118,6 +136,8 @@ Extract and provide the following in JSON format:
   "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
   "color": "Main color of the product (always provide if visible or mentioned)",
   "material": "Primary material (if mentioned)",
+  "style": "Product style (e.g., 'Modern', 'Scandinavian', 'Industrial', 'Classic', 'Rustic')",
+  "room": "Typical room usage (e.g., 'Living Room', 'Bedroom', 'Dining Room', 'Office', 'Kitchen')",
   "length": number or null,
   "length_unit": "cm, m, inches, etc.",
   "length_min": number or null (for ranges like 82-98 cm),
@@ -137,53 +157,32 @@ Extract and provide the following in JSON format:
     "depth": "value with unit if mentioned",
     "diameter": "value with unit if mentioned"
   },
-  "keywords": ["array", "of", "relevant", "keywords", "for", "tags"]
+  "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
+  "ai_vision_analysis": "Brief product description based on the title and description (2-3 sentences)"
 }
 
 IMPORTANT CATEGORY LOGIC:
 - category: The base product type (e.g., if it's a wooden coffee table, category = "Table basse")
 - sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
-- If the product has both a material and functionality, prioritize material in sub_category
-- Examples:
-  * "Table basse en bois" → category: "Table basse", sub_category: "Table basse bois"
-  * "Canapé convertible en cuir" → category: "Canapé", sub_category: "Canapé convertible cuir"
-  * "Chaise de bureau ergonomique" → category: "Chaise", sub_category: "Chaise de bureau"
+- style: Infer from product name and description (Modern, Scandinavian, Industrial, Classic, Rustic, Minimalist, etc.)
+- room: Infer typical usage room from product type
+- ai_vision_analysis: Create a brief but informative description
 - For dimensions with ranges (e.g., "82-98 cm"), provide both min and max values
-- Capture ALL dimension types including seat height, leg height, armrest height, depth, diameter
 - Always try to detect color even if not explicitly stated
 - Return valid JSON only.`;
 
-    const textAnalysisResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+    const textAnalysisResponse = await callDeepSeek([
       {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: "You are a product data extraction expert. Always respond with valid JSON only.",
-            },
-            {
-              role: "user",
-              content: textAnalysisPrompt,
-            },
-          ],
-          temperature: 0.3,
-        }),
-      }
-    );
+        role: "system",
+        content: "You are a product data extraction expert. Always respond with valid JSON only.",
+      },
+      {
+        role: "user",
+        content: textAnalysisPrompt,
+      },
+    ], 1000);
 
-    if (!textAnalysisResponse.ok) {
-      throw new Error(`OpenAI API error: ${textAnalysisResponse.statusText}`);
-    }
-
-    const textAnalysisData = await textAnalysisResponse.json();
-    const textAnalysisContent = textAnalysisData.choices[0].message.content;
+    const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
     let textAnalysis;
 
     try {
@@ -193,86 +192,14 @@ IMPORTANT CATEGORY LOGIC:
       textAnalysis = {
         color: "",
         material: "",
+        style: "",
+        room: "",
         keywords: [],
+        ai_vision_analysis: "",
       };
     }
 
-    let visionAnalysis: any = {};
-    let visionSynthesis = "";
-
-    if (images && images.length > 0) {
-      const imageContents = images.slice(0, 3).map((img: ImageData) => ({
-        type: "image_url",
-        image_url: {
-          url: img.src,
-        },
-      }));
-
-      const visionPrompt = `Analyze these product images and provide:
-1. A complete visual synthesis (2-3 sentences describing what you see)
-2. Main color detected
-3. Material detected (if visible)
-4. Visual characteristics not mentioned in the description
-5. Additional keywords based on visual elements
-
-Provide response in JSON format:
-{
-  "vision_synthesis": "Complete description of what you see",
-  "color": "Main color detected",
-  "material": "Material detected",
-  "visual_characteristics": ["list", "of", "characteristics"],
-  "visual_keywords": ["additional", "keywords"]
-}`;
-
-      const visionResponse = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openaiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4-vision-preview",
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: visionPrompt,
-                  },
-                  ...imageContents,
-                ],
-              },
-            ],
-            max_tokens: 500,
-            temperature: 0.3,
-          }),
-        }
-      );
-
-      if (visionResponse.ok) {
-        const visionData = await visionResponse.json();
-        const visionContent = visionData.choices[0].message.content;
-
-        try {
-          visionAnalysis = JSON.parse(visionContent);
-          visionSynthesis = visionAnalysis.vision_synthesis || "";
-        } catch (e) {
-          console.error("Failed to parse vision analysis JSON:", visionContent);
-          visionSynthesis = visionContent || "";
-        }
-      }
-    }
-
-    const finalColor = visionAnalysis.color || textAnalysis.color || "";
-    const finalMaterial = visionAnalysis.material || textAnalysis.material || "";
-
-    const allKeywords = [
-      ...(textAnalysis.keywords || []),
-      ...(visionAnalysis.visual_keywords || []),
-    ];
+    const allKeywords = textAnalysis.keywords || [];
     const uniqueKeywords = [...new Set(allKeywords)];
     const finalTags = uniqueKeywords.join(", ");
 
@@ -280,8 +207,9 @@ Provide response in JSON format:
 
 Product: ${product.title}
 Description: ${product.description || ''}
-Color: ${finalColor}
-Material: ${finalMaterial}
+Color: ${textAnalysis.color || ''}
+Material: ${textAnalysis.material || ''}
+Style: ${textAnalysis.style || ''}
 Type: ${product.product_type || ''}
 
 Provide response in JSON format:
@@ -290,62 +218,46 @@ Provide response in JSON format:
   "seo_description": "SEO description (150-160 characters)"
 }`;
 
-    const seoResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+    const seoResponse = await callDeepSeek([
       {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [
-            {
-              role: "system",
-              content: "You are an SEO expert. Generate compelling, keyword-rich SEO content. Always respond with valid JSON only.",
-            },
-            {
-              role: "user",
-              content: seoPrompt,
-            },
-          ],
-          temperature: 0.5,
-        }),
-      }
-    );
+        role: "system",
+        content: "You are an SEO expert. Generate compelling, keyword-rich SEO content. Always respond with valid JSON only.",
+      },
+      {
+        role: "user",
+        content: seoPrompt,
+      },
+    ], 500);
 
     let seoTitle = product.title;
     let seoDescription = product.description?.substring(0, 160) || "";
 
-    if (seoResponse.ok) {
-      const seoData = await seoResponse.json();
-      const seoContent = seoData.choices[0].message.content;
+    const seoContent = seoResponse.choices[0].message.content;
 
-      try {
-        const seoParsed = JSON.parse(seoContent);
-        seoTitle = seoParsed.seo_title || seoTitle;
-        seoDescription = seoParsed.seo_description || seoDescription;
-      } catch (e) {
-        console.error("Failed to parse SEO JSON:", seoContent);
-      }
+    try {
+      const seoParsed = JSON.parse(seoContent);
+      seoTitle = seoParsed.seo_title || seoTitle;
+      seoDescription = seoParsed.seo_description || seoDescription;
+    } catch (e) {
+      console.error("Failed to parse SEO JSON:", seoContent);
     }
 
     const confidenceScore = calculateConfidenceScore(
       textAnalysis,
-      visionAnalysis,
       images?.length || 0
     );
 
     const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
+      style: textAnalysis.style || "",
+      room: textAnalysis.room || "",
       seo_title: seoTitle,
       seo_description: seoDescription,
       tags: finalTags,
-      ai_vision_analysis: visionSynthesis,
-      ai_color: finalColor,
-      ai_material: finalMaterial,
+      ai_vision_analysis: textAnalysis.ai_vision_analysis || "",
+      ai_color: textAnalysis.color || "",
+      ai_material: textAnalysis.material || "",
       ai_confidence_score: confidenceScore,
       enrichment_status: "enriched",
       last_enriched_at: new Date().toISOString(),
@@ -397,13 +309,16 @@ Provide response in JSON format:
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Product enriched successfully",
+        message: "Product enriched successfully with DeepSeek",
         data: {
           seo_title: seoTitle,
           seo_description: seoDescription,
           tags: finalTags,
-          ai_color: finalColor,
-          ai_material: finalMaterial,
+          ai_color: textAnalysis.color || "",
+          ai_material: textAnalysis.material || "",
+          style: textAnalysis.style || "",
+          room: textAnalysis.room || "",
+          ai_vision_analysis: textAnalysis.ai_vision_analysis || "",
           ai_confidence_score: confidenceScore,
         },
       }),
@@ -429,19 +344,16 @@ Provide response in JSON format:
 
 function calculateConfidenceScore(
   textAnalysis: any,
-  visionAnalysis: any,
   imageCount: number
 ): number {
   let score = 50;
 
   if (textAnalysis.color) score += 10;
   if (textAnalysis.material) score += 10;
+  if (textAnalysis.style) score += 10;
+  if (textAnalysis.room) score += 5;
   if (textAnalysis.keywords?.length > 0) score += 10;
-
   if (imageCount > 0) score += 5;
-  if (visionAnalysis.color) score += 5;
-  if (visionAnalysis.material) score += 5;
-  if (visionAnalysis.visual_keywords?.length > 0) score += 5;
 
   return Math.min(100, score);
 }
