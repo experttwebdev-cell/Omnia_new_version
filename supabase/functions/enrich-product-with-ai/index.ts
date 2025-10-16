@@ -206,27 +206,39 @@ CRITICAL - SMART DIMENSIONS:
     console.log("DeepSeek response received");
     const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
     console.log("Response content length:", textAnalysisContent.length);
+    console.log("RAW DEEPSEEK RESPONSE:", textAnalysisContent);
 
     let textAnalysis;
 
     try {
-      textAnalysis = JSON.parse(textAnalysisContent);
+      // Try to extract JSON from markdown code blocks if present
+      let jsonContent = textAnalysisContent;
+      const jsonMatch = textAnalysisContent.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[1];
+        console.log("Extracted JSON from markdown block");
+      }
+
+      textAnalysis = JSON.parse(jsonContent);
       console.log("Text analysis parsed successfully");
-      console.log("Extracted data:", {
-        category: textAnalysis.category,
-        sub_category: textAnalysis.sub_category,
-        smart_length: textAnalysis.smart_length,
-        dimensions_text: textAnalysis.dimensions_text
-      });
+      console.log("Extracted data:", JSON.stringify(textAnalysis, null, 2));
     } catch (e) {
-      console.error("Failed to parse text analysis JSON:", textAnalysisContent);
+      console.error("Failed to parse text analysis JSON. Error:", e);
+      console.error("Content that failed to parse:", textAnalysisContent);
       textAnalysis = {
+        category: "",
+        sub_category: "",
         color: "",
         material: "",
         style: "",
         room: "",
         keywords: [],
         ai_vision_analysis: "",
+        smart_length: null,
+        smart_width: null,
+        smart_height: null,
+        dimensions_text: "",
+        dimensions_source: ""
       };
     }
 
