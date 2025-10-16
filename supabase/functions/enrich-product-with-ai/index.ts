@@ -11,68 +11,262 @@ interface EnrichmentRequest {
   productId: string;
 }
 
-interface ProductData {
-  id: string;
-  title: string;
-  description: string;
-  product_type: string;
-  vendor: string;
+// Fonction utilitaire pour parser les réponses JSON de l'IA
+function parseAIResponse(responseContent: string): any {
+  console.log("🔧 Parsing AI response...");
+
+  if (!responseContent || responseContent.trim() === '') {
+    console.error("❌ Empty response content");
+    return null;
+  }
+
+  try {
+    // Essayer de parser directement d'abord
+    return JSON.parse(responseContent);
+  } catch (directError) {
+    console.log("Direct parse failed, trying to extract JSON...");
+
+    // Tentatives d'extraction de JSON
+    const patterns = [
+      /```json\s*([\s\S]*?)\s*```/,
+      /```\s*([\s\S]*?)\s*```/,
+      /\{[\s\S]*\}/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = responseContent.match(pattern);
+      if (match) {
+        try {
+          const jsonContent = match[1] || match[0];
+          console.log("✅ Extracted JSON with pattern");
+          return JSON.parse(jsonContent);
+        } catch (e) {
+          console.log("Pattern failed, trying next...");
+          continue;
+        }
+      }
+    }
+
+    // Dernière tentative : nettoyer et essayer de parser
+    try {
+      const cleaned = responseContent
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+        .trim();
+      return JSON.parse(cleaned);
+    } catch (finalError) {
+      console.error("❌ All parsing attempts failed");
+      console.error("Raw content:", responseContent.substring(0, 200));
+      return null;
+    }
+  }
 }
 
-interface DeepSeekMessage {
-  role: string;
-  content: string;
-}
+async function callDeepSeek(messages: any[], maxTokens = 800, retries = 2) {
+  const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
 
-async function callDeepSeek(
-  messages: DeepSeekMessage[],
-  maxTokens = 800
-): Promise<any> {
-  const deepseekApiKey = Deno.env.get("DEEPSEEK_API_KEY");
   if (!deepseekApiKey) {
-    throw new Error("DEEPSEEK_API_KEY not configured");
+    throw new Error('DeepSeek API key not configured');
   }
 
-  const response = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${deepseekApiKey}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages,
-      max_tokens: maxTokens,
-      temperature: 0.3,
-    }),
-  });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`🔁 DeepSeek API call attempt ${attempt + 1}/${retries + 1}`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("DeepSeek API error:", errorText);
-    throw new Error(`DeepSeek API error: ${response.status}`);
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${deepseekApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages,
+          temperature: 0.3,
+          max_tokens: maxTokens,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ DeepSeek API call successful");
+      return data;
+    } catch (error) {
+      console.error(`❌ DeepSeek attempt ${attempt + 1} failed:`, error);
+      if (attempt === retries) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+}
+
+// Extraction regex des dimensions en fallback
+function extractDimensionsWithRegex(title: string, description: string): { text: string; source: string } | null {
+  console.log("🔍 Extracting dimensions with regex...");
+
+  const combinedText = `${title} ${description}`.toLowerCase();
+  const dimensions: string[] = [];
+
+  // Patterns pour dimensions
+  const patterns = [
+    /(\d+)\s*x\s*(\d+)\s*x?\s*(\d+)?\s*(cm|m|mm|inches?|in)/gi,
+    /l[.:]?\s*(\d+)\s*(cm|m)/gi,
+    /w[.:]?\s*(\d+)\s*(cm|m)/gi,
+    /h[.:]?\s*(\d+)\s*(cm|m)/gi,
+    /hauteur[:\s]+(\d+)\s*(cm|m)/gi,
+    /largeur[:\s]+(\d+)\s*(cm|m)/gi,
+    /longueur[:\s]+(\d+)\s*(cm|m)/gi,
+    /profondeur[:\s]+(\d+)\s*(cm|m)/gi,
+    /diamètre[:\s]+(\d+)\s*(cm|m)/gi,
+    /ø\s*(\d+)\s*(cm|m)/gi,
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(combinedText)) !== null) {
+      dimensions.push(match[0]);
+    }
   }
 
-  const data = await response.json();
-  return data;
+  if (dimensions.length > 0) {
+    const uniqueDimensions = [...new Set(dimensions)];
+    console.log("✅ Dimensions found:", uniqueDimensions);
+    return {
+      text: uniqueDimensions.join(", "),
+      source: title.toLowerCase().includes(dimensions[0].toLowerCase()) ? "title" : "description"
+    };
+  }
+
+  console.log("⚠️ No dimensions found");
+  return null;
+}
+
+// Prompt amélioré et plus structuré
+function createTextAnalysisPrompt(product: any, cleanDescription: string): string {
+  return `Tu es un expert en analyse de produits e-commerce. Analyse le produit suivant et extrais les données structurées.
+
+PRODUIT:
+Titre: ${product.title}
+Description: ${cleanDescription.substring(0, 800)}
+Type: ${product.product_type || 'Non spécifié'}
+Marque: ${product.vendor || 'Non spécifié'}
+
+INSTRUCTIONS CRITIQUES:
+1. Réponds UNIQUEMENT avec un JSON valide, sans texte additionnel
+2. IGNORE toute mention de quantité (lot, set, pack, ensemble, X pièces)
+3. Concentre-toi sur les attributs d'UN SEUL produit
+4. Utilise le français pour tous les champs (sauf google_product_category)
+5. Extrais TOUTES les dimensions mentionnées
+
+FORMAT JSON ATTENDU:
+{
+  "category": "Catégorie principale (ex: 'Chaise', 'Table', 'Canapé')",
+  "sub_category": "Sous-catégorie détaillée (ex: 'Chaise de bar métal', 'Table basse bois')",
+  "functionality": "Fonctionnalité clé (ex: 'Convertible', 'Avec rangement', 'Réglable')",
+  "characteristics": "Liste des caractéristiques techniques séparées par des virgules",
+  "material": "Matériau principal identifié",
+  "color": "Couleur principale si mentionnée",
+  "style": "Style design (ex: 'Moderne', 'Scandinave', 'Industriel', 'Minimaliste')",
+  "room": "Pièce d'utilisation (ex: 'Salon', 'Chambre', 'Cuisine', 'Bureau')",
+  "google_product_category": "Catégorie Google Shopping COMPLÈTE en anglais (ex: 'Home & Garden > Furniture > Chairs > Bar Stools')",
+  "keywords": ["liste", "de", "10-15", "mots-clés", "SEO", "pertinents"],
+  "dimensions_text": "Texte descriptif des dimensions (ex: 'Hauteur: 85 cm, Largeur: 45 cm, Profondeur: 50 cm')",
+  "dimensions_source": "title ou description ou ai_inference"
+}
+
+EXTRACTION DES DIMENSIONS:
+- Cherche les patterns: "120x80", "L120 x l80 x H45", "Ø60", "hauteur 85 cm"
+- Inclus TOUTES les dimensions trouvées (hauteur, largeur, profondeur, diamètre, poids)
+- Formate lisiblement: "Hauteur: 85 cm, Largeur: 45 cm"
+
+Réponds UNIQUEMENT avec le JSON, rien d'autre.`;
+}
+
+function createVisionPrompt(): string {
+  return `ANALYSE VISUELLE STRICTE - Tu analyses des IMAGES de produit.
+
+RÈGLES ABSOLUES:
+1. Tu vois UNE SEULE UNITÉ de produit dans l'image
+2. Tu n'as AUCUN contexte sur le titre, la description ou l'emballage
+3. Tu décris UNIQUEMENT ce qui est VISUELLEMENT OBSERVABLE
+4. INTERDIT: mentionner "lot", "set", "ensemble", "pack", nombres de pièces
+5. INTERDIT: nommer le type d'objet (pas de "chaise", "table", "canapé")
+6. AUTORISÉ: couleurs, textures, matériaux, finitions, style visuel
+
+RÉPONDS EN JSON (français):
+{
+  "color_detected": "Couleur(s) principale(s) observée(s)",
+  "material_detected": "Matériau(x) visible(s): bois, métal, tissu, cuir, verre, plastique",
+  "style_detected": "Style visuel: Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
+  "visual_description": "Description concise (1-2 phrases) des attributs visuels d'UNE unité"
+}
+
+✅ CORRECT: "Tissu gris clair rembourré, structure en métal noir mat, lignes épurées"
+❌ INTERDIT: "Lot de 4 chaises", "Ensemble de meubles", "Set de 2 tabourets"`;
+}
+
+function createSEOPrompt(product: any, textAnalysis: any): string {
+  return `Génère un titre SEO et une meta description optimisés.
+
+PRODUIT:
+Titre: ${product.title}
+Catégorie: ${textAnalysis.category || ''}
+Matériau: ${textAnalysis.material || ''}
+Style: ${textAnalysis.style || ''}
+
+EXIGENCES:
+1. seo_title: 50-60 caractères max
+2. seo_description: 140-155 caractères max
+3. Langue: français (ou même langue que le titre)
+4. NE PAS répéter le titre exact
+5. NE PAS mentionner quantité (lot, set, pack, X pièces)
+6. Inclure: catégorie + matériau/style + bénéfice clé
+
+RÉPONDS EN JSON:
+{
+  "seo_title": "Titre SEO optimisé",
+  "seo_description": "Description SEO attractive avec CTA subtil"
+}`;
 }
 
 function calculateConfidenceScore(
   textAnalysis: any,
-  imageCount: number
+  imageCount: number,
+  visionAnalysis: any = {}
 ): number {
-  let score = 50;
-  if (textAnalysis.category) score += 10;
+  let score = 0;
+
+  // Points pour l'analyse textuelle
+  if (textAnalysis.category && textAnalysis.category !== "Non catégorisé") score += 20;
+  if (textAnalysis.sub_category) score += 15;
   if (textAnalysis.material) score += 10;
   if (textAnalysis.style) score += 10;
-  if (imageCount > 0) score += 20;
+  if (textAnalysis.functionality) score += 10;
+  if (textAnalysis.characteristics) score += 5;
+  if (textAnalysis.dimensions_text) score += 10;
+
+  // Points pour l'analyse visuelle
+  if (visionAnalysis.color_detected) score += 10;
+  if (visionAnalysis.material_detected) score += 5;
+  if (visionAnalysis.style_detected) score += 5;
+
+  // Points pour les images
+  if (imageCount > 0) score += Math.min(imageCount * 2, 10);
+
   return Math.min(score, 100);
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
+
+  console.log("=== 🚀 DÉBUT DE L'ENRICHISSEMENT ===");
 
   try {
     const supabaseClient = createClient(
@@ -81,7 +275,17 @@ Deno.serve(async (req: Request) => {
     );
 
     const { productId }: EnrichmentRequest = await req.json();
+    console.log("📦 Product ID:", productId);
 
+    if (!productId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Product ID is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Récupération du produit
+    console.log("🔍 Fetching product from database...");
     const { data: product, error: productError } = await supabaseClient
       .from("shopify_products")
       .select("id, title, description, product_type, vendor, enrichment_status, last_enriched_at, updated_at, ai_color, ai_material, ai_vision_analysis")
@@ -89,42 +293,26 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (productError || !product) {
+      console.error("❌ Product not found:", productError);
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Product not found",
-          details: productError,
-        }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, error: "Product not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!product.title) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Product title is required",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    console.log("✅ Product found:", product.title);
 
+    // Récupération des images
     const { data: images } = await supabaseClient
       .from("product_images")
-      .select("*")
+      .select("src, alt_text, position")
       .eq("product_id", productId)
       .order("position", { ascending: true })
-      .limit(5);
+      .limit(3);
 
-    console.log(`Enriching product with DeepSeek: ${product.title}`);
+    console.log(`🖼️ Found ${images?.length || 0} images`);
 
-    // Clean description and remove quantity mentions
+    // Nettoyage de la description
     let cleanDescription = product.description
       ? product.description
           .replace(/<[^>]*>/g, ' ')
@@ -132,7 +320,7 @@ Deno.serve(async (req: Request) => {
           .trim()
       : 'No description provided';
 
-    // Remove quantity patterns like "lot de X", "set of X", "pack de X", etc.
+    // Suppression des mentions de quantité
     cleanDescription = cleanDescription
       .replace(/\b(lot|set|pack|ensemble|coffret)\s+(de\s+)?(\d+)\s+/gi, '')
       .replace(/\b(\d+)\s+(pièces?|pieces?|items?|unités?|units?)\s+/gi, '')
@@ -140,167 +328,111 @@ Deno.serve(async (req: Request) => {
       .replace(/\bquantity\s*:\s*\d+\s*/gi, '')
       .trim();
 
-    const textAnalysisPrompt = `You are a product enrichment AI expert. Analyze the following product information and extract structured data.
+    console.log("📝 Description cleaned");
 
-Product Title: ${product.title}
-Product Description: ${cleanDescription}
-Product Type: ${product.product_type || 'Not specified'}
-Vendor: ${product.vendor || 'Not specified'}
-
-CRITICAL: IGNORE all quantity mentions (lot de X, set of X, pack, etc.). Focus ONLY on the individual product attributes.
-
-Extract and provide the following in JSON format:
-{
-  "category": "Main product category (e.g., 'Table basse', 'Canapé', 'Chaise')",
-  "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
-  "functionality": "Key functionality or type (e.g., 'Convertible', '3 places', 'Relevable', 'Avec rangement', 'Modulable', 'Extensible')",
-  "characteristics": "Comma-separated list of technical characteristics from description (e.g., 'Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, Traitement anti-taches')",
-  "material": "Primary material (if mentioned)",
-  "style": "Product style in the same language as the title (e.g., 'Moderne', 'Scandinave', 'Industriel', 'Classique', 'Rustique')",
-  "room": "Typical usage room in the same language as the title (e.g., 'Salon', 'Chambre', 'Salle à manger', 'Bureau', 'Cuisine')",
-  "color": "Primary color if mentioned",
-  "google_product_category": "Full Google Shopping category path in English (e.g., 'Home & Garden > Furniture > Sofas', 'Home & Garden > Furniture > Tables > Coffee Tables')",
-  "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
-  "dimensions_text": "Complete human-readable dimensions text extracting ALL dimensions found (e.g., 'Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm, Profondeur: 60 cm, Hauteur d'assise: 42 cm'). Include ALL dimensions mentioned.",
-  "dimensions_source": "title, description, or ai_inference"
-}
-
-IMPORTANT INSTRUCTIONS:
-- category: The base product type in the same language as the title (e.g., "Table basse", "Canapé", "Lit")
-- sub_category: The category PLUS the material OR key functionality (e.g., "Table basse bois" or "Table basse relevable")
-- functionality: Extract key functionality like "Convertible", "3 places", "Modulable", "Avec rangement", "Extensible", "Relevable", etc.
-- characteristics: Extract ALL technical characteristics from description: "Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, etc."
-- style: Infer the design style in the same language as the title (e.g., for French: "Moderne", "Scandinave", "Industriel", "Classique", "Rustique", "Minimaliste", "Contemporain")
-- room: Infer typical usage room in the same language as the title (e.g., for French: "Salon", "Chambre", "Salle à manger", "Bureau", "Cuisine", "Salle de bain")
-- google_product_category: MUST be a valid Google Shopping category with full path. Use English. Examples: "Home & Garden > Furniture > Sofas", "Home & Garden > Furniture > Tables > Coffee Tables", "Home & Garden > Decor > Mirrors", "Home & Garden > Lighting > Lamps"
-- material: Extract from title and description
-
-CRITICAL - EXTRACT ALL DIMENSIONS:
-1. Extract EVERY dimension mentioned in title AND description (numbers + units: cm, m, inches, mm, kg, g, lb)
-2. Look for ALL patterns: "120x80", "120 x 80", "L120 x W80 x H45", "Ø60", "H.45", "hauteur d'assise 42 cm"
-3. French terms: Longueur (length), Largeur (width), Hauteur (height), Profondeur (depth), Diamètre (diameter), Poids (weight), Hauteur d'assise (seat height), Épaisseur (thickness)
-4. English terms: Length, Width, Height, Depth, Diameter, Weight, Seat height, Thickness
-5. Extract ranges: "82-98 cm" → use max value (98)
-6. ALWAYS specify unit found (cm, m, inches, kg, g, lb)
-7. dimensions_source: "title" if in title, "description" if in description, "ai_inference" if inferred
-8. dimensions_text: Include ALL dimensions in readable format: "Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm, Profondeur: 60 cm, Hauteur d'assise: 42 cm"
-
-- keywords: Extract 10-15 relevant SEO keywords from title and description
-- Return ONLY valid JSON, no additional text.`;
-
-    console.log("Calling DeepSeek API for text analysis...");
-    const textAnalysisResponse = await callDeepSeek([
-      {
-        role: "system",
-        content: "You are a product data extraction expert. Always respond with valid JSON only.",
-      },
-      {
-        role: "user",
-        content: textAnalysisPrompt,
-      },
-    ], 800);
-
-    const textContent = textAnalysisResponse.choices[0].message.content;
-    console.log("DeepSeek text analysis response:", textContent);
-
+    // ANALYSE TEXTUELLE avec DeepSeek
+    console.log("🧠 Starting text analysis with DeepSeek...");
     let textAnalysis: any = {};
+
     try {
-      let jsonContent = textContent;
-      const jsonMatch = textContent.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonContent = jsonMatch[1];
-        console.log("Extracted JSON from markdown block");
+      const textAnalysisResponse = await callDeepSeek([
+        {
+          role: "system",
+          content: "Tu es un expert en analyse de produits e-commerce. Réponds UNIQUEMENT en JSON valide, sans texte additionnel.",
+        },
+        {
+          role: "user",
+          content: createTextAnalysisPrompt(product, cleanDescription),
+        },
+      ], 800);
+
+      const textAnalysisContent = textAnalysisResponse.choices[0].message.content;
+      console.log("📄 DeepSeek response received");
+
+      textAnalysis = parseAIResponse(textAnalysisContent);
+
+      if (!textAnalysis) {
+        console.error("❌ Failed to parse text analysis");
+        throw new Error("Text analysis parsing failed");
       }
 
-      textAnalysis = JSON.parse(jsonContent);
-      console.log("✅ Text analysis parsed successfully");
-    } catch (e) {
-      console.error("Failed to parse text analysis JSON:", textContent);
-      console.error("Parse error:", e);
-      textAnalysis = {};
+      console.log("✅ Text analysis parsed:", {
+        category: textAnalysis.category,
+        material: textAnalysis.material,
+        style: textAnalysis.style
+      });
+    } catch (textError) {
+      console.error("❌ Text analysis failed:", textError);
+      textAnalysis = {
+        category: product.product_type || "Non catégorisé",
+        sub_category: "",
+        functionality: "",
+        characteristics: "",
+        material: "",
+        color: "",
+        style: "",
+        room: "",
+        google_product_category: "Home & Garden > Furniture",
+        keywords: [],
+        dimensions_text: "",
+        dimensions_source: ""
+      };
     }
 
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    let visionResult = { visionAnalysis: {}, imageInsights: "" };
+    // Extraction regex des dimensions en fallback
+    if (!textAnalysis.dimensions_text) {
+      const regexDimensions = extractDimensionsWithRegex(product.title, product.description || "");
+      if (regexDimensions) {
+        textAnalysis.dimensions_text = regexDimensions.text;
+        textAnalysis.dimensions_source = regexDimensions.source;
+        console.log("✅ Dimensions extracted with regex");
+      }
+    }
 
-    (async () => {
+    // ANALYSE VISUELLE en parallèle
+    const visionPromise = (async () => {
+      if (!images || images.length === 0) {
+        console.log("⏭️ No images for vision analysis");
+        return { visionAnalysis: {}, imageInsights: "" };
+      }
+
+      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiApiKey) {
+        console.warn("⚠️ OpenAI API key missing");
+        return { visionAnalysis: {}, imageInsights: "" };
+      }
+
       try {
-        if (!openaiApiKey) {
-          console.log("⚠️ OPENAI_API_KEY not configured, skipping Vision API");
-          return;
-        }
+        console.log("👁️ Analyzing images with OpenAI Vision...");
 
-        if (!images || images.length === 0) {
-          console.log("⚠️ No images available for Vision analysis");
-          return;
-        }
+        const imageContents = await Promise.all(
+          images.slice(0, 2).map(async (img: any) => {
+            try {
+              const imageResponse = await fetch(img.src);
+              if (!imageResponse.ok) return null;
 
-        console.log(`Found ${images.length} images for Vision analysis`);
+              const imageBuffer = await imageResponse.arrayBuffer();
+              const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
 
-        const imageContents = await Promise.all(images.slice(0, 3).map(async (img: any) => {
-          try {
-            const imageUrl = img.src;
-            console.log("Fetching image:", imageUrl);
-
-            const imageResponse = await fetch(imageUrl);
-            if (!imageResponse.ok) {
-              console.error(`Failed to fetch image: ${imageResponse.status}`);
+              return {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`,
+                  detail: "low",
+                },
+              };
+            } catch (error) {
+              console.error("Error processing image:", error);
               return null;
             }
+          })
+        );
 
-            const imageBuffer = await imageResponse.arrayBuffer();
-            const base64Image = btoa(
-              String.fromCharCode(...new Uint8Array(imageBuffer))
-            );
-
-            return {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
-                detail: "low",
-              },
-            };
-          } catch (error) {
-            console.error("Error processing image:", error);
-            return null;
-          }
-        }));
-
-        const validImageContents = imageContents.filter((img) => img !== null);
-
-        if (validImageContents.length === 0) {
-          console.log("⚠️ No valid images could be processed");
-          return;
+        const validImages = imageContents.filter(img => img !== null);
+        if (validImages.length === 0) {
+          console.log("⚠️ No valid images processed");
+          return { visionAnalysis: {}, imageInsights: "" };
         }
-
-        console.log("Processing", imageContents.length, "images for vision analysis");
-
-        const visionPrompt = `CRITICAL INSTRUCTIONS:
-You are analyzing product images ONLY. You have NO context about the product title, description, or packaging.
-You are looking at ONE SINGLE ITEM in the image(s).
-
-ABSOLUTE RULES:
-1. Analyze ONLY what is PHYSICALLY VISIBLE in the image
-2. Describe ONE SINGLE UNIT (the item itself, not packaging or quantity)
-3. NEVER infer or guess quantity from context
-4. NEVER mention "lot", "set", "pack", "ensemble", numbers like "4 pieces", etc.
-5. NEVER name the object type (don't say "sofa", "table", "chair", "bar stool")
-6. ONLY describe: colors, textures, materials, finishes, visual style
-
-Respond in JSON (in French):
-{
-  "visual_description": "Brief description (1-2 sentences) of VISUAL ATTRIBUTES of ONE SINGLE UNIT: dominant colors, visible textures, finishes, shape (WITHOUT naming the object)",
-  "color_detected": "Main color(s) observed on the item",
-  "material_detected": "Visible material(s): bois, métal, tissu, cuir, verre, plastique",
-  "style_detected": "Visual style: Moderne, Scandinave, Industriel, Classique, Contemporain, Minimaliste",
-  "additional_features": ["visible textures", "finishes", "details"]
-}
-
-✅ CORRECT: "Tissu gris clair rembourré, structure en métal noir mat, lignes épurées et design minimaliste"
-❌ WRONG: "Lot de 4 chaises de bar"
-❌ WRONG: "Ensemble de chaises"
-❌ WRONG: "Pack de tabourets"
-❌ WRONG: "Set of 2 chairs"`;
 
         const visionResponse = await fetch(
           "https://api.openai.com/v1/chat/completions",
@@ -316,211 +448,174 @@ Respond in JSON (in French):
                 {
                   role: "user",
                   content: [
-                    {
-                      type: "text",
-                      text: visionPrompt,
-                    },
-                    ...imageContents,
+                    { type: "text", text: createVisionPrompt() },
+                    ...validImages,
                   ],
                 },
               ],
-              max_tokens: 200,
-              temperature: 0.3,
+              max_tokens: 250,
+              temperature: 0.2,
             }),
           }
         );
 
-        console.log("Vision API response status:", visionResponse.status);
-
-        if (visionResponse.ok) {
-          const visionData = await visionResponse.json();
-          const visionContent = visionData.choices[0].message.content;
-
-          console.log("Vision API raw response:", visionContent);
-
-          try {
-            let jsonContent = visionContent;
-            const jsonMatch = visionContent.match(/```json\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-              jsonContent = jsonMatch[1];
-              console.log("Extracted JSON from markdown block");
-            }
-
-            visionResult.visionAnalysis = JSON.parse(jsonContent);
-            visionResult.imageInsights = visionResult.visionAnalysis.visual_description || "";
-
-            console.log("✅ Vision analysis parsed successfully");
-            console.log("Color detected:", visionResult.visionAnalysis.color_detected || "EMPTY");
-            console.log("Material detected:", visionResult.visionAnalysis.material_detected || "EMPTY");
-            console.log("Style detected:", visionResult.visionAnalysis.style_detected || "EMPTY");
-          } catch (parseError) {
-            console.error("Failed to parse Vision JSON:", visionContent);
-            console.error("Parse error:", parseError);
-          }
-        } else {
-          const errorText = await visionResponse.text();
-          console.error("Vision API error:", errorText);
+        if (!visionResponse.ok) {
+          throw new Error(`Vision API error: ${visionResponse.status}`);
         }
-      } catch (error) {
-        console.error("Vision processing error:", error);
+
+        const visionData = await visionResponse.json();
+        const visionContent = visionData.choices[0].message.content;
+
+        const visionAnalysis = parseAIResponse(visionContent) || {};
+        console.log("✅ Vision analysis completed:", {
+          color: visionAnalysis.color_detected,
+          material: visionAnalysis.material_detected
+        });
+
+        return {
+          visionAnalysis,
+          imageInsights: visionAnalysis.visual_description || ""
+        };
+      } catch (visionError) {
+        console.error("❌ Vision analysis failed:", visionError);
+        return { visionAnalysis: {}, imageInsights: "" };
       }
     })();
 
-    const seoPrompt = `Generate SEO-optimized title and meta description for this product:
+    // GÉNÉRATION SEO en parallèle
+    const seoPromise = (async () => {
+      try {
+        console.log("📝 Generating SEO content...");
 
-Product: ${product.title}
-Category: ${textAnalysis.category || ''}
-Material: ${textAnalysis.material || ''}
-Color: ${textAnalysis.color || ''}
-Style: ${textAnalysis.style || ''}
-Room: ${textAnalysis.room || ''}
-Key Features: ${cleanDescription.substring(0, 300)}
+        const seoResponse = await callDeepSeek([
+          {
+            role: "system",
+            content: "Expert SEO. Réponds UNIQUEMENT en JSON valide.",
+          },
+          {
+            role: "user",
+            content: createSEOPrompt(product, textAnalysis),
+          },
+        ], 300);
 
-CRITICAL INSTRUCTIONS:
-1. seo_title: 50-60 characters, include category + material/style + ONE key benefit
-2. seo_description: 140-155 characters, natural text with key features + subtle CTA
-3. Language: Use the SAME LANGUAGE as the product title (French if title is French, English if English)
-4. DON'T repeat the exact product title - enhance it with keywords
-5. Include the main category, material or style, and key benefit
-6. Make it SEO-friendly but human-readable
-7. Add selling points like "Livraison rapide" or "Qualité premium" ONLY if space allows
-8. NEVER include quantity mentions (lot, set, pack, ensemble, X pièces, etc.) - focus on the individual product
+        const seoContent = seoResponse.choices[0].message.content;
+        const seoData = parseAIResponse(seoContent);
 
-Return ONLY valid JSON:
-{
-  "seo_title": "Enhanced SEO-optimized title",
-  "seo_description": "Natural, keyword-rich meta description with subtle CTA"
-}`;
+        if (seoData) {
+          console.log("✅ SEO content generated");
+          return seoData;
+        }
 
-    const seoPromise = callDeepSeek([
-      {
-        role: "system",
-        content: "You are an SEO expert. Generate compelling titles and descriptions. Always respond with valid JSON only.",
-      },
-      {
-        role: "user",
-        content: seoPrompt,
-      },
-    ], 200);
-
-    const [seoResponse] = await Promise.all([seoPromise]);
-
-    console.log("Parallel API calls completed");
-
-    const { visionAnalysis, imageInsights } = visionResult;
-
-    // Conserver les valeurs existantes si Vision n'a rien retourné
-    const visionColor = visionAnalysis.color_detected || "";
-    const finalColor = visionColor || product.ai_color || "";
-    const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
-    const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
-
-    const visionDescription = imageInsights || visionAnalysis.visual_description || "";
-    const finalAiVisionAnalysis = visionDescription || product.ai_vision_analysis || "";
-
-    console.log("=== Final Values ===");
-    console.log("Vision Color returned:", visionColor || "EMPTY");
-    console.log("Final Color (with fallback):", finalColor);
-    console.log("Final Material:", finalMaterial);
-    console.log("Final Style:", finalStyle);
-    console.log("Vision Description returned:", visionDescription || "EMPTY");
-    console.log("Final AI Vision Analysis (with fallback):", finalAiVisionAnalysis.substring(0, 100) + "...");
-    console.log("Google Brand (from vendor):", product.vendor || "");
-
-    const allKeywords = [
-      ...(textAnalysis.keywords || []),
-      ...(visionAnalysis.additional_features || []),
-    ];
-    const uniqueKeywords = [...new Set(allKeywords)];
-    const finalTags = uniqueKeywords.join(", ");
-
-    let seoTitle = product.title;
-    let seoDescription = cleanDescription.substring(0, 160) || "";
-
-    const seoContent = seoResponse.choices[0].message.content;
-
-    try {
-      let jsonContent = seoContent;
-      const jsonMatch = seoContent.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        jsonContent = jsonMatch[1];
+        return {};
+      } catch (seoError) {
+        console.error("❌ SEO generation failed:", seoError);
+        return {};
       }
+    })();
 
-      const seoParsed = JSON.parse(jsonContent);
-      seoTitle = seoParsed.seo_title || seoTitle;
-      seoDescription = seoParsed.seo_description || seoDescription;
-    } catch (e) {
-      console.error("Failed to parse SEO JSON:", seoContent);
-    }
+    // Attendre les résultats parallèles
+    console.log("⏳ Waiting for parallel API calls...");
+    const [visionResult, seoResult] = await Promise.allSettled([visionPromise, seoPromise]);
 
-    const confidenceScore = calculateConfidenceScore(
-      textAnalysis,
-      images?.length || 0
-    );
+    const visionData = visionResult.status === 'fulfilled' ? visionResult.value : { visionAnalysis: {}, imageInsights: "" };
+    const seoData = seoResult.status === 'fulfilled' ? seoResult.value : {};
 
-    const enrichmentData = {
+    console.log("✅ Parallel API calls completed");
+
+    // FUSION DES DONNÉES avec priorités claires
+    const { visionAnalysis, imageInsights } = visionData;
+
+    // Priorité: Vision > Analyse texte > Données existantes > ""
+    const finalColor = visionAnalysis.color_detected || textAnalysis.color || product.ai_color || "";
+    const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || product.ai_material || "";
+    const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
+    const finalAiVisionAnalysis = imageInsights || product.ai_vision_analysis || "";
+
+    // Fusion des keywords
+    const baseKeywords = Array.isArray(textAnalysis.keywords) ? textAnalysis.keywords : [];
+    const allKeywords = [...new Set(baseKeywords)].slice(0, 15);
+
+    // Données SEO avec fallback
+    const seoTitle = seoData.seo_title || product.title;
+    const seoDescription = seoData.seo_description || cleanDescription.substring(0, 155);
+
+    console.log("🎯 Final data fusion:", {
+      color: finalColor,
+      material: finalMaterial,
+      style: finalStyle,
+      keywords: allKeywords.length,
+      dimensions: textAnalysis.dimensions_text || "none"
+    });
+
+    // Calcul du score de confiance
+    const confidenceScore = calculateConfidenceScore(textAnalysis, images?.length || 0, visionAnalysis);
+    console.log("📊 Confidence score:", confidenceScore);
+
+    // Préparation des données de mise à jour
+    const updateData: any = {
       category: textAnalysis.category || "",
       sub_category: textAnalysis.sub_category || "",
       functionality: textAnalysis.functionality || "",
       characteristics: textAnalysis.characteristics || "",
-      google_product_category: textAnalysis.google_product_category || "",
+      style: finalStyle,
+      room: textAnalysis.room || "",
+      google_product_category: textAnalysis.google_product_category || "Home & Garden > Furniture",
       google_brand: product.vendor || "",
       seo_title: seoTitle,
       seo_description: seoDescription,
-      tags: finalTags,
+      tags: allKeywords.join(", "),
       ai_vision_analysis: finalAiVisionAnalysis,
       ai_color: finalColor,
       ai_material: finalMaterial,
-      style: finalStyle,
-      room: textAnalysis.room || "",
       dimensions_text: textAnalysis.dimensions_text || null,
       dimensions_source: textAnalysis.dimensions_source || null,
-      enrichment_status: "completed",
       confidence_score: confidenceScore,
+      enrichment_status: "completed",
       last_enriched_at: new Date().toISOString(),
+      seo_synced_to_shopify: false,
     };
 
-    console.log("Updating product with enrichment data...");
-
+    // Mise à jour dans la base
+    console.log("💾 Updating product in database...");
     const { error: updateError } = await supabaseClient
       .from("shopify_products")
-      .update(enrichmentData)
+      .update(updateData)
       .eq("id", productId);
 
     if (updateError) {
-      console.error("Failed to update product:", updateError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Failed to update product",
-          details: updateError,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      console.error("❌ Database update failed:", updateError);
+      throw updateError;
     }
 
-    console.log("✅ Product enriched successfully");
+    console.log("✅ ENRICHISSEMENT TERMINÉ AVEC SUCCÈS!");
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Product enriched successfully",
-        data: enrichmentData,
+        data: {
+          category: updateData.category,
+          sub_category: updateData.sub_category,
+          style: updateData.style,
+          material: updateData.ai_material,
+          color: updateData.ai_color,
+          dimensions: updateData.dimensions_text,
+          confidence: updateData.confidence_score
+        }
       }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
+
   } catch (error) {
-    console.error("Error enriching product:", error);
+    console.error("💥 ENRICHMENT PROCESS FAILED:", error);
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
       }),
       {
         status: 500,
