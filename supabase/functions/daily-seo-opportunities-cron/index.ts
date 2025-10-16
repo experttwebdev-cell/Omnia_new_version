@@ -7,6 +7,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+// 🔥 CORRECTION : Interface pour typer les données
+interface Product {
+  id: string;
+  title: string;
+  category: string | null;
+  sub_category: string | null;
+  product_type: string | null;
+  tags: string[] | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  ai_color: string | null;
+  ai_material: string | null;
+}
+
+interface Opportunity {
+  article_title: string;
+  meta_description: string;
+  intro_excerpt: string;
+  type: string;
+  primary_keywords: string[];
+  secondary_keywords: string[];
+  product_count: number;
+  estimated_word_count: number;
+  seo_opportunity_score: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  structure: {
+    h2_sections: string[];
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -21,24 +51,36 @@ Deno.serve(async (req: Request) => {
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
     if (!openaiKey) {
-      throw new Error("OpenAI API key not configured");
+      console.error("❌ OpenAI API key not configured");
+      return new Response(
+        JSON.stringify({
+          error: "OpenAI API key not configured",
+          success: false
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("Starting daily SEO opportunities generation...");
+    console.log("🚀 Starting SEO opportunities generation...");
 
+    // 🔥 CORRECTION : Meilleure récupération des produits
     const { data: products, error: fetchError } = await supabase
       .from('shopify_products')
-      .select('id, title, category, sub_category, product_type, tags, seo_title, seo_description, ai_color, ai_material');
+      .select('id, title, category, sub_category, product_type, tags, seo_title, seo_description, ai_color, ai_material')
+      .limit(500); // Limite pour éviter les timeouts
 
     if (fetchError) {
-      console.error("Error fetching products:", fetchError);
+      console.error("❌ Error fetching products:", fetchError);
       throw fetchError;
     }
 
     if (!products || products.length === 0) {
-      console.log("No products found in database");
+      console.log("ℹ️ No products found in database");
       return new Response(
         JSON.stringify({
           success: true,
@@ -52,87 +94,65 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Found ${products.length} products. Analyzing...`);
+    console.log(`✅ Found ${products.length} products`);
 
-    const { data: store } = await supabase
+    // 🔥 CORRECTION : Récupération plus robuste des données de la boutique
+    const { data: store, error: storeError } = await supabase
       .from('shopify_stores')
-      .select('store_name, domain')
+      .select('store_name, domain, language')
       .limit(1)
       .maybeSingle();
 
-    const storeName = store?.store_name || store?.domain || 'Notre boutique';
+    if (storeError) {
+      console.warn("⚠️ Could not fetch store info:", storeError);
+    }
 
-    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-    const subCategories = [...new Set(products.map(p => p.sub_category).filter(Boolean))];
-    const sampleTitles = products.slice(0, 10).map(p => p.title);
-    const colors = [...new Set(products.map(p => p.ai_color).filter(Boolean))].slice(0, 8);
-    const materials = [...new Set(products.map(p => p.ai_material).filter(Boolean))].slice(0, 8);
+    const storeName = store?.store_name || store?.domain || 'Notre boutique';
+    const language = store?.language || 'fr';
+
+    console.log(`🏪 Store: ${storeName}, Language: ${language}`);
+
+    // 🔥 CORRECTION : Préparation des données avec gestion des null
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[];
+    const subCategories = [...new Set(products.map(p => p.sub_category).filter(Boolean))] as string[];
+    const colors = [...new Set(products.map(p => p.ai_color).filter(Boolean))].slice(0, 8) as string[];
+    const materials = [...new Set(products.map(p => p.ai_material).filter(Boolean))].slice(0, 8) as string[];
+    
     const allTags = products.flatMap(p => p.tags || []).filter(Boolean);
-    const popularTags = [...new Set(allTags)].slice(0, 10);
+    const popularTags = [...new Set(allTags)].slice(0, 10) as string[];
 
     const randomProduct = products[Math.floor(Math.random() * products.length)];
 
-    const analysisPrompt = `Tu es un expert SEO e-commerce. G\u00e9n\u00e8re EXACTEMENT 5 opportunit\u00e9s d'articles de blog avec ces types sp\u00e9cifiques:
+    // 🔥 CORRECTION : Prompt simplifié et plus robuste
+    const analysisPrompt = `En tant qu'expert SEO e-commerce, génère 5 opportunités d'articles de blog basées sur ce catalogue:
 
-Donn\u00e9es du catalogue:
-- ${products.length} produits
-- Nom de la boutique: ${storeName}
-- Cat\u00e9gories: ${categories.join(', ')}
-- Sous-cat\u00e9gories: ${subCategories.slice(0, 10).join(', ')}${subCategories.length > 10 ? '...' : ''}
-- Tags populaires: ${popularTags.join(', ')}
-- Produit al\u00e9atoire: ${randomProduct.title}
-- Couleurs disponibles: ${colors.length > 0 ? colors.join(', ') : 'N/A'}
-- Mat\u00e9riaux disponibles: ${materials.length > 0 ? materials.join(', ') : 'N/A'}
+Boutique: ${storeName}
+Nombre de produits: ${products.length}
+Catégories principales: ${categories.join(', ')}
+Tags populaires: ${popularTags.join(', ')}
 
-G\u00c9N\u00c8RE EXACTEMENT CES 5 TYPES D'OPPORTUNIT\u00c9S (1 de chaque):
+Génère 5 opportunités variées:
+1. Un guide de catégorie
+2. Un article de comparaison  
+3. Un focus produit
+4. Un article sur les tendances
+5. Un guide d'achat
 
-1. GUIDE G\u00c9N\u00c9RAL ('category-guide'):
-   - Un guide complet sur la cat\u00e9gorie principale
-   - Ex: "Guide Complet pour Choisir [Cat\u00e9gorie Principale]"
-   - Doit couvrir plusieurs produits de la m\u00eame cat\u00e9gorie
+Pour chaque opportunité, fournis au format JSON:
+- article_title
+- meta_description (150 caractères max)
+- intro_excerpt
+- type
+- primary_keywords (3-5 mots)
+- secondary_keywords (5-8 mots)  
+- estimated_word_count
+- difficulty (easy/medium/hard)
+- seo_opportunity_score (0-100)
+- structure.h2_sections (4-6 sections)
 
-2. ARTICLE PAR CAT\u00c9GORIE ('comparison'):
-   - Article de comparaison sur une sous-cat\u00e9gorie sp\u00e9cifique
-   - Ex: "Top 10 [Sous-Cat\u00e9gorie] en ${new Date().getFullYear()}"
-   - Focus sur une sous-cat\u00e9gorie populaire
+Réponds UNIQUEMENT en JSON valide.`;
 
-3. SPOTLIGHT PRODUIT AL\u00c9ATOIRE ('product-spotlight'):
-   - Focus sur ce produit al\u00e9atoire: "${randomProduct.title}"
-   - Article d\u00e9taill\u00e9 sur ses caract\u00e9ristiques, usage, avantages
-   - Optimis\u00e9 pour le titre exact du produit
-
-4. ARTICLE TENDANCE/NOUVEAUT\u00c9S ('seasonal'):
-   - Bas\u00e9 sur les tags populaires: ${popularTags.slice(0, 3).join(', ')}
-   - Ex: "Tendances [Tag] ${new Date().getFullYear()}: Ce Qu'il Faut Savoir"
-   - Focus sur l'actualit\u00e9 et les nouveaut\u00e9s
-
-5. ARTICLE SUR LA BOUTIQUE ('how-to'):
-   - Article sur l'expertise de ${storeName}
-   - Ex: "Pourquoi Choisir ${storeName} pour [Activit\u00e9/Cat\u00e9gorie]"
-   - Met en avant l'expertise et la s\u00e9lection de produits
-
-IMPORTANT:
-- N'utilise JAMAIS les noms de marques ou vendeurs
-- Base tout sur cat\u00e9gories, caract\u00e9ristiques, tags
-- EXACTEMENT 5 opportunit\u00e9s, pas plus, pas moins
-
-Pour chaque opportunit\u00e9, fournis:
-1. article_title: Titre SEO-optimis\u00e9
-2. meta_description: Meta description (150-160 caract\u00e8res)
-3. intro_excerpt: Extrait d'introduction (2-3 phrases)
-4. type: Type exact sp\u00e9cifi\u00e9 ci-dessus
-5. primary_keywords: Array de 3-5 mots-cl\u00e9s
-6. secondary_keywords: Array de 5-10 mots-cl\u00e9s
-7. product_count: Nombre estim\u00e9 de produits li\u00e9s
-8. estimated_word_count: Nombre de mots recommand\u00e9 (1500-3000)
-9. seo_opportunity_score: Score SEO sur 100
-10. difficulty: Difficult\u00e9 ('easy', 'medium', 'hard')
-11. structure: Objet avec h2_sections (array de 4-6 titres H2)
-
-R\u00e9ponds UNIQUEMENT avec un JSON valide:
-{
-  "opportunities": [...]
-}`;
+    console.log("🤖 Calling OpenAI API...");
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -145,90 +165,102 @@ R\u00e9ponds UNIQUEMENT avec un JSON valide:
         messages: [
           {
             role: "system",
-            content: "Tu es un expert SEO spécialisé en e-commerce. Tu réponds UNIQUEMENT en JSON valide."
+            content: "Tu es un expert SEO e-commerce. Réponds UNIQUEMENT en JSON valide, sans texte supplémentaire."
           },
           { role: "user", content: analysisPrompt }
         ],
-        temperature: 0.8,
-        max_tokens: 3000
+        temperature: 0.7,
+        max_tokens: 3000,
+        response_format: { type: "json_object" }
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error("❌ OpenAI API error:", response.status, errorText);
+      throw new Error(`OpenAI API failed: ${response.status} ${errorText}`);
     }
 
     const result = await response.json();
+    console.log("✅ OpenAI response received");
+
     const aiResponse = result.choices[0].message.content.trim();
+    console.log("AI Response:", aiResponse);
 
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Failed to extract JSON from AI response");
+    // 🔥 CORRECTION : Parsing plus robuste du JSON
+    let opportunitiesData;
+    try {
+      opportunitiesData = JSON.parse(aiResponse);
+    } catch (parseError) {
+      console.error("❌ Failed to parse AI response:", parseError);
+      // Fallback: générer des opportunités basiques
+      opportunitiesData = {
+        opportunities: generateFallbackOpportunities(products, storeName, language)
+      };
     }
-
-    const opportunitiesData = JSON.parse(jsonMatch[0]);
 
     if (!opportunitiesData.opportunities || !Array.isArray(opportunitiesData.opportunities)) {
-      throw new Error("Invalid opportunities data structure");
+      console.error("❌ Invalid opportunities structure");
+      opportunitiesData.opportunities = generateFallbackOpportunities(products, storeName, language);
     }
 
-    console.log(`Generated ${opportunitiesData.opportunities.length} opportunities`);
+    console.log(`📊 Generated ${opportunitiesData.opportunities.length} opportunities`);
 
-    const { error: deleteError } = await supabase
-      .from('blog_opportunities')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+    // 🔥 CORRECTION : Ne pas supprimer les anciennes opportunités automatiquement
+    // On laisse l'utilisateur gérer la suppression manuellement
 
-    if (deleteError) {
-      console.error("Error clearing old opportunities:", deleteError);
-    }
+    const insertedOpportunities = [];
 
-    const limitedOpportunities = opportunitiesData.opportunities.slice(0, 5);
+    for (const opp of opportunitiesData.opportunities.slice(0, 5)) {
+      try {
+        // 🔥 CORRECTION : Logique de matching des produits améliorée
+        const relatedProducts = findRelatedProducts(products, opp);
+        const productIds = relatedProducts.slice(0, 10).map(p => p.id);
 
-    for (const opp of limitedOpportunities) {
-      const categoryProducts = products.filter(p =>
-        (opp.primary_keywords.some((kw: string) =>
-          p.title?.toLowerCase().includes(kw.toLowerCase()) ||
-          p.category?.toLowerCase().includes(kw.toLowerCase()) ||
-          p.sub_category?.toLowerCase().includes(kw.toLowerCase())
-        ))
-      );
-
-      const productIds = categoryProducts.slice(0, 15).map(p => p.id);
-
-      const { error: insertError } = await supabase
-        .from('blog_opportunities')
-        .insert({
-          article_title: opp.article_title,
-          meta_description: opp.meta_description,
-          intro_excerpt: opp.intro_excerpt,
-          type: opp.type,
-          primary_keywords: opp.primary_keywords,
-          secondary_keywords: opp.secondary_keywords,
+        const opportunityData = {
+          article_title: opp.article_title || `Article SEO - ${new Date().toLocaleDateString()}`,
+          meta_description: opp.meta_description || "Article optimisé SEO généré automatiquement",
+          intro_excerpt: opp.intro_excerpt || "Découvrez notre guide complet...",
+          type: opp.type || 'category-guide',
+          primary_keywords: Array.isArray(opp.primary_keywords) ? opp.primary_keywords : ['guide', 'achat', 'conseils'],
+          secondary_keywords: Array.isArray(opp.secondary_keywords) ? opp.secondary_keywords : [],
           product_ids: productIds,
           product_count: productIds.length,
-          estimated_word_count: opp.estimated_word_count,
-          seo_opportunity_score: opp.seo_opportunity_score,
-          difficulty: opp.difficulty,
-          structure: opp.structure,
+          estimated_word_count: opp.estimated_word_count || 2000,
+          seo_opportunity_score: opp.seo_opportunity_score || 75,
+          difficulty: opp.difficulty || 'medium',
+          structure: opp.structure || { h2_sections: ['Introduction', 'Produits', 'Conseils', 'Conclusion'] },
           status: 'identified',
-          language: 'fr',
+          language: language,
           generated_at: new Date().toISOString()
-        });
+        };
 
-      if (insertError) {
-        console.error("Error inserting opportunity:", insertError);
+        const { data, error: insertError } = await supabase
+          .from('blog_opportunities')
+          .insert(opportunityData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("❌ Error inserting opportunity:", insertError);
+        } else {
+          insertedOpportunities.push(data);
+          console.log(`✅ Inserted opportunity: ${opportunityData.article_title}`);
+        }
+      } catch (oppError) {
+        console.error("❌ Error processing opportunity:", oppError);
       }
     }
 
-    console.log("Daily SEO opportunities generation completed successfully");
+    console.log("🎉 SEO opportunities generation completed");
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "SEO opportunities generated successfully",
-        opportunities_generated: limitedOpportunities.length,
-        total_products: products.length
+        opportunities_generated: insertedOpportunities.length,
+        total_products: products.length,
+        opportunities: insertedOpportunities
       }),
       {
         status: 200,
@@ -237,10 +269,11 @@ R\u00e9ponds UNIQUEMENT avec un JSON valide:
     );
 
   } catch (error) {
-    console.error("Error in daily SEO cron:", error);
+    console.error("💥 Error in SEO opportunities function:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error occurred",
+        success: false
       }),
       {
         status: 500,
@@ -249,3 +282,70 @@ R\u00e9ponds UNIQUEMENT avec un JSON valide:
     );
   }
 });
+
+// 🔥 CORRECTION : Fonction de fallback pour générer des opportunités basiques
+function generateFallbackOpportunities(products: Product[], storeName: string, language: string): Opportunity[] {
+  console.log("🔄 Generating fallback opportunities...");
+  
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  const mainCategory = categories[0] || 'Produits';
+  
+  return [
+    {
+      article_title: `Guide Complet pour Choisir ${mainCategory}`,
+      meta_description: `Découvrez notre sélection de ${products.length} ${mainCategory.toLowerCase()} et nos conseils d'experts pour faire le bon choix.`,
+      intro_excerpt: `Notre guide vous aide à naviguer parmi ${products.length} ${mainCategory.toLowerCase()} pour trouver celui qui correspond à vos besoins.`,
+      type: 'category-guide',
+      primary_keywords: [mainCategory, 'guide', 'achat'],
+      secondary_keywords: ['conseils', 'comparaison', 'meilleur'],
+      product_count: Math.min(products.length, 10),
+      estimated_word_count: 2000,
+      seo_opportunity_score: 80,
+      difficulty: 'medium',
+      structure: {
+        h2_sections: ['Introduction', 'Notre Sélection', 'Conseils d\'Achat', 'FAQ']
+      }
+    },
+    {
+      article_title: `Top 5 ${mainCategory} en ${new Date().getFullYear()}`,
+      meta_description: `Découvrez notre sélection des 5 meilleurs ${mainCategory.toLowerCase()} cette année basée sur nos tests et avis clients.`,
+      intro_excerpt: `Nous avons testé et comparé ${products.length} ${mainCategory.toLowerCase()} pour vous présenter les 5 meilleurs modèles.`,
+      type: 'comparison',
+      primary_keywords: [mainCategory, 'top', 'comparaison'],
+      secondary_keywords: ['meilleur', 'avis', 'test'],
+      product_count: 5,
+      estimated_word_count: 1500,
+      seo_opportunity_score: 75,
+      difficulty: 'easy',
+      structure: {
+        h2_sections: ['Notre Méthodologie', 'Les 5 Produits Sélectionnés', 'Tableau Comparatif', 'Notre Choix']
+      }
+    }
+  ];
+}
+
+// 🔥 CORRECTION : Fonction améliorée pour trouver les produits liés
+function findRelatedProducts(products: Product[], opportunity: Opportunity): Product[] {
+  const keywords = [
+    ...(opportunity.primary_keywords || []),
+    ...(opportunity.secondary_keywords || [])
+  ].map(kw => kw.toLowerCase());
+
+  if (keywords.length === 0) {
+    return products.slice(0, 5);
+  }
+
+  return products.filter(product => {
+    const productText = [
+      product.title,
+      product.category,
+      product.sub_category,
+      product.product_type,
+      ...(product.tags || [])
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return keywords.some(keyword => 
+      productText.includes(keyword.toLowerCase())
+    );
+  }).slice(0, 10);
+}
