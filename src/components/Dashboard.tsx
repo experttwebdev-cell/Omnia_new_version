@@ -122,7 +122,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         throw new Error('Dashboard statistics not available');
       }
 
-      const productTypes = (productTypesResult.data || []).map(pt => ({
+      const category = (productTypesResult.data || []).map(pt => ({
         type: pt.product_type || 'Uncategorized',
         count: pt.product_count
       }));
