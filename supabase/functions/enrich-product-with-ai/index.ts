@@ -150,10 +150,10 @@ Extract and provide the following in JSON format:
   "sub_category": "Detailed sub-category with material OR functionality (e.g., 'Table basse bois', 'Table basse design', 'Canapé convertible cuir')",
   "functionality": "Key functionality or type (e.g., 'Convertible', '3 places', 'Relevable', 'Avec rangement', 'Modulable', 'Extensible')",
   "characteristics": "Comma-separated list of technical characteristics from description (e.g., 'Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, Traitement anti-taches')",
-  "color": "Main color of the product (always provide if visible or mentioned)",
   "material": "Primary material (if mentioned)",
   "style": "Product style in the same language as the title (e.g., 'Moderne', 'Scandinave', 'Industriel', 'Classique', 'Rustique')",
   "room": "Typical room usage in the same language as the title (e.g., 'Salon', 'Chambre', 'Salle à manger', 'Bureau', 'Cuisine')",
+  "google_product_category": "Google Shopping Product Category with full path (e.g., 'Home & Garden > Furniture > Sofas', 'Home & Garden > Furniture > Tables > Coffee Tables', 'Furniture > Living Room Furniture > Sofas & Sectionals')",
   "smart_length": number or null,
   "smart_length_unit": "cm, m, inches, etc.",
   "smart_width": number or null,
@@ -169,7 +169,6 @@ Extract and provide the following in JSON format:
   "smart_seat_height": number or null (hauteur d'assise pour chaises/canapés),
   "smart_seat_height_unit": "unit",
   "keywords": ["array", "of", "relevant", "keywords", "for", "tags"],
-  "ai_vision_analysis": "Write a SHORT concise product description (2-3 sentences MAX) based ONLY on title and description. NO marketing fluff. Just key facts: materials, main features, and practical use.",
   "dimensions_text": "Complete human-readable dimensions text extracting ALL dimensions found (e.g., 'Longueur: 120 cm, Largeur: 80 cm, Hauteur: 45 cm, Profondeur: 60 cm, Hauteur d'assise: 42 cm'). Include ALL dimensions mentioned.",
   "dimensions_source": "title, description, or ai_inference"
 }
@@ -181,8 +180,8 @@ IMPORTANT INSTRUCTIONS:
 - characteristics: Extract ALL technical characteristics from description: "Déhoussable, Pieds réglables, Résistant aux UV, Facile d'entretien, etc."
 - style: Infer the design style in the same language as the title (e.g., for French: "Moderne", "Scandinave", "Industriel", "Classique", "Rustique", "Minimaliste", "Contemporain")
 - room: Infer typical usage room in the same language as the title (e.g., for French: "Salon", "Chambre", "Salle à manger", "Bureau", "Cuisine", "Salle de bain")
-- ai_vision_analysis: KEEP IT SHORT (2-3 sentences). Based ONLY on title/description. State materials, main feature, and use case. NO marketing language.
-- color & material: Extract from both title and description
+- google_product_category: MUST be a valid Google Shopping category with full path. Use English. Examples: "Home & Garden > Furniture > Sofas", "Home & Garden > Furniture > Tables > Coffee Tables", "Home & Garden > Decor > Mirrors", "Home & Garden > Lighting > Lamps"
+- material: Extract from title and description
 
 CRITICAL - EXTRACT ALL DIMENSIONS:
 1. Extract EVERY dimension mentioned in title AND description (numbers + units: cm, m, inches, mm, kg, g, lb)
@@ -233,12 +232,11 @@ CRITICAL - EXTRACT ALL DIMENSIONS:
       textAnalysis = {
         category: "",
         sub_category: "",
-        color: "",
         material: "",
         style: "",
         room: "",
+        google_product_category: "",
         keywords: [],
-        ai_vision_analysis: "",
         smart_length: null,
         smart_width: null,
         smart_height: null,
@@ -347,34 +345,35 @@ Key Features: ${cleanDescription.substring(0, 300)}
 CRITICAL INSTRUCTIONS:
 1. seo_title: 50-60 characters, include category + main keyword + ONE key benefit (e.g., "Canapé d'angle convertible 5 places - Confort & Design Moderne")
 2. seo_description: 140-155 characters, natural text with key features + subtle CTA
-3. Use SAME LANGUAGE as product title
-4. NO HTML tags (no <p>, <strong>, <div>, etc.)
-5. NO special characters that break plain text
-6. Be specific and informative, not generic
+3. Language: Use the SAME LANGUAGE as the product title (French if title is French, English if English)
+4. DON'T repeat the exact product title - enhance it with keywords
+5. Include the main category, material or style, and key benefit
+6. Make it SEO-friendly but human-readable
+7. Add selling points like "Livraison rapide" or "Qualité premium" ONLY if space allows
 
-Provide response in JSON format:
+Return ONLY valid JSON:
 {
-  "seo_title": "Optimized title with category, keyword, and benefit (50-60 chars)",
-  "seo_description": "Natural description with features and CTA (140-155 chars, PLAIN TEXT ONLY)"
+  "seo_title": "Enhanced SEO-optimized title",
+  "seo_description": "Natural, keyword-rich meta description with subtle CTA"
 }`;
 
     const seoPromise = callDeepSeek([
       {
         role: "system",
-        content: "You are an SEO expert. Generate clean, plain-text SEO content WITHOUT any HTML tags. Always respond with valid JSON only.",
+        content: "You are an SEO expert. Generate compelling titles and descriptions. Always respond with valid JSON only.",
       },
       {
         role: "user",
         content: seoPrompt,
       },
-    ], 500);
+    ], 300);
 
     const [visionResult, seoResponse] = await Promise.all([visionPromise, seoPromise]);
 
     console.log("Parallel API calls completed");
 
     const { visionAnalysis, imageInsights } = visionResult;
-    const finalColor = visionAnalysis.color_detected || textAnalysis.color || "";
+    const finalColor = visionAnalysis.color_detected || "";
     const finalMaterial = visionAnalysis.material_detected || textAnalysis.material || "";
     const finalStyle = visionAnalysis.style_detected || textAnalysis.style || "";
 
@@ -403,9 +402,7 @@ Provide response in JSON format:
       images?.length || 0
     );
 
-    const finalAiVisionAnalysis = imageInsights
-      ? `${textAnalysis.ai_vision_analysis || ""}\n\n[Analyse visuelle OpenAI des photos du produit]: ${imageInsights}`
-      : textAnalysis.ai_vision_analysis || "";
+    const finalAiVisionAnalysis = imageInsights || visionAnalysis.visual_description || "";
 
     const updateData: any = {
       category: textAnalysis.category || "",
@@ -414,6 +411,7 @@ Provide response in JSON format:
       characteristics: textAnalysis.characteristics || "",
       style: finalStyle,
       room: textAnalysis.room || "",
+      google_product_category: textAnalysis.google_product_category || "",
       seo_title: seoTitle,
       seo_description: seoDescription,
       tags: finalTags,
@@ -478,17 +476,17 @@ Provide response in JSON format:
       .eq("id", productId);
 
     if (updateError) {
-      console.error("Database update error:", updateError);
+      console.error("Error updating product:", updateError);
       throw updateError;
     }
 
-    console.log("Product updated successfully in database");
+    console.log("Product updated successfully");
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Product enriched successfully with DeepSeek",
-        data: {
+        message: "Product enriched successfully",
+        enrichment: {
           category: textAnalysis.category || "",
           sub_category: textAnalysis.sub_category || "",
           seo_title: seoTitle,
@@ -540,17 +538,22 @@ Provide response in JSON format:
 });
 
 function calculateConfidenceScore(
-  textAnalysis: any,
+  analysis: any,
   imageCount: number
 ): number {
-  let score = 50;
+  let score = 0;
 
-  if (textAnalysis.color) score += 10;
-  if (textAnalysis.material) score += 10;
-  if (textAnalysis.style) score += 10;
-  if (textAnalysis.room) score += 5;
-  if (textAnalysis.keywords?.length > 0) score += 10;
-  if (imageCount > 0) score += 5;
+  if (analysis.category) score += 20;
+  if (analysis.sub_category) score += 15;
+  if (analysis.material) score += 10;
+  if (analysis.style) score += 10;
+  if (analysis.room) score += 10;
 
-  return Math.min(100, score);
+  if (imageCount > 0) score += Math.min(imageCount * 5, 20);
+
+  if (analysis.smart_length || analysis.smart_width || analysis.smart_height) {
+    score += 15;
+  }
+
+  return Math.min(score, 100);
 }
