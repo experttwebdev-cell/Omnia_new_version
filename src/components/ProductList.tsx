@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Package, RefreshCw, ExternalLink, Tag, Box, Hash, Calendar, Store as StoreIcon } from 'lucide-react';
+import { Package, RefreshCw, ExternalLink, Tag, Box, Hash, Calendar, Store as StoreIcon, Sparkles, Filter } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
+
+type EnrichmentFilter = 'all' | 'enriched' | 'not_enriched';
 
 export function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [enrichmentFilter, setEnrichmentFilter] = useState<EnrichmentFilter>('all');
 
   const fetchProducts = async () => {
     try {
@@ -44,9 +47,21 @@ export function ProductList() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
-        <p className="text-gray-600">Loading products...</p>
+      <div className="bg-white rounded-lg shadow-md p-12 text-center">
+        <div className="relative w-24 h-24 mx-auto mb-6">
+          <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-t-blue-600 border-r-purple-600 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Package className="w-10 h-10 text-blue-600 animate-pulse" />
+          </div>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chargement des produits</h3>
+        <p className="text-sm text-gray-600">Veuillez patienter...</p>
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+        </div>
       </div>
     );
   }
@@ -75,21 +90,87 @@ export function ProductList() {
     );
   }
 
+  const filteredProducts = products.filter(product => {
+    if (enrichmentFilter === 'enriched') {
+      return product.enrichment_status === 'enriched';
+    }
+    if (enrichmentFilter === 'not_enriched') {
+      return product.enrichment_status !== 'enriched';
+    }
+    return true;
+  });
+
+  const enrichedCount = products.filter(p => p.enrichment_status === 'enriched').length;
+  const notEnrichedCount = products.length - enrichedCount;
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">Produits Importés ({products.length})</h2>
-        <button
-          onClick={fetchProducts}
-          className="p-2 hover:bg-gray-100 rounded-lg transition"
-          title="Actualiser"
-        >
-          <RefreshCw className="w-5 h-5 text-gray-600" />
-        </button>
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-800">Produits Importés ({products.length})</h2>
+          <button
+            onClick={fetchProducts}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            title="Actualiser"
+          >
+            <RefreshCw className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Filter className="w-4 h-4" />
+            <span className="font-medium">Filtrer:</span>
+          </div>
+          <button
+            onClick={() => setEnrichmentFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              enrichmentFilter === 'all'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Tous ({products.length})
+          </button>
+          <button
+            onClick={() => setEnrichmentFilter('enriched')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
+              enrichmentFilter === 'enriched'
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Enrichis ({enrichedCount})
+          </button>
+          <button
+            onClick={() => setEnrichmentFilter('not_enriched')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              enrichmentFilter === 'not_enriched'
+                ? 'bg-orange-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Non enrichis ({notEnrichedCount})
+          </button>
+        </div>
       </div>
 
-      <div className="divide-y divide-gray-200 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {products.map((product) => (
+      {filteredProducts.length === 0 ? (
+        <div className="p-12 text-center">
+          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            {enrichmentFilter === 'enriched' ? 'Aucun produit enrichi' : 'Aucun produit non enrichi'}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {enrichmentFilter === 'enriched'
+              ? 'Utilisez l\'enrichissement AI pour analyser vos produits'
+              : 'Tous vos produits sont enrichis !'}
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-200 max-h-[calc(100vh-300px)] overflow-y-auto">
+          {filteredProducts.map((product) => (
           <div key={product.id} className="p-6 hover:bg-gray-50 transition">
             <div className="flex gap-6">
               {product.image_url ? (
@@ -116,6 +197,16 @@ export function ProductList() {
                       }`}>
                         {product.status}
                       </span>
+                      {product.enrichment_status === 'enriched' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          Enrichi AI
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                          Non enrichi
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -240,7 +331,8 @@ export function ProductList() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
