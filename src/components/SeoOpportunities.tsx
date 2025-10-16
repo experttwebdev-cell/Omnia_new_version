@@ -14,7 +14,8 @@ import {
   Target,
   BookOpen,
   Filter,
-  FileEdit
+  FileEdit,
+  XCircle
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
@@ -204,15 +205,27 @@ export function SeoOpportunities() {
   const ui = uiText[templateLang];
 
   const fetchProducts = useCallback(async () => {
+    const startTime = Date.now();
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn('⏱️ Request timeout after 30 seconds');
+      abortController.abort();
+    }, 30000);
+
     try {
       setLoading(true);
+      setError('');
 
-      console.log('🔍 Fetching products from shopify_products table...');
-      const { data: productsData, error: productsError } = await supabase
+      console.log('🔍 [FETCH START]', new Date().toISOString(), 'Fetching products from shopify_products table...');
+
+      const productsPromise = supabase
         .from('shopify_products')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(1000)
+        .abortSignal(abortController.signal);
+
+      const { data: productsData, error: productsError } = await productsPromise;
 
       if (productsError) {
         console.error('❌ Error fetching products:', productsError);
@@ -220,7 +233,8 @@ export function SeoOpportunities() {
       }
 
       const productCount = (productsData || []).length;
-      console.log(`✅ Found ${productCount} products`);
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Found ${productCount} products in ${elapsed}ms`);
 
       if (productCount >= 1000) {
         addNotification({
@@ -235,37 +249,65 @@ export function SeoOpportunities() {
 
       setProducts(productsData || []);
 
-      console.log('🔍 Fetching opportunities from blog_opportunities table...');
-      const { data: dbOpportunities, error: oppsError } = await supabase
+      console.log('🔍 [OPPORTUNITIES START]', new Date().toISOString(), 'Fetching opportunities from blog_opportunities table...');
+
+      const oppsPromise = supabase
         .from('blog_opportunities')
         .select('*')
-        .order('score', { ascending: false });
+        .order('score', { ascending: false })
+        .abortSignal(abortController.signal);
+
+      const { data: dbOpportunities, error: oppsError } = await oppsPromise;
+
+      const oppsElapsed = Date.now() - startTime;
 
       if (oppsError) {
         console.error('❌ Error fetching opportunities:', oppsError);
+        console.log('⚠️ Continuing without opportunities data');
+        setOpportunities([]);
       } else {
-        console.log(`✅ Found ${(dbOpportunities || []).length} opportunities`);
+        console.log(`✅ Found ${(dbOpportunities || []).length} opportunities in ${oppsElapsed}ms`);
+
+        if (dbOpportunities && dbOpportunities.length > 0) {
+          const formattedOpps: Opportunity[] = dbOpportunities.map((opp: any) => ({
+            id: opp.id,
+            type: opp.type || 'category-guide',
+            title: opp.title,
+            description: opp.description || '',
+            targetKeywords: Array.isArray(opp.target_keywords) ? opp.target_keywords : [],
+            productCount: Array.isArray(opp.related_product_ids) ? opp.related_product_ids.length : 0,
+            relatedProducts: opp.related_product_ids ? (productsData || []).filter(p => opp.related_product_ids.includes(p.id)).map(p => p.title) : [],
+            score: opp.score || 50,
+            estimatedWordCount: opp.estimated_word_count || 2000,
+            difficulty: opp.difficulty || 'medium',
+            suggestedStructure: []
+          }));
+          setOpportunities(formattedOpps);
+        } else {
+          setOpportunities([]);
+        }
       }
 
-      if (dbOpportunities && dbOpportunities.length > 0) {
-        const formattedOpps: Opportunity[] = dbOpportunities.map((opp: any) => ({
-          id: opp.id,
-          type: opp.type || 'category-guide',
-          title: opp.title,
-          description: opp.description || '',
-          targetKeywords: Array.isArray(opp.target_keywords) ? opp.target_keywords : [],
-          productCount: Array.isArray(opp.related_product_ids) ? opp.related_product_ids.length : 0,
-          relatedProducts: opp.related_product_ids ? (productsData || []).filter(p => opp.related_product_ids.includes(p.id)).map(p => p.title) : [],
-          score: opp.score || 50,
-          estimatedWordCount: opp.estimated_word_count || 2000,
-          difficulty: opp.difficulty || 'medium',
-          suggestedStructure: []
-        }));
-        setOpportunities(formattedOpps);
-      }
+      clearTimeout(timeoutId);
+      const totalElapsed = Date.now() - startTime;
+      console.log(`✅ [FETCH COMPLETE] Total time: ${totalElapsed}ms`);
     } catch (err) {
-      console.error('Error fetching products:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
+      clearTimeout(timeoutId);
+      console.error('❌ [FETCH ERROR]', err);
+
+      let errorMessage = 'Failed to fetch products';
+
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          errorMessage = language === 'fr'
+            ? 'Délai d\'attente dépassé. Veuillez réessayer.'
+            : 'Request timeout. Please try again.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+
+      setError(errorMessage);
       addNotification({
         type: 'error',
         title: language === 'fr' ? 'Erreur' : 'Error',
@@ -275,12 +317,28 @@ export function SeoOpportunities() {
       setProducts([]);
       setOpportunities([]);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
+      const totalTime = Date.now() - startTime;
+      console.log(`🏁 [FINALLY BLOCK] Loading set to false after ${totalTime}ms`);
     }
   }, [addNotification, language]);
 
   useEffect(() => {
-    fetchProducts();
+    let isMounted = true;
+
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchProducts();
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+      console.log('🧹 Component unmounting, cleaning up...');
+    };
   }, [fetchProducts]);
 
   const handleGenerateSmartOpportunities = async () => {
@@ -867,8 +925,46 @@ export function SeoOpportunities() {
               {ui.subtitle}
             </p>
           </div>
+          <button
+            onClick={fetchProducts}
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition text-sm font-medium"
+          >
+            <RefreshCw className="w-4 h-4 inline mr-2" />
+            {templateLang === 'fr' ? 'Rafraîchir' : 'Refresh'}
+          </button>
         </div>
         <LoadingAnimation type="opportunities" message={templateLang === 'fr' ? "Chargement des opportunités de contenu..." : "Loading content opportunities..."} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{ui.title}</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {ui.subtitle}
+            </p>
+          </div>
+        </div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+            <XCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-red-900 mb-2">
+            {templateLang === 'fr' ? 'Erreur de chargement' : 'Loading Error'}
+          </h3>
+          <p className="text-red-700 mb-6">{error}</p>
+          <button
+            onClick={fetchProducts}
+            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition inline-flex items-center gap-2"
+          >
+            <RefreshCw className="w-5 h-5" />
+            {templateLang === 'fr' ? 'Réessayer' : 'Retry'}
+          </button>
+        </div>
       </div>
     );
   }
