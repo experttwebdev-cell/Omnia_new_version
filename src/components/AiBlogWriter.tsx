@@ -5,8 +5,6 @@ import {
   Calendar,
   Clock,
   Save,
-  Play,
-  Pause,
   FileText,
   Tag as TagIcon,
   Link as LinkIcon,
@@ -17,7 +15,6 @@ import {
   Wand2,
   BookOpen,
   TrendingUp,
-  BarChart3,
   Target,
   Zap,
   RotateCcw
@@ -101,7 +98,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
         setError('Aucun produit trouvé dans votre catalogue. Veuillez importer des produits depuis Shopify via "Paramètres" > "Import Shopify".');
       }
 
-      const uniqueCategories = [...new Set(products?.map(p => p.category).filter(Boolean))].sort();
+      const uniqueCategories = [...new Set(products?.map((p: any) => p.category).filter(Boolean))].sort();
       setCategories(uniqueCategories as string[]);
 
       // Fetch store settings
@@ -111,8 +108,8 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
         .limit(1)
         .single();
 
-      if (storeSettings?.blog_auto_settings) {
-        setSettings(storeSettings.blog_auto_settings);
+      if (storeSettings && 'blog_auto_settings' in storeSettings && storeSettings.blog_auto_settings) {
+        setSettings(storeSettings.blog_auto_settings as BlogSettings);
       }
 
       // Fetch blog statistics
@@ -129,17 +126,17 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
     try {
       const { data: articles, error } = await supabase
         .from('blog_articles')
-        .select('id, published, created_at, sync_status');
+        .select('id, published, created_at, sync_status') as { data: any[] | null, error: any };
 
       if (error) throw error;
 
       const total_articles = articles?.length || 0;
-      const published_articles = articles?.filter(a => a.published || a.sync_status === 'synced').length || 0;
+      const published_articles = articles?.filter((a: any) => a.published || a.sync_status === 'synced').length || 0;
       const draft_articles = total_articles - published_articles;
 
       // Get latest article date
       const last_generated = articles && articles.length > 0 
-        ? new Date(Math.max(...articles.map(a => new Date(a.created_at).getTime()))).toISOString()
+        ? new Date(Math.max(...articles.map((a: any) => new Date(a.created_at).getTime()))).toISOString()
         : null;
 
       setStats({
@@ -197,11 +194,11 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
       const { error: updateError } = await supabase
         .from('shopify_stores')
-        .update({ 
-          blog_auto_settings: settings,
+        .update({
+          blog_auto_settings: settings as any,
           updated_at: new Date().toISOString()
         })
-        .eq('id', stores[0].id);
+        .eq('id', (stores[0] as any).id);
 
       if (updateError) throw updateError;
 

@@ -60,7 +60,7 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [language, setLanguage] = useState<Language>('en');
   const [languageLoaded, setLanguageLoaded] = useState(false);
-  const [configError, setConfigError] = useState(false);
+  const [configError] = useState(false);
   const t = getTranslation(language);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ function App() {
           .limit(1)
           .maybeSingle();
 
-        if (stores && stores.language) {
+        if (stores && 'language' in stores && stores.language) {
           setLanguage(stores.language as Language);
         }
       } catch (error) {
@@ -122,7 +122,7 @@ function App() {
         .select('id')
         .limit(1);
 
-      if (stores && stores.length > 0) {
+      if (stores && Array.isArray(stores) && stores.length > 0 && 'id' in stores[0]) {
         await supabase
           .from('shopify_stores')
           .update({ language: newLanguage })
