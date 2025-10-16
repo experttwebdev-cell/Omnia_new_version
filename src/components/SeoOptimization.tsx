@@ -319,8 +319,29 @@ export function SeoOptimization() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <Package className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+            </div>
+          </div>
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Chargement des produits</h3>
+        <p className="text-base text-gray-600 mb-6">Récupération des données SEO...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
+        </div>
       </div>
     );
   }

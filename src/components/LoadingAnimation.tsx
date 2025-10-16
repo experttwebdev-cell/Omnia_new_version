@@ -59,115 +59,134 @@ export function LoadingAnimation({
 
   if (type === 'products') {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4">
-        <div className="relative w-32 h-32 mb-8">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <Package className="w-16 h-16 text-blue-400 animate-pulse" />
-          </div>
-          <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-ping opacity-20" />
-          <div className="absolute inset-4 border-4 border-blue-300 rounded-full animate-spin" style={{ animationDuration: '2s' }} />
-          <div className="absolute inset-8 border-4 border-blue-400 rounded-full animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
-        </div>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex gap-2">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              />
-            ))}
+            <div className="relative">
+              <Package className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+            </div>
           </div>
         </div>
-
-        <p className="text-lg font-semibold text-gray-800 mb-2 animate-pulse">
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
           {message || messages[currentMessage]}
-        </p>
-        <p className="text-sm text-gray-500">This may take a few moments</p>
-
+        </h3>
+        <p className="text-base text-gray-600 mb-6">Récupération des données en cours...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
         {showProgress && (
-          <div className="w-64 mt-6">
-            <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+          <div className="w-64 mt-8 mx-auto">
+            <div className="bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
               <div
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all duration-300 ease-out"
+                className="bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 h-full transition-all duration-300 ease-out rounded-full shadow-lg"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-600 text-center mt-2">{progress}%</p>
+            <p className="text-sm font-semibold text-blue-600 text-center mt-3">{progress}%</p>
           </div>
         )}
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
+        </div>
       </div>
     );
   }
 
   if (type === 'content') {
     return (
-      <div className="space-y-6 py-8 px-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Sparkles className="w-8 h-8 text-purple-500 animate-pulse" />
-            <div className="absolute inset-0 bg-purple-400 rounded-full opacity-20 animate-ping" />
-          </div>
-          <div className="flex-1">
-            <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-shimmer bg-[length:200%_100%]" />
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <Sparkles className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Loader2 className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-spin" />
+            </div>
           </div>
         </div>
-
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="space-y-3" style={{ animationDelay: `${i * 0.1}s` }}>
-            <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-shimmer bg-[length:200%_100%]" style={{ animationDelay: `${i * 0.2}s` }} />
-            <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded w-5/6 animate-shimmer bg-[length:200%_100%]" style={{ animationDelay: `${i * 0.2 + 0.1}s` }} />
-            <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded w-4/6 animate-shimmer bg-[length:200%_100%]" style={{ animationDelay: `${i * 0.2 + 0.2}s` }} />
-          </div>
-        ))}
-
-        <p className="text-center text-sm text-gray-500 mt-8 animate-pulse">
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
           {message || messages[currentMessage]}
-        </p>
+        </h3>
+        <p className="text-base text-gray-600 mb-6">Génération du contenu en cours...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
+        </div>
       </div>
     );
   }
 
   if (type === 'data') {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="relative mb-8">
-          <TrendingUp className="w-16 h-16 text-teal-500 animate-bounce" />
-          <div className="absolute -top-2 -right-2">
-            <div className="w-4 h-4 bg-teal-400 rounded-full animate-ping" />
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+        <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <TrendingUp className="w-12 h-12 text-blue-600 animate-pulse" />
+              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+            </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="w-16 h-16 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg animate-pulse"
-              style={{ animationDelay: `${i * 0.1}s` }}
-            />
-          ))}
-        </div>
-
-        <p className="text-lg font-semibold text-gray-800 animate-pulse">
+        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
           {message || messages[currentMessage]}
-        </p>
+        </h3>
+        <p className="text-base text-gray-600 mb-6">Analyse des données en cours...</p>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+        </div>
+        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Connexion sécurisée établie</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="relative w-20 h-20 mb-6">
-        <div className="absolute inset-0 border-4 border-blue-200 rounded-full" />
-        <div className="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full animate-spin" />
-        <div className="absolute inset-2 border-4 border-transparent border-t-blue-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
-        <ShoppingBag className="absolute inset-0 m-auto w-8 h-8 text-blue-600 animate-pulse" />
+    <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
+      <div className="relative w-32 h-32 mx-auto mb-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
+        <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative">
+            <ShoppingBag className="w-12 h-12 text-blue-600 animate-pulse" />
+            <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
+          </div>
+        </div>
       </div>
-
-      <p className="text-base font-medium text-gray-700 animate-pulse">
+      <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
         {message || messages[currentMessage]}
-      </p>
+      </h3>
+      <p className="text-base text-gray-600 mb-6">Veuillez patienter...</p>
+      <div className="flex items-center justify-center gap-2">
+        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
+        <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
+        <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
+      </div>
+      <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
+        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+        <span>Connexion sécurisée établie</span>
+      </div>
     </div>
   );
 }
