@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, getEnvVar } from '../lib/supabase';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useLanguage } from '../App';
 import {
   Search,
@@ -47,6 +48,18 @@ export function SeoOptimization() {
   const [generatingAll, setGeneratingAll] = useState(false);
   const [pushProgress, setPushProgress] = useState({ current: 0, total: 0 });
   const { notifications, addNotification, dismissNotification } = useNotifications();
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const ITEMS_PER_PAGE = 50;
 
@@ -193,10 +206,19 @@ export function SeoOptimization() {
       return;
     }
 
-    if (!confirm(`Generate SEO content for ${productsToGenerate.length} products using AI? This will use OpenAI API.`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Generate SEO Content',
+      message: `Generate SEO content for ${productsToGenerate.length} products using AI? This will use OpenAI API.`,
+      type: 'info',
+      onConfirm: () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        executeGenerateAll(productsToGenerate);
+      },
+    });
+  };
 
+  const executeGenerateAll = async (productsToGenerate: Product[]) => {
     setGeneratingAll(true);
     setPushProgress({ current: 0, total: productsToGenerate.length });
 
@@ -267,10 +289,19 @@ export function SeoOptimization() {
       return;
     }
 
-    if (!confirm(`Push ${productsToSync.length} products to Shopify?`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Push to Shopify',
+      message: `Push ${productsToSync.length} products to Shopify?`,
+      type: 'info',
+      onConfirm: () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        executePushToShopify(productsToSync);
+      },
+    });
+  };
 
+  const executePushToShopify = async (productsToSync: Product[]) => {
     setPushingToShopify(true);
     setPushProgress({ current: 0, total: productsToSync.length });
 
@@ -377,6 +408,14 @@ export function SeoOptimization() {
   return (
     <>
       <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
       <div className="space-y-6 animate-fadeIn">
       <div className="bg-white border border-gray-200 rounded-lg p-1 mb-6 flex flex-wrap gap-1">
         {tabs.map((tab) => (

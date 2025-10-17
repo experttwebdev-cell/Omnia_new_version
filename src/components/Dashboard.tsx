@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../App';
+import { useNotifications, NotificationSystem } from './NotificationSystem';
 import {
   Package,
   TrendingUp,
@@ -75,6 +76,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProductType, setSelectedProductType] = useState<string>('all');
+  const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -209,7 +211,11 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   const handleExportData = () => {
     // Export functionality implementation
     console.log('Exporting dashboard data...');
-    alert('Export functionality would be implemented here');
+    addNotification({
+      type: 'info',
+      message: 'Export functionality will be available soon',
+      duration: 3000,
+    });
   };
 
   const filteredProducts = products.filter(product => {
@@ -262,7 +268,9 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   if (!stats) return null;
 
   return (
-    <div className="space-y-6">
+    <>
+      <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -530,6 +538,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         )}
       </div>
     </div>
+    </>
   );
 }
 

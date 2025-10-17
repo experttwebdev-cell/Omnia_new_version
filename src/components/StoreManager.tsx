@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { Database } from '../lib/database.types';
 import { ShopifyConnectionGuide } from './ShopifyConnectionGuide';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type ShopifyStore = Database['public']['Tables']['shopify_stores']['Row'];
 
@@ -39,6 +40,18 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
   const [importProgress, setImportProgress] = useState<{ store: string; message: string; percent: number } | null>(null);
   const [editingSyncStoreId, setEditingSyncStoreId] = useState<string | null>(null);
   const [editingEnrichmentStoreId, setEditingEnrichmentStoreId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'info' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const [syncSettings, setSyncSettings] = useState({
     sync_mode: 'manual' as 'manual' | 'auto',
     sync_frequency: 'daily' as 'hourly' | 'daily' | 'weekly' | 'monthly',
@@ -123,10 +136,19 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
   };
 
   const handleDeleteStore = async (storeId: string) => {
-    if (!confirm('Are you sure you want to delete this store connection?')) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Store',
+      message: 'Are you sure you want to delete this store connection?',
+      type: 'danger',
+      onConfirm: () => {
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        executeDeleteStore(storeId);
+      },
+    });
+  };
 
+  const executeDeleteStore = async (storeId: string) => {
     try {
       const { error: deleteError } = await supabase
         .from('shopify_stores')
@@ -322,7 +344,16 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-800">Store Connections</h1>
         <div className="flex items-center gap-2">
@@ -766,5 +797,6 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
         )}
       </div>
     </div>
+    </>
   );
 }
