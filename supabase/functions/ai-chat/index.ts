@@ -42,6 +42,10 @@ Deno.serve(async (req: Request) => {
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
     const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
 
+    console.log("🔑 API Keys Status:");
+    console.log("  - OpenAI:", openaiKey ? `${openaiKey.substring(0, 10)}... (${openaiKey.length} chars)` : "NOT SET");
+    console.log("  - DeepSeek:", deepseekKey ? `${deepseekKey.substring(0, 10)}... (${deepseekKey.length} chars)` : "NOT SET");
+
     if (!supabaseUrl || !supabaseKey)
       throw new Error("Supabase configuration missing");
 
@@ -202,6 +206,8 @@ Produits: ${JSON.stringify(productsData, null, 2)}`;
 
     try {
       console.log(`🔄 Trying ${provider.name} with model ${provider.model}...`);
+      console.log(`   API Key: ${provider.key.substring(0, 10)}... (${provider.key.length} chars)`);
+      console.log(`   URL: ${provider.url}`);
 
       const res = await fetch(provider.url, {
         method: "POST",
