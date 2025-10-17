@@ -939,7 +939,10 @@ export function SeoOpportunities() {
             {templateLang === 'fr' ? 'Rafraîchir' : 'Refresh'}
           </button>
         </div>
-        <LoadingAnimation type="opportunities" message={templateLang === 'fr' ? "Chargement des opportunités de contenu..." : "Loading content opportunities..."} />
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">{templateLang === 'fr' ? 'Chargement...' : 'Loading...'}</p>
+        </div>
       </div>
     );
   }
