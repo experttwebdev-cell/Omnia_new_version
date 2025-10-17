@@ -193,7 +193,7 @@ Produits: ${JSON.stringify(productsData, null, 2)}`;
     ? "https://api.deepseek.com/v1/chat/completions"
     : "https://api.openai.com/v1/chat/completions";
 
-  const model = provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini";
+  const model = provider === "deepseek" ? "deepseek-chat" : "gpt-3.5-turbo";
 
   const res = await fetch(apiUrl, {
     method: "POST",
