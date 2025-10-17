@@ -35,9 +35,9 @@ Deno.serve(async (req: Request) => {
 
     // Try to get API key from environment variables first, then fallback to hardcoded
     let deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
-    
+
     if (!deepseekApiKey) {
-      deepseekApiKey = 'sk-f8371ab077764e799458200be57edd9f';
+      deepseekApiKey = 'sk-401fbd42cf00493b8c28db07f3027460';
       console.warn('Using hardcoded DeepSeek API key. Please set DEEPSEEK_API_KEY environment variable.');
     }
 

@@ -190,8 +190,9 @@ Demande du client: "${message}"
 Produits: ${JSON.stringify(productsData, null, 2)}`;
 
   // Priority order: DeepSeek (cheapest) -> GPT-3.5-turbo -> GPT-4o-mini (fallback)
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const providers = [
-    { name: "deepseek", key: deepseekKey, url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+    { name: "deepseek", key: "proxy", url: `${supabaseUrl}/functions/v1/deepseek-proxy`, model: "deepseek-chat", useProxy: true },
     { name: "openai-3.5", key: openaiKey, url: "https://api.openai.com/v1/chat/completions", model: "gpt-3.5-turbo" },
     { name: "openai-4o", key: openaiKey, url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
   ];
@@ -199,26 +200,28 @@ Produits: ${JSON.stringify(productsData, null, 2)}`;
   let lastError: Error | null = null;
 
   for (const provider of providers) {
-    if (!provider.key) {
+    // For proxy, we always try it (it has hardcoded key)
+    if (!provider.key && !(provider as any).useProxy) {
       console.log(`⏭️ Skipping ${provider.name}: no API key configured`);
       continue;
     }
 
     try {
       console.log(`🔄 Trying ${provider.name} with model ${provider.model}...`);
-      console.log(`   API Key: ${provider.key.substring(0, 10)}... (${provider.key.length} chars)`);
       console.log(`   URL: ${provider.url}`);
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
 
-      // DeepSeek and OpenAI both use Bearer token authentication
-      if (provider.key) {
+      // For proxy, don't add Authorization (proxy handles it internally)
+      // For OpenAI, add Bearer token
+      if (!(provider as any).useProxy && provider.key) {
         headers["Authorization"] = `Bearer ${provider.key}`;
+        console.log(`   API Key: ${provider.key.substring(0, 10)}... (${provider.key.length} chars)`);
+      } else if ((provider as any).useProxy) {
+        console.log(`   Using DeepSeek proxy with hardcoded key`);
       }
-
-      console.log(`   Headers:`, JSON.stringify({ ...headers, Authorization: headers.Authorization ? `Bearer ${provider.key.substring(0, 10)}...` : 'NOT SET' }));
 
       const res = await fetch(provider.url, {
         method: "POST",
