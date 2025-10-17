@@ -30,7 +30,7 @@ type Product = Database['public']['Tables']['shopify_products']['Row'];
 
 interface Opportunity {
   id: string;
-  type: 'category-guide' | 'comparison' | 'how-to' | 'product-spotlight' | 'seasonal';
+  type: 'category-guide' | 'comparison' | 'how-to' | 'product-spotlight' | 'seasonal' | 'store-guide' | 'buying-guide' | 'top-10' | 'industry-topic';
   title: string;
   description: string;
   targetKeywords: string[];
@@ -40,6 +40,7 @@ interface Opportunity {
   estimatedWordCount: number;
   difficulty: 'easy' | 'medium' | 'hard';
   suggestedStructure?: string[];
+  featured_products?: Array<{id: string; title: string}>;
 }
 
 export function SeoOpportunities() {
@@ -1216,6 +1217,37 @@ export function SeoOpportunities() {
                       ))}
                     </div>
                   </div>
+
+                  {opportunity.featured_products && opportunity.featured_products.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        {language === 'fr' ? 'Produits Featured' : 'Featured Products'} ({opportunity.featured_products.length})
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {opportunity.featured_products.map((fp) => {
+                          const product = products.find(p => p.id === fp.id);
+                          return (
+                            <div key={fp.id} className="border border-gray-200 rounded-lg p-2 hover:shadow-md transition bg-white">
+                              {product?.image_url ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={fp.title}
+                                  className="w-full h-24 object-cover rounded mb-2"
+                                />
+                              ) : (
+                                <div className="w-full h-24 bg-gray-100 rounded mb-2 flex items-center justify-center">
+                                  <Package className="w-8 h-8 text-gray-400" />
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-700 font-medium line-clamp-2">{fp.title}</p>
+                              <p className="text-xs text-gray-500 mt-1 font-mono">{fp.id.substring(0, 8)}...</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {opportunity.suggestedStructure && opportunity.suggestedStructure.length > 0 && (
                     <div>
