@@ -11,18 +11,9 @@ interface ProductAttributes {
   style?: string;
   color?: string;
   material?: string;
-  room?: string;
-  shape?: string;
-  dimensions?: string;
   maxPrice?: number;
-  minPrice?: number;
-  vendor?: string;
   searchPromo?: boolean;
-}
-
-interface ChatSettings {
-  chat_tone?: string;
-  chat_response_length?: string;
+  sector?: "meubles" | "montres" | "pret_a_porter";
 }
 
 interface Product {
@@ -37,182 +28,197 @@ interface Product {
   category?: string;
   sub_category?: string;
   tags?: string;
-  description?: string;
   handle?: string;
   vendor?: string;
   currency?: string;
-  status?: string;
 }
 
 //
-// 🔹 Fonction principale : appelle le proxy DeepSeek via Supabase
+// ⚙️ APPEL DU PROXY DEEPSEEK VIA SUPABASE
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 120): Promise<string> {
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages,
-      model: "deepseek-chat",
-      temperature: 0.5,
-      max_tokens: maxTokens,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 9000);
 
-  if (!response.ok) {
-    const text = await response.text();
-    console.error("❌ DeepSeek proxy error:", text);
-    throw new Error(`Proxy error: ${text}`);
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages,
+        model: "deepseek-chat",
+        temperature: 0.7,
+        max_tokens: maxTokens,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const data = await response.json().catch(() => ({}));
+    const content =
+      data?.choices?.[0]?.message?.content ||
+      data?.response ||
+      "Je n’ai pas pu générer de réponse pour le moment.";
+
+    console.log("🤖 DeepSeek OK:", content.slice(0, 80) + "...");
+    return content;
+  } catch (err) {
+    console.error("❌ DeepSeek error:", err);
+    return "Je cherche encore la meilleure réponse pour vous…";
   }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || "";
 }
 
 //
-// 🔹 Détection rapide d’intention
+// 🧠 DÉTECTION D’INTENTION (chat ou recherche produit)
 //
 async function detectIntent(userMessage: string): Promise<"chat" | "product_search"> {
   const msg = userMessage.toLowerCase();
-  const searchWords = ["cherche", "recherche", "veux", "voir", "trouver", "acheter"];
-  const productWords = [
-    "table",
-    "chaise",
-    "canapé",
-    "fauteuil",
-    "lit",
-    "armoire",
-    "commode",
-    "meuble",
-    "étagère",
-    "bureau",
-  ];
-
-  const hasSearchIntent = searchWords.some((w) => msg.includes(w));
-  const hasProduct = productWords.some((p) => msg.includes(p));
-
-  return hasSearchIntent || hasProduct ? "product_search" : "chat";
+  const hasSearchIntent = ["cherche", "trouver", "acheter", "voir", "recherche"].some((w) =>
+    msg.includes(w)
+  );
+  const hasProductKeyword = ["table", "chaise", "canapé", "montre", "robe", "bureau"].some((w) =>
+    msg.includes(w)
+  );
+  return hasSearchIntent || hasProductKeyword ? "product_search" : "chat";
 }
 
 //
-// 🔹 Recherche produits depuis Supabase (corrigée et rapide)
+// 🔍 RECHERCHE PRODUITS SUPABASE
 //
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
-  console.log("🔍 [SEARCH] Filters:", filters);
+  console.log("🔍 [OMNIA SEARCH] Filters:", filters);
 
   let query = supabase
     .from("shopify_products")
     .select(
-      "id, title, price, compare_at_price, ai_color, ai_material, ai_shape, description, image_url, handle, category, sub_category, tags, vendor, currency"
+      "id, title, price, compare_at_price, ai_color, ai_material, ai_shape, image_url, handle, category, sub_category, tags, vendor, currency"
     )
     .eq("status", "active")
-    .limit(12);
+    .limit(20);
 
   if (storeId) query = query.eq("store_id", storeId);
-
-  // Recherche principale sur type
   if (filters.type) query = query.ilike("title", `%${filters.type}%`);
 
   const { data, error } = await query;
-
   if (error) {
-    console.error("❌ Supabase query error:", error);
+    console.error("❌ Supabase error:", error);
     return [];
   }
 
   let results = data || [];
+  const match = (f?: string, val?: string) =>
+    f?.toLowerCase().includes(val?.toLowerCase() || "");
 
-  // Filtres secondaires (simplifiés mais efficaces)
   if (filters.color)
-    results = results.filter((p) =>
-      (p.ai_color || p.title || "").toLowerCase().includes(filters.color!.toLowerCase())
+    results = results.filter(
+      (p) => match(p.ai_color, filters.color) || match(p.title, filters.color)
     );
-
   if (filters.material)
-    results = results.filter((p) =>
-      (p.ai_material || p.title || "").toLowerCase().includes(filters.material!.toLowerCase())
+    results = results.filter(
+      (p) => match(p.ai_material, filters.material) || match(p.title, filters.material)
     );
-
   if (filters.maxPrice)
-    results = results.filter((p) => Number(p.price) <= (filters.maxPrice || Infinity));
-
+    results = results.filter((p) => Number(p.price) <= filters.maxPrice!);
   if (filters.searchPromo)
     results = results.filter(
       (p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
     );
 
-  console.log("✅ [SEARCH] Found", results.length, "products");
+  console.log("✅ [OMNIA SEARCH] Results:", results.length);
   return results.slice(0, 8);
 }
 
 //
-// 🔹 Présentation intelligente avec DeepSeek
+// ✨ GÉNÉRATION RÉPONSE PRODUIT
 //
 async function generateProductPresentation(
   products: Product[],
-  userMessage: string
+  userMessage: string,
+  sector: string
 ): Promise<string> {
   if (!products.length) {
-    return `Je n'ai trouvé aucun produit correspondant à votre recherche "${userMessage}". 😊\nSouhaitez-vous préciser le style, la couleur ou le budget ?`;
+    return `Je n’ai trouvé aucun produit correspondant à "${userMessage}". 🛋️  
+Souhaitez-vous préciser la couleur, le style ou votre budget ?`;
   }
 
-  const systemPrompt = `Tu es OmnIA, un conseiller e-commerce expert en mobilier.
-Présente les produits trouvés de manière engageante et concise.
-- Réponds en français naturel
-- Maximum 120 mots
-- Mentionne les promos s'il y en a
-- Termine par une question ouverte.`;
+  const systemPrompt = `Tu es OmnIA, un assistant e-commerce expert du secteur "${sector}".
+Ta mission : répondre en français naturel (<120 mots), avec un ton professionnel et engageant.
+Mentionne au moins un produit par son nom et parle des promotions si présentes. Termine par une question ouverte.`;
 
   const productData = products.map((p) => ({
     titre: p.title,
-    prix: `${p.price} ${p.currency || "€"}`,
+    prix: `${p.price}${p.currency || "€"}`,
     promo:
       p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
-        ? `Ancien prix ${p.compare_at_price}€`
+        ? `${Math.round(
+            100 - (Number(p.price) / Number(p.compare_at_price)) * 100
+          )}% de réduction`
         : null,
     couleur: p.ai_color,
     materiau: p.ai_material,
     categorie: p.category,
   }));
 
-  const userPrompt = `Demande client : "${userMessage}"
-Produits trouvés :
-${JSON.stringify(productData, null, 2)}
+  const userPrompt = `Demande du client : "${userMessage}"  
+Produits correspondants : ${JSON.stringify(productData, null, 2)}.  
+Présente ces produits de manière engageante.`;
 
-Présente ces produits au client de manière naturelle.`;
-
-  const response = await callDeepSeek(
+  return await callDeepSeek(
     [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
     250
   );
-
-  return response;
 }
 
 //
-// 🔹 Fonction principale appelée par ton composant React
+// 🧩 FONCTION PRINCIPALE : appelée par ton composant React
 //
 export async function OmnIAChat(
   userMessage: string,
   history: ChatMessage[] = [],
   storeId?: string
 ) {
-  console.log("🚀 [OMNIA] Message:", userMessage);
+  console.log("🚀 [OMNIA] New message:", userMessage);
 
   const intent = await detectIntent(userMessage);
+  const msg = userMessage.toLowerCase();
 
+  const filters: ProductAttributes = { intent: "product_search", sector: "meubles" };
+
+  // Détection du secteur
+  if (["montre", "bracelet"].some((x) => msg.includes(x))) filters.sector = "montres";
+  else if (["robe", "chemise", "pantalon"].some((x) => msg.includes(x)))
+    filters.sector = "pret_a_porter";
+
+  // Extraction basique
+  const types = ["table", "chaise", "canapé", "lit", "armoire", "bureau"];
+  filters.type = types.find((t) => msg.includes(t)) || undefined;
+
+  const colors = ["blanc", "noir", "gris", "beige", "bois", "doré", "marron"];
+  filters.color = colors.find((c) => msg.includes(c)) || undefined;
+
+  const materials = ["bois", "métal", "verre", "marbre", "travertin"];
+  filters.material = materials.find((m) => msg.includes(m)) || undefined;
+
+  const promo = ["promo", "réduction", "solde", "offre"];
+  if (promo.some((p) => msg.includes(p))) filters.searchPromo = true;
+
+  const price = msg.match(/(moins de|max|sous)\s*(\d+)/);
+  if (price) filters.maxPrice = Number(price[2]);
+
+  // 🔹 Mode conversation simple
   if (intent === "chat") {
-    const response = await callDeepSeek(
+    const chatResponse = await callDeepSeek(
       [
         {
           role: "system",
           content:
-            "Tu es OmnIA, un assistant amical et utile pour un site e-commerce de meubles. Réponds en 1 à 2 phrases maximum.",
+            "Tu es OmnIA, un assistant amical pour un site e-commerce. Réponds brièvement, en français, avec une touche humaine.",
         },
         { role: "user", content: userMessage },
       ],
@@ -221,33 +227,24 @@ export async function OmnIAChat(
 
     return {
       role: "assistant" as const,
-      response,
+      content: chatResponse,
       intent: "conversation",
       products: [],
       mode: "conversation",
+      sector: filters.sector,
     };
   }
 
-  // Sinon recherche produit
-  const filters: ProductAttributes = { intent: "product_search" };
-
-  // Extraction rapide (type/couleur/matériau)
-  const msg = userMessage.toLowerCase();
-  const types = ["table", "chaise", "canapé", "lit", "armoire", "bureau"];
-  filters.type = types.find((t) => msg.includes(t)) || undefined;
-  const colors = ["blanc", "noir", "gris", "beige", "bois", "marron"];
-  filters.color = colors.find((c) => msg.includes(c)) || undefined;
-  const materials = ["bois", "métal", "verre", "marbre"];
-  filters.material = materials.find((m) => msg.includes(m)) || undefined;
-
+  // 🔹 Recherche produit intelligente
   const products = await searchProducts(filters, storeId);
-  const aiResponse = await generateProductPresentation(products, userMessage);
+  const aiResponse = await generateProductPresentation(products, userMessage, filters.sector!);
 
   return {
     role: "assistant" as const,
-    response: aiResponse,
+    content: aiResponse,
     intent: "product_show",
     products,
     mode: "product_show",
+    sector: filters.sector,
   };
 }
