@@ -208,27 +208,28 @@ async function generateOpportunities(products: Product[], language: string, apiK
 
   const config = languageConfig[language as keyof typeof languageConfig] || languageConfig.fr;
 
-  // Traiter les 3 premières catégories les plus peuplées
-  const topCategories = Array.from(categoryGroups.entries())
-    .sort((a, b) => b[1].length - a[1].length)
-    .slice(0, 3);
+  // 🎯 Générer exactement 5 types d'opportunités
+  const topCategory = Array.from(categoryGroups.entries())
+    .sort((a, b) => b[1].length - a[1].length)[0];
 
-  for (const [category, categoryProducts] of topCategories) {
-    if (categoryProducts.length < 3) continue;
+  if (topCategory) {
+    const [category, categoryProducts] = topCategory;
 
     try {
-      const opportunities = await generateCategoryOpportunities(
-        category, 
-        categoryProducts, 
-        language, 
-        apiKey, 
+      const opportunities = await generateFiveOpportunityTypes(
+        category,
+        categoryProducts,
+        language,
+        apiKey,
         config
       );
-      
+
       allOpportunities.push(...opportunities);
-      
-      // Limiter le nombre total d'opportunités
-      if (allOpportunities.length >= 8) break;
+
+      // Limiter strictement à 5 opportunités
+      if (allOpportunities.length > 5) {
+        return allOpportunities.slice(0, 5);
+      }
       
     } catch (error) {
       console.error(`Error generating opportunities for category ${category}:`, error);
@@ -242,54 +243,82 @@ async function generateOpportunities(products: Product[], language: string, apiK
     return generateFallbackOpportunities(products, language);
   }
 
-  return allOpportunities.sort((a, b) => (b.seo_opportunity_score || 50) - (a.seo_opportunity_score || 50));
+  return allOpportunities.slice(0, 5);
 }
 
-// 🔥 CORRECTION : Génération par catégorie
-async function generateCategoryOpportunities(
-  category: string, 
-  products: Product[], 
-  language: string, 
+// 🎯 Nouvelle fonction pour générer exactement 5 types d'opportunités
+async function generateFiveOpportunityTypes(
+  category: string,
+  products: Product[],
+  language: string,
   apiKey: string,
   config: any
 ): Promise<any[]> {
-  
-  const sampleProducts = products.slice(0, 5);
+  const sampleProducts = products.slice(0, 8);
   const keywords = extractKeywords(products);
   const colors = [...new Set(products.map(p => p.ai_color).filter(Boolean))].slice(0, 3);
   const materials = [...new Set(products.map(p => p.ai_material).filter(Boolean))].slice(0, 3);
 
+  const productList = sampleProducts.map(p => ({
+    id: p.id,
+    title: p.title,
+    type: p.product_type
+  }));
+
+  const typeTemplates = language === 'fr' ? {
+    'store-guide': 'Guide de la Boutique',
+    'buying-guide': 'Guide d\'Achat par Secteur',
+    'comparison': 'Comparaison de Produits',
+    'top-10': 'Top 10 des Meilleurs Produits',
+    'industry-topic': 'Sujet sur l\'Activité'
+  } : {
+    'store-guide': 'Store Guide',
+    'buying-guide': 'Sector Buying Guide',
+    'comparison': 'Product Comparison',
+    'top-10': 'Top 10 Best Products',
+    'industry-topic': 'Industry Topic'
+  };
+
   const prompt = `${config.expert}
 
-${config.analyze}
-- Catégorie: ${category}
-- Nombre de produits: ${products.length}
-- Produits: ${sampleProducts.map(p => p.title).join(', ')}
-- Mots-clés: ${keywords.slice(0, 8).join(', ')}
-- Couleurs: ${colors.join(', ') || 'N/A'}
-- Matériaux: ${materials.join(', ') || 'N/A'}
-- Langue: ${language}
+Génère EXACTEMENT 5 opportunités d'articles, une pour chaque type ci-dessous:
 
-${config.generate}
+Catégorie: ${category}
+Produits disponibles: ${JSON.stringify(productList)}
+Mots-clés: ${keywords.slice(0, 10).join(', ')}
+Couleurs: ${colors.join(', ') || 'N/A'}
+Matériaux: ${materials.join(', ') || 'N/A'}
+
+TYPES REQUIS (1 article par type):
+1. ${typeTemplates['store-guide']} - Vue d'ensemble de la boutique et de ses produits
+2. ${typeTemplates['buying-guide']} - Guide d'achat basé sur le secteur/catégorie
+3. ${typeTemplates['comparison']} - Comparaison détaillée de 3-5 produits spécifiques
+4. ${typeTemplates['top-10']} - Classement des 10 meilleurs produits de la catégorie
+5. ${typeTemplates['industry-topic']} - Article sur une tendance ou sujet lié à l'activité
 
 IMPORTANT:
-- Pas de marques ou noms de vendeurs
-- Basé uniquement sur catégories et caractéristiques produits
-- 2-3 opportunités maximum
-- Types variés: guides, comparaisons, conseils
+- Inclure les IDs et titres des produits pertinents pour chaque opportunité
+- Inclure des images de produits (utiliser les IDs produits)
+- Pas de marques ou vendeurs
+- Langue: ${language}
 
-Format de réponse JSON:
+Format JSON strict:
 {
   "opportunities": [
     {
-      "article_title": "Titre SEO",
-      "meta_description": "Description meta",
-      "intro_excerpt": "Introduction",
-      "type": "category-guide|comparison|how-to|product-spotlight|seasonal",
-      "primary_keywords": ["mot1", "mot2"],
-      "secondary_keywords": ["mot3", "mot4"],
-      "structure": {"h2_sections": ["Section1", "Section2"]},
-      "seo_opportunity_score": 85,
+      "article_title": "Titre SEO optimisé",
+      "meta_description": "Description meta 150-160 caractères",
+      "intro_excerpt": "Introduction engageante 2-3 phrases",
+      "type": "store-guide|buying-guide|comparison|top-10|industry-topic",
+      "primary_keywords": ["mot1", "mot2", "mot3"],
+      "secondary_keywords": ["mot4", "mot5"],
+      "structure": {
+        "h2_sections": ["Section 1", "Section 2", "Section 3"]
+      },
+      "featured_products": [
+        {"id": "product-id", "title": "Product Title"}
+      ],
+      "seo_opportunity_score": 75,
       "difficulty": "easy|medium|hard",
       "estimated_word_count": 2000
     }
@@ -297,7 +326,7 @@ Format de réponse JSON:
 }`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -309,11 +338,11 @@ Format de réponse JSON:
       body: JSON.stringify({
         model: "deepseek-chat",
         messages: [
-          { role: "system", content: "Réponds UNIQUEMENT en JSON valide." },
+          { role: "system", content: "Tu es un expert SEO. Réponds UNIQUEMENT en JSON valide." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.8,
+        max_tokens: 3000,
         response_format: { type: "json_object" }
       }),
       signal: controller.signal,
@@ -327,136 +356,136 @@ Format de réponse JSON:
 
     const data = await response.json();
     const content = data.choices[0].message.content;
+    const parsed = JSON.parse(content);
 
-    // 🔥 CORRECTION : Parsing robuste du JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in response");
-      parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.opportunities && Array.isArray(parsed.opportunities)) {
+      return parsed.opportunities.slice(0, 5);
     }
 
-    if (!parsed.opportunities || !Array.isArray(parsed.opportunities)) {
-      throw new Error("Invalid opportunities format");
-    }
-
-    // Ajouter les IDs de produits liés
-    return parsed.opportunities.map((opp: any) => ({
-      ...opp,
-      product_ids: products.map(p => p.id),
-      product_count: products.length,
-      category: category
-    }));
-
+    return [];
   } catch (error) {
-    clearTimeout(timeoutId);
-    console.error(`Error generating for category ${category}:`, error);
-    return generateFallbackForCategory(category, products, language);
+    console.error('Error generating 5 opportunity types:', error);
+    return generateFallbackOpportunities(products, language);
   }
 }
 
-// 🔥 CORRECTION : Fonctions utilitaires
+// Helper pour extraire les mots-clés
 function extractKeywords(products: Product[]): string[] {
-  const allWords = products.flatMap(p => [
-    p.title,
-    p.category,
-    p.sub_category,
-    p.product_type,
-    ...(p.tags ? p.tags.split(',').map(t => t.trim()) : [])
-  ].filter(Boolean));
-
-  const wordCount = new Map<string, number>();
-  allWords.forEach(word => {
-    const cleanWord = word.toLowerCase().trim();
-    if (cleanWord.length > 3) {
-      wordCount.set(cleanWord, (wordCount.get(cleanWord) || 0) + 1);
+  const keywords = new Set<string>();
+  
+  products.forEach(p => {
+    if (p.tags) {
+      p.tags.split(',').forEach(tag => keywords.add(tag.trim().toLowerCase()));
+    }
+    if (p.product_type) {
+      keywords.add(p.product_type.toLowerCase());
     }
   });
-
-  return Array.from(wordCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15)
-    .map(([word]) => word);
+  
+  return Array.from(keywords).slice(0, 10);
 }
 
+// Génération d'opportunités de fallback
 function generateFallbackOpportunities(products: Product[], language: string): any[] {
-  console.log("🔄 Generating fallback opportunities");
-  
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-  const mainCategory = categories[0] || 'Produits';
+  const mainCategory = categories[0] || 'Products';
   
-  return [{
-    article_title: language === 'fr' 
-      ? `Guide Complet : ${mainCategory}` 
-      : `Complete Guide: ${mainCategory}`,
-    meta_description: language === 'fr'
-      ? `Découvrez notre sélection de ${products.length} ${mainCategory.toLowerCase()} et nos conseils d'experts.`
-      : `Discover our selection of ${products.length} ${mainCategory.toLowerCase()} and expert advice.`,
-    intro_excerpt: language === 'fr'
-      ? `Notre guide vous aide à choisir parmi ${products.length} produits ${mainCategory.toLowerCase()} adaptés à vos besoins.`
-      : `Our guide helps you choose from ${products.length} ${mainCategory.toLowerCase()} products suited to your needs.`,
-    type: 'category-guide',
-    primary_keywords: [mainCategory, 'guide', 'conseils'],
-    secondary_keywords: ['achat', 'comparaison', 'meilleur'],
-    structure: {
-      h2_sections: language === 'fr' 
-        ? ['Introduction', 'Notre Sélection', 'Conseils d\'Achat', 'FAQ']
-        : ['Introduction', 'Our Selection', 'Buying Tips', 'FAQ']
+  const templates = language === 'fr' ? [
+    {
+      type: 'store-guide',
+      article_title: `Guide Complet de Notre Boutique ${mainCategory}`,
+      meta_description: `Découvrez notre sélection complète de ${mainCategory}. Guide d'achat, conseils et recommandations.`,
+      intro_excerpt: `Explorez notre collection de ${mainCategory} et trouvez les produits parfaits pour vos besoins.`
     },
-    seo_opportunity_score: 75,
-    difficulty: 'medium',
-    estimated_word_count: 1800,
-    product_ids: products.slice(0, 10).map(p => p.id),
-    product_count: products.length,
-    category: mainCategory
-  }];
-}
+    {
+      type: 'buying-guide',
+      article_title: `Guide d'Achat ${mainCategory} : Comment Choisir`,
+      meta_description: `Guide complet pour choisir vos ${mainCategory}. Critères, comparaisons et conseils d'experts.`,
+      intro_excerpt: `Tout ce que vous devez savoir avant d'acheter vos ${mainCategory}.`
+    },
+    {
+      type: 'comparison',
+      article_title: `Comparatif des Meilleurs ${mainCategory}`,
+      meta_description: `Comparaison détaillée des ${mainCategory} les plus populaires. Avantages, prix et recommandations.`,
+      intro_excerpt: `Nous avons comparé les ${mainCategory} pour vous aider à faire le bon choix.`
+    },
+    {
+      type: 'top-10',
+      article_title: `Top 10 des Meilleurs ${mainCategory}`,
+      meta_description: `Découvrez notre sélection des 10 meilleurs ${mainCategory}. Classement et avis détaillés.`,
+      intro_excerpt: `Voici notre classement des ${mainCategory} incontournables.`
+    },
+    {
+      type: 'industry-topic',
+      article_title: `Tendances ${mainCategory} : Ce Qu'il Faut Savoir`,
+      meta_description: `Les dernières tendances et innovations dans le secteur des ${mainCategory}.`,
+      intro_excerpt: `Restez informé des évolutions du marché des ${mainCategory}.`
+    }
+  ] : [
+    {
+      type: 'store-guide',
+      article_title: `Complete Guide to Our ${mainCategory} Store`,
+      meta_description: `Discover our complete selection of ${mainCategory}. Buying guide, tips and recommendations.`,
+      intro_excerpt: `Explore our ${mainCategory} collection and find the perfect products for your needs.`
+    },
+    {
+      type: 'buying-guide',
+      article_title: `${mainCategory} Buying Guide: How to Choose`,
+      meta_description: `Complete guide to choosing your ${mainCategory}. Criteria, comparisons and expert advice.`,
+      intro_excerpt: `Everything you need to know before buying your ${mainCategory}.`
+    },
+    {
+      type: 'comparison',
+      article_title: `Best ${mainCategory} Comparison`,
+      meta_description: `Detailed comparison of the most popular ${mainCategory}. Features, prices and recommendations.`,
+      intro_excerpt: `We compared ${mainCategory} to help you make the right choice.`
+    },
+    {
+      type: 'top-10',
+      article_title: `Top 10 Best ${mainCategory}`,
+      meta_description: `Discover our selection of the 10 best ${mainCategory}. Rankings and detailed reviews.`,
+      intro_excerpt: `Here is our ranking of must-have ${mainCategory}.`
+    },
+    {
+      type: 'industry-topic',
+      article_title: `${mainCategory} Trends: What You Need to Know`,
+      meta_description: `Latest trends and innovations in the ${mainCategory} sector.`,
+      intro_excerpt: `Stay informed about ${mainCategory} market developments.`
+    }
+  ];
 
-function generateFallbackForCategory(category: string, products: Product[], language: string): any[] {
-  return [{
-    article_title: `${category} - Guide et Sélection`,
-    meta_description: `Découvrez nos ${products.length} produits ${category} et nos conseils.`,
-    intro_excerpt: `Explorez notre gamme de ${products.length} produits ${category} soigneusement sélectionnés.`,
-    type: 'category-guide',
-    primary_keywords: [category, 'guide', 'achat'],
-    secondary_keywords: ['conseils', 'sélection', 'meilleur'],
-    structure: { h2_sections: ['Introduction', 'Sélection', 'Conseils', 'Conclusion'] },
-    seo_opportunity_score: 70,
-    difficulty: 'easy',
+  return templates.map((template, index) => ({
+    ...template,
+    id: `fallback-${index}`,
+    primary_keywords: [mainCategory.toLowerCase()],
+    secondary_keywords: ['guide', 'achat', 'comparaison'],
+    structure: { h2_sections: ['Introduction', 'Analyse', 'Recommandations'] },
+    seo_opportunity_score: 60,
+    difficulty: 'medium' as const,
     estimated_word_count: 1500,
-    product_ids: products.map(p => p.id),
-    product_count: products.length,
-    category: category
-  }];
+    featured_products: products.slice(0, 5).map(p => ({ id: p.id, title: p.title }))
+  }));
 }
 
+// Sauvegarde en base de données
 async function saveOpportunitiesToDatabase(opportunities: any[], supabase: any, language: string) {
-  const opportunitiesToInsert = opportunities.map(opp => ({
-    title: opp.article_title,
-    description: opp.intro_excerpt || opp.meta_description,
-    type: opp.type,
-    target_keywords: [...(opp.primary_keywords || []), ...(opp.secondary_keywords || [])],
-    related_product_ids: opp.product_ids || [],
-    product_language: language,
-    category: opp.category,
-    score: opp.seo_opportunity_score || 50,
-    estimated_word_count: opp.estimated_word_count || 2000,
-    difficulty: opp.difficulty || 'medium',
-    status: 'identified'
-  }));
-
-  const { error } = await supabase
-    .from('blog_opportunities')
-    .upsert(opportunitiesToInsert, {
-      onConflict: 'title',
-      ignoreDuplicates: true
-    });
-
-  if (error) {
-    console.error('Error saving opportunities:', error);
-  } else {
-    console.log(`✅ Saved ${opportunities.length} opportunities to database`);
+  for (const opp of opportunities) {
+    try {
+      await supabase.from('blog_opportunities').insert({
+        article_title: opp.article_title,
+        meta_description: opp.meta_description,
+        intro_excerpt: opp.intro_excerpt,
+        type: opp.type,
+        primary_keywords: opp.primary_keywords,
+        secondary_keywords: opp.secondary_keywords,
+        structure: opp.structure,
+        seo_opportunity_score: opp.seo_opportunity_score,
+        difficulty: opp.difficulty,
+        estimated_word_count: opp.estimated_word_count,
+        language: language
+      });
+    } catch (error) {
+      console.error('Error saving opportunity:', error);
+    }
   }
 }

@@ -18,6 +18,7 @@ import {
   Facebook,
   Twitter,
   Linkedin,
+  FileEdit,
   Copy,
   Check,
   Plus,
@@ -270,7 +271,42 @@ export function BlogArticles() {
   };
 
   if (loading) {
-    return <LoadingAnimation type="blog" />;
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Articles de Blog</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Gestion de vos articles de blog
+            </p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl shadow-sm border border-orange-100 p-12 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-lg opacity-20 animate-pulse"></div>
+            <div className="absolute inset-2 border-4 border-orange-100 rounded-lg"></div>
+            <div className="absolute inset-2 border-4 border-t-orange-500 border-r-amber-500 rounded-lg animate-spin" style={{animationDuration: '2s'}}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <BookOpen className="w-10 h-10 text-orange-600 animate-pulse" />
+                <FileEdit className="w-4 h-4 text-amber-500 absolute -bottom-1 -right-1 animate-pulse" style={{animationDelay: '0.5s'}} />
+              </div>
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Chargement des articles...
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Récupération de vos contenus
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-orange-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

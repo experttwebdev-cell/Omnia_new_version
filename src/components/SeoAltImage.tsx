@@ -352,28 +352,38 @@ export function SeoAltImage() {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-12 text-center border border-blue-100">
-        <div className="relative w-32 h-32 mx-auto mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full opacity-20 animate-pulse"></div>
-          <div className="absolute inset-2 border-4 border-gray-100 rounded-full"></div>
-          <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
-              <ImageIcon className="w-12 h-12 text-blue-600 animate-pulse" />
-              <Sparkles className="w-5 h-5 text-cyan-500 absolute -top-1 -right-1 animate-ping" />
-            </div>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">ALT Image</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Génération et gestion des textes alternatifs
+            </p>
           </div>
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Chargement des images</h3>
-        <p className="text-base text-gray-600 mb-6">Analyse des textes alternatifs...</p>
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce shadow-lg shadow-blue-300"></div>
-          <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce shadow-lg shadow-cyan-300" style={{animationDelay: '0.15s'}}></div>
-          <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce shadow-lg shadow-blue-400" style={{animationDelay: '0.3s'}}></div>
-        </div>
-        <div className="mt-6 text-xs text-gray-500 flex items-center justify-center gap-2">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-          <span>Connexion sécurisée établie</span>
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-100 p-12 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-400 rounded-2xl opacity-20 animate-pulse"></div>
+            <div className="absolute inset-2 border-4 border-green-100 rounded-2xl"></div>
+            <div className="absolute inset-2 border-4 border-t-green-500 border-r-emerald-500 rounded-2xl animate-spin" style={{animationDuration: '3s'}}></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <ImageIcon className="w-10 h-10 text-green-600 animate-pulse" />
+                <Sparkles className="w-4 h-4 text-emerald-500 absolute -top-1 -right-1 animate-ping" />
+              </div>
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Chargement des images...
+          </h3>
+          <p className="text-gray-600 text-sm">
+            Analyse des textes alternatifs
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
       </div>
     );

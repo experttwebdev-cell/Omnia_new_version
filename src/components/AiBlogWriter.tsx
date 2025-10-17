@@ -306,7 +306,51 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
   };
 
   if (loading) {
-    return <LoadingAnimation type="content" />;
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">AI Blog Writer</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Génération automatique d'articles avec IA
+            </p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-violet-50 via-fuchsia-50 to-purple-50 rounded-xl shadow-sm border border-violet-100 p-12 text-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10">
+            <div className="absolute top-10 left-10 w-20 h-20 bg-violet-400 rounded-full animate-pulse" style={{animationDuration: '3s'}}></div>
+            <div className="absolute bottom-10 right-10 w-16 h-16 bg-fuchsia-400 rounded-full animate-pulse" style={{animationDuration: '4s', animationDelay: '1s'}}></div>
+            <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-purple-400 rounded-full animate-pulse" style={{animationDuration: '5s', animationDelay: '0.5s'}}></div>
+          </div>
+          <div className="relative z-10">
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-400 to-fuchsia-400 rounded-full opacity-20 animate-pulse"></div>
+              <div className="absolute inset-2 border-4 border-violet-100 rounded-full"></div>
+              <div className="absolute inset-2 border-4 border-t-violet-500 border-r-fuchsia-500 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative">
+                  <Sparkles className="w-10 h-10 text-violet-600 animate-pulse" />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-fuchsia-400 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">AI</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Chargement de l'IA...
+            </h3>
+            <p className="text-gray-600 text-sm">
+              Initialisation du système de génération
+            </p>
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-fuchsia-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
