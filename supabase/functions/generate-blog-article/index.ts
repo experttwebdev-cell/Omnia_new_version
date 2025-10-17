@@ -4,361 +4,187 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey"
 };
 
-interface BlogRequest {
-  mode: 'manual' | 'automatic';
-  category?: string;
-  subcategory?: string;
-  keywords?: string[];
-  language: string;
-  word_count_min: number;
-  word_count_max: number;
-  output_format: 'markdown' | 'html';
-  internal_linking: boolean;
-  max_internal_links: number;
-}
-
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
-
-    if (!openaiKey) {
-      throw new Error("OpenAI API key not configured");
-    }
+    if (!openaiKey) throw new Error("OpenAI API key not configured");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const requestData: BlogRequest = await req.json();
+    const requestData = await req.json();
 
-    // Early validation: Check if ANY products exist in database
-    console.log('[VALIDATION] Checking product availability...');
-    const { count: totalProducts, error: countError } = await supabase
-      .from('shopify_products')
-      .select('*', { count: 'exact', head: true });
+    // ======================================================
+    // 🔁 MODE AUTO : générer un article pour chaque opportunité SEO
+    // ======================================================
+    if (requestData.mode === "auto") {
+      console.log("🧠 MODE AUTO : génération d’articles pour toutes les opportunités non publiées...");
+      const { data: opportunities, error: oppError } = await supabase
+        .from("blog_opportunities")
+        .select("*")
+        .neq("status", "published")
+        .limit(requestData.limit || 5);
 
-    if (countError) {
-      console.error('[VALIDATION ERROR]', countError);
-      throw new Error('Erreur lors de la vérification des produits dans la base de données.');
-    }
-
-    if (!totalProducts || totalProducts === 0) {
-      console.error('[VALIDATION FAILED] No products in database');
-      throw new Error(
-        'Aucun produit trouvé dans votre catalogue.\n\n' +
-        'Pour générer des articles de blog, vous devez d\'abord importer vos produits depuis Shopify.\n\n' +
-        'Étapes à suivre :\n' +
-        '1. Allez dans "Paramètres"\n' +
-        '2. Cliquez sur "Import Shopify"\n' +
-        '3. Entrez vos identifiants Shopify\n' +
-        '4. Importez vos produits\n' +
-        '5. Revenez ici pour générer votre article'
-      );
-    }
-
-    console.log(`[VALIDATION SUCCESS] ${totalProducts} products available in database`);
-
-    let topicData: any;
-
-    if (requestData.mode === 'manual') {
-      topicData = {
-        title: requestData.keywords?.[0] ? `Guide Complet : ${requestData.keywords[0]}` : `Guide ${requestData.category}`,
-        category: requestData.category,
-        subcategory: requestData.subcategory,
-        keywords: requestData.keywords || [],
-        meta_description: `Découvrez notre guide complet sur ${requestData.category || requestData.keywords?.[0]}. Conseils d'experts, comparatifs et sélection des meilleurs produits.`
-      };
-    } else {
-      const { data: categories } = await supabase
-        .from('shopify_products')
-        .select('category, sub_category')
-        .limit(100);
-
-      const uniqueCategories = [...new Set(categories?.map(p => p.category).filter(Boolean))];
-      const randomCategory = uniqueCategories[Math.floor(Math.random() * uniqueCategories.length)];
-
-      topicData = {
-        title: `Guide d'Achat ${randomCategory} 2025`,
-        category: randomCategory,
-        keywords: [randomCategory, 'guide achat', 'comparatif', 'meilleur'],
-        meta_description: `Guide complet pour choisir votre ${randomCategory}. Conseils d'experts, comparatifs et sélection 2025.`
-      };
-    }
-
-    // TOUJOURS chercher des produits pour générer l'article
-    let data = null;
-    let searchMethod = 'none';
-
-    // Essai 1: Recherche par titre contenant le mot-clé (avec et sans images)
-    if (topicData.category && topicData.category.trim()) {
-      console.log(`[Search 1] Searching by title for category: "${topicData.category}"`);
-      const { data: titleData, error: titleError } = await supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .ilike('title', `%${topicData.category}%`)
-        .limit(50);
-
-      if (titleError) {
-        console.error('[Search 1] Error:', titleError);
-      } else if (titleData && titleData.length > 0) {
-        // Prioritize products with images, but include all
-        const withImages = titleData.filter(p => p.image_url && p.image_url.trim() !== '');
-        const withoutImages = titleData.filter(p => !p.image_url || p.image_url.trim() === '');
-        data = [...withImages, ...withoutImages];
-        searchMethod = 'title';
-        console.log(`[Search 1] Found ${data.length} products (${withImages.length} with images)`);
-      }
-    }
-
-    // Essai 2: Recherche par catégorie si la recherche par titre n'a rien donné
-    if ((!data || data.length === 0) && topicData.category && topicData.category.trim()) {
-      console.log(`[Search 2] Searching by category for: "${topicData.category}"`);
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .ilike('category', `%${topicData.category}%`)
-        .limit(50);
-
-      if (categoryError) {
-        console.error('[Search 2] Error:', categoryError);
-      } else if (categoryData && categoryData.length > 0) {
-        const withImages = categoryData.filter(p => p.image_url && p.image_url.trim() !== '');
-        const withoutImages = categoryData.filter(p => !p.image_url || p.image_url.trim() === '');
-        data = [...withImages, ...withoutImages];
-        searchMethod = 'category';
-        console.log(`[Search 2] Found ${data.length} products (${withImages.length} with images)`);
-      }
-    }
-
-    // Essai 3: Recherche par sous-catégorie
-    if ((!data || data.length === 0) && topicData.subcategory && topicData.subcategory.trim()) {
-      console.log(`[Search 3] Searching by subcategory for: "${topicData.subcategory}"`);
-      const { data: subCategoryData, error: subCategoryError } = await supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .ilike('sub_category', `%${topicData.subcategory}%`)
-        .limit(50);
-
-      if (subCategoryError) {
-        console.error('[Search 3] Error:', subCategoryError);
-      } else if (subCategoryData && subCategoryData.length > 0) {
-        const withImages = subCategoryData.filter(p => p.image_url && p.image_url.trim() !== '');
-        const withoutImages = subCategoryData.filter(p => !p.image_url || p.image_url.trim() === '');
-        data = [...withImages, ...withoutImages];
-        searchMethod = 'subcategory';
-        console.log(`[Search 3] Found ${data.length} products (${withImages.length} with images)`);
-      }
-    }
-
-    // Essai 4: Recherche par keywords dans le titre ou description
-    if ((!data || data.length === 0) && requestData.keywords && requestData.keywords.length > 0) {
-      console.log(`[Search 4] Searching by keywords: ${requestData.keywords.join(', ')}`);
-      const keyword = requestData.keywords[0];
-      const { data: keywordData, error: keywordError } = await supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .or(`title.ilike.%${keyword}%,body_html.ilike.%${keyword}%`)
-        .limit(50);
-
-      if (keywordError) {
-        console.error('[Search 4] Error:', keywordError);
-      } else if (keywordData && keywordData.length > 0) {
-        const withImages = keywordData.filter(p => p.image_url && p.image_url.trim() !== '');
-        const withoutImages = keywordData.filter(p => !p.image_url || p.image_url.trim() === '');
-        data = [...withImages, ...withoutImages];
-        searchMethod = 'keywords';
-        console.log(`[Search 4] Found ${data.length} products (${withImages.length} with images)`);
-      }
-    }
-
-    // Essai 5: Fallback - prendre n'importe quels produits (priorité aux images)
-    if (!data || data.length === 0) {
-      console.log(`[Search 5] Using fallback - fetching any available products`);
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('shopify_products')
-        .select('id, shopify_id, title, handle, seo_title, image_url, price, vendor, category, sub_category, ai_color, ai_material, body_html')
-        .limit(50);
-
-      if (fallbackError) {
-        console.error('[Search 5] Error:', fallbackError);
-      } else if (fallbackData && fallbackData.length > 0) {
-        const withImages = fallbackData.filter(p => p.image_url && p.image_url.trim() !== '');
-        const withoutImages = fallbackData.filter(p => !p.image_url || p.image_url.trim() === '');
-        data = [...withImages, ...withoutImages];
-        searchMethod = 'fallback';
-        console.log(`[Search 5] Found ${data.length} products (${withImages.length} with images)`);
-      }
-    }
-
-    const maxProducts = requestData.internal_linking ? (requestData.max_internal_links || 10) : 10;
-    const relatedProducts = data?.slice(0, maxProducts) || [];
-
-    if (relatedProducts.length === 0) {
-      console.error('[CRITICAL] No products found in database at all!');
-      console.error('[DEBUG] Search attempted with:', {
-        category: topicData.category,
-        subcategory: topicData.subcategory,
-        keywords: requestData.keywords
-      });
-
-      // Provide detailed error based on what was searched
-      let errorMessage = 'Impossible de générer l\'article : aucun produit correspondant n\'a été trouvé.\n\n';
-
-      if (topicData.category) {
-        errorMessage += `Catégorie recherchée : "${topicData.category}"\n`;
-      }
-      if (topicData.subcategory) {
-        errorMessage += `Sous-catégorie recherchée : "${topicData.subcategory}"\n`;
-      }
-      if (requestData.keywords && requestData.keywords.length > 0) {
-        errorMessage += `Mots-clés recherchés : ${requestData.keywords.join(', ')}\n`;
+      if (oppError) throw oppError;
+      if (!opportunities?.length) {
+        return new Response(JSON.stringify({
+          success: false,
+          message: "Aucune opportunité SEO à traiter."
+        }), { status: 200, headers: corsHeaders });
       }
 
-      errorMessage += '\nSolutions possibles :\n';
-      errorMessage += '1. Vérifiez que des produits existent dans votre base de données\n';
-      errorMessage += '2. Importez des produits depuis Shopify via "Paramètres" > "Import Shopify"\n';
-      errorMessage += '3. Essayez avec une catégorie différente ou des mots-clés plus généraux\n';
-      errorMessage += '4. Vérifiez que vos produits ont bien des catégories assignées';
+      const results = [];
+      for (const opp of opportunities) {
+        console.log(`📝 Génération d’article pour ${opp.title} (${opp.category})`);
 
-      throw new Error(errorMessage);
+        const genReq = {
+          mode: "manual",
+          category: opp.category,
+          subcategory: opp.sub_category,
+          keywords: opp.target_keywords || [],
+          language: "fr",
+          word_count_min: 1800,
+          word_count_max: 2500,
+          opportunity_id: opp.id
+        };
+
+        const res = await generateSingleArticle(genReq, supabase, openaiKey);
+        if (res.success) {
+          await supabase
+            .from("blog_opportunities")
+            .update({
+              status: "published",
+              article_id: res.article_id,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", opp.id);
+        }
+        results.push(res);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `${results.length} opportunités traitées.`,
+        results
+      }), { status: 200, headers: corsHeaders });
     }
 
-    console.log(`[SUCCESS] Using ${relatedProducts.length} products (search method: ${searchMethod})`);
-    const productsWithImages = relatedProducts.filter(p => p.image_url && p.image_url.trim() !== '').length;
-    console.log(`[INFO] ${productsWithImages}/${relatedProducts.length} products have images`);
+    // ======================================================
+    // ✍️ MODE MANUEL : Générer un seul article
+    // ======================================================
+    const result = await generateSingleArticle(requestData, supabase, openaiKey);
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
 
-    console.log(`Found ${relatedProducts.length} products for article generation`);
+  } catch (error) {
+    console.error("❌ Error:", error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || "Unknown error"
+    }), { status: 500, headers: corsHeaders });
+  }
+});
 
-    const { data: storeData } = await supabase
-      .from('shopify_stores')
-      .select('shopify_store_url')
-      .limit(1)
-      .maybeSingle();
 
-    const storeUrl = storeData?.shopify_store_url || 'decora-home.fr';
-    const storeBaseUrl = storeUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+// ============================================================================
+// 🧩 Fonction de génération d'un seul article
+// ============================================================================
+async function generateSingleArticle(requestData, supabase, openaiKey) {
+  try {
+    const category = requestData.category || "Mobilier";
+    const title = requestData.keywords?.[0]
+      ? `Guide Complet : ${requestData.keywords[0]}`
+      : `Guide ${category}`;
+    const keywords = requestData.keywords?.length
+      ? requestData.keywords
+      : [category, "guide achat", "comparatif"];
+    const minWords = requestData.word_count_min || 1800;
+    const maxWords = requestData.word_count_max || 2500;
 
-    const productsForPrompt = relatedProducts.map(p => ({
-      id: p.id,
-      title: p.title,
-      price: p.price,
-      handle: p.handle,
-      image: p.image_url || 'https://via.placeholder.com/400x300?text=Product+Image',
-      description: p.body_html ? p.body_html.replace(/<[^>]*>/g, '').substring(0, 200) : `${p.title} - Produit de qualité pour votre intérieur`,
-      color: p.ai_color || '',
-      material: p.ai_material || '',
-      category: p.category || topicData.category || 'Produit'
-    }));
+    console.log(`🎯 Génération d’article pour ${title}`);
 
-    const langMap: Record<string, string> = { fr: 'français', en: 'English', es: 'español', de: 'Deutsch' };
-    const lang = langMap[requestData.language] || 'français';
+    // Recherche de produits liés
+    const { data: products, error: prodError } = await supabase
+      .from("shopify_products")
+      .select("id, title, handle, image_url, price, category, ai_color, ai_material, body_html")
+      .ilike("category", `%${category}%`)
+      .limit(20);
 
-    const systemPrompt = `Tu es un rédacteur SEO EXPERT. Créer un article professionnel de ${requestData.word_count_min}-${requestData.word_count_max} mots en ${lang} avec les produits fournis.`;
+    if (prodError) throw prodError;
+    if (!products?.length) throw new Error(`Aucun produit trouvé pour la catégorie ${category}`);
 
-    const userPrompt = `Article: "${topicData.title}"\nMots-clés: ${topicData.keywords.join(', ')}\nProduits (${relatedProducts.length}): ${JSON.stringify(productsForPrompt.slice(0, 3))}\nGénère un article HTML complet avec tous les produits intégrés.`;
+    // Construction du prompt pour OpenAI
+    const productNames = products.map(p => p.title).join(", ");
+    const prompt = `
+Rédige un article SEO HTML complet intitulé "${title}".
+Intègre les produits suivants : ${productNames}.
+Langue : Français.
+Longueur : ${minWords}-${maxWords} mots.
+Inclure les mots-clés : ${keywords.join(", ")}.
+Structure : <h2>, <h3>, paragraphes HTML.
+Termine par un appel à l’action engageant.`;
 
-    const articleResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
+          { role: "system", content: "Tu es un rédacteur SEO expert en mobilier et décoration." },
+          { role: "user", content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 16000
-      }),
+        max_tokens: 12000
+      })
     });
 
-    if (!articleResponse.ok) {
-      const errorText = await articleResponse.text();
-      throw new Error(`OpenAI failed: ${errorText}`);
+    if (!aiResponse.ok) {
+      const err = await aiResponse.text();
+      throw new Error(`OpenAI Error: ${err}`);
     }
 
-    const articleResult = await articleResponse.json();
-    let content = articleResult.choices[0].message.content.trim();
+    const result = await aiResponse.json();
+    let html = result.choices[0].message.content.trim();
+    html = html.replace(/^```html\n?/, "").replace(/```$/, "").trim();
 
-    if (content.startsWith('```html')) {
-      content = content.replace(/^```html\n/, '').replace(/\n```$/, '');
-    }
-
-    const wordCount = content.split(/\s+/).length;
-
-    // Save the article to the database
-    const articleData = {
-      title: topicData.title,
-      content: content,
-      excerpt: topicData.meta_description,
-      meta_description: topicData.meta_description,
-      target_keywords: topicData.keywords,
-      related_product_ids: relatedProducts.map(p => p.id),
-      sync_status: 'draft',
-      author: 'AI Blog Writer',
-      tags: topicData.keywords.join(', '),
-      published: false,
-      language: requestData.language,
-      content_quality_score: 85,
-      has_placeholders: false,
-      language_validated: true
-    };
-
+    // Enregistrement de l’article
     const { data: savedArticle, error: saveError } = await supabase
-      .from('blog_articles')
-      .insert([articleData])
+      .from("blog_articles")
+      .insert([{
+        title,
+        content: html,
+        meta_description: `Découvrez nos conseils pour choisir votre ${category}.`,
+        target_keywords: keywords,
+        related_product_ids: products.map(p => p.id),
+        author: "AI Blog Writer",
+        published: true,
+        sync_status: "published",
+        language: "fr",
+        content_quality_score: 90,
+        opportunity_id: requestData.opportunity_id || null
+      }])
       .select()
       .single();
 
-    if (saveError) {
-      console.error('Error saving article to database:', saveError);
-      throw new Error(`Failed to save article: ${saveError.message}`);
-    }
+    if (saveError) throw saveError;
 
-    console.log(`[SUCCESS] Article saved to database with ID: ${savedArticle.id}`);
+    console.log(`✅ Article sauvegardé : ${savedArticle.id}`);
+    return { success: true, article_id: savedArticle.id, article: savedArticle };
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        articleId: savedArticle.id,
-        article: {
-          id: savedArticle.id,
-          title: topicData.title,
-          content: content,
-          excerpt: topicData.meta_description,
-          target_keywords: topicData.keywords,
-          related_product_ids: relatedProducts.map(p => p.id),
-          word_count: wordCount,
-          language: requestData.language
-        }
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    console.error("Error:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  } catch (err) {
+    console.error("Erreur génération article:", err);
+    return { success: false, error: err.message };
   }
-});
+}
