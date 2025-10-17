@@ -28,10 +28,13 @@ interface Product {
   price: string;
   compare_at_price?: string;
   style?: string;
-  material?: string;
-  color?: string;
   ai_color?: string;
   ai_material?: string;
+  ai_texture?: string;
+  ai_pattern?: string;
+  ai_finish?: string;
+  ai_shape?: string;
+  ai_design_elements?: string;
   room?: string;
   image_url?: string;
   product_type?: string;
@@ -44,13 +47,17 @@ interface Product {
   category?: string;
   sub_category?: string;
   tags?: string;
-  length?: number;
-  width?: number;
-  height?: number;
-  length_unit?: string;
-  width_unit?: string;
-  height_unit?: string;
+  smart_length?: number;
+  smart_width?: number;
+  smart_height?: number;
+  smart_length_unit?: string;
+  smart_width_unit?: string;
+  smart_height_unit?: string;
   inventory_quantity?: number;
+  chat_text?: string;
+  vendor?: string;
+  functionality?: string;
+  characteristics?: string;
 }
 
 function buildChatIntent(settings?: ChatSettings) {
@@ -297,12 +304,12 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   let query = supabase
     .from('shopify_products')
     .select(`
-      id, title, price, compare_at_price, style, material, color,
+      id, title, price, compare_at_price, style,
       ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
       room, image_url, product_type, description, ai_vision_analysis,
       handle, shopify_id, currency, shop_name, category, sub_category, tags,
-      length, width, height, length_unit, width_unit, height_unit, inventory_quantity,
-      chat_text
+      smart_length, smart_width, smart_height, smart_length_unit, smart_width_unit, smart_height_unit,
+      inventory_quantity, chat_text, vendor, functionality, characteristics
     `)
     .eq('status', 'active')
     .limit(12);
@@ -344,12 +351,12 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     let fallbackQuery = supabase
       .from('shopify_products')
       .select(`
-        id, title, price, compare_at_price, style, material, color,
+        id, title, price, compare_at_price, style,
         ai_color, ai_material, ai_texture, ai_pattern, ai_finish, ai_shape, ai_design_elements,
         room, image_url, product_type, description, ai_vision_analysis,
         handle, shopify_id, currency, shop_name, category, sub_category, tags,
-        length, width, height, length_unit, width_unit, height_unit, inventory_quantity,
-        chat_text
+        smart_length, smart_width, smart_height, smart_length_unit, smart_width_unit, smart_height_unit,
+        inventory_quantity, chat_text, vendor, functionality, characteristics
       `)
       .eq('status', 'active')
       .limit(12);
@@ -383,9 +390,9 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   if (filters.color && results.length > 0) {
     console.log('🌈 [SEARCH] Applying color filter:', filters.color);
     const colorFiltered = results.filter(p =>
-      p.color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
       p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
-      p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
+      p.tags?.toLowerCase().includes(filters.color!.toLowerCase()) ||
+      p.chat_text?.toLowerCase().includes(filters.color!.toLowerCase())
     );
     console.log('📊 [SEARCH] Color filter result:', colorFiltered.length, 'products');
     results = colorFiltered;
@@ -394,10 +401,10 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
   if (filters.material && results.length > 0) {
     console.log('🪵 [SEARCH] Applying material filter:', filters.material);
     const materialFiltered = results.filter(p =>
-      p.material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
       p.tags?.toLowerCase().includes(filters.material!.toLowerCase()) ||
-      p.title?.toLowerCase().includes(filters.material!.toLowerCase())
+      p.title?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+      p.chat_text?.toLowerCase().includes(filters.material!.toLowerCase())
     );
     console.log('📊 [SEARCH] Material filter result:', materialFiltered.length, 'products');
     results = materialFiltered;
@@ -442,9 +449,9 @@ async function generateSmartProductPresentation(products: Product[], userMessage
     const discount = hasPromo ? Math.round((1 - Number(p.price) / Number(p.compare_at_price!)) * 100) : 0;
 
     const dimensions = [];
-    if (p.width) dimensions.push(`L${p.width}${p.width_unit || 'cm'}`);
-    if (p.height) dimensions.push(`H${p.height}${p.height_unit || 'cm'}`);
-    if (p.length) dimensions.push(`P${p.length}${p.length_unit || 'cm'}`);
+    if (p.smart_width) dimensions.push(`L${p.smart_width}${p.smart_width_unit || 'cm'}`);
+    if (p.smart_height) dimensions.push(`H${p.smart_height}${p.smart_height_unit || 'cm'}`);
+    if (p.smart_length) dimensions.push(`P${p.smart_length}${p.smart_length_unit || 'cm'}`);
 
     return {
       index: idx + 1,
@@ -455,13 +462,15 @@ async function generateSmartProductPresentation(products: Product[], userMessage
       categorie: p.category,
       sous_categorie: p.sub_category,
       style: p.style,
-      couleur: p.ai_color || p.color,
-      materiau: p.ai_material || p.material,
+      couleur: p.ai_color,
+      materiau: p.ai_material,
       piece: p.room,
       dimensions: dimensions.join(' x '),
       description: p.description?.replace(/<[^>]*>/g, '').substring(0, 200),
       tags: p.tags,
-      stock: p.inventory_quantity || 'Disponible'
+      stock: p.inventory_quantity || 'Disponible',
+      fonctionnalite: p.functionality,
+      caracteristiques: p.characteristics
     };
   });
 
