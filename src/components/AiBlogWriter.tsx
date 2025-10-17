@@ -397,7 +397,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
                   const settingsLink = document.querySelector('a[href="#settings"]');
                   if (settingsLink) (settingsLink as HTMLElement).click();
                 }}
-                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition"
+                className="mt-3 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg text-sm hover:from-red-600 hover:to-rose-700 transition shadow-md"
               >
                 Go to Settings
               </button>
@@ -484,7 +484,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Generation Modes */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg border border-gray-200 p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Zap className="w-6 h-6 text-blue-600" />
@@ -497,11 +497,11 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
 
           <div className="space-y-6">
             {/* Automatic Mode */}
-            <div 
-              className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${
-                settings.mode === 'automatic' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 bg-white hover:border-blue-300'
+            <div
+              className={`p-6 rounded-xl border-2 transition-all cursor-pointer shadow-md ${
+                settings.mode === 'automatic'
+                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-purple-50'
+                  : 'border-gray-200 bg-gradient-to-br from-white to-blue-50 hover:border-blue-300 hover:shadow-lg'
               }`}
               onClick={onNavigateToCampaigns}
             >
@@ -536,11 +536,11 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
             </div>
 
             {/* Manual Mode */}
-            <div 
-              className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${
-                settings.mode === 'manual' 
-                  ? 'border-purple-500 bg-purple-50' 
-                  : 'border-gray-200 bg-white hover:border-purple-300'
+            <div
+              className={`p-6 rounded-xl border-2 transition-all cursor-pointer shadow-md ${
+                settings.mode === 'manual'
+                  ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-pink-50'
+                  : 'border-gray-200 bg-gradient-to-br from-white to-purple-50 hover:border-purple-300 hover:shadow-lg'
               }`}
               onClick={() => {
                 setSettings({ ...settings, mode: 'manual' });
@@ -602,7 +602,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
         </div>
 
         {/* Settings Panel */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+        <div className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-lg border border-gray-200 p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-gray-100 rounded-lg">
               <SettingsIcon className="w-6 h-6 text-gray-600" />
@@ -683,7 +683,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
             <button
               onClick={handleSaveSettings}
               disabled={saving}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold disabled:opacity-50 transition shadow-md"
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold disabled:opacity-50 transition shadow-md"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

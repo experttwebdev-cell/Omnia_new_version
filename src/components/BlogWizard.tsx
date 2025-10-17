@@ -508,7 +508,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                           if (settingsLink) (settingsLink as HTMLElement).click();
                         }, 100);
                       }}
-                      className="text-sm text-red-800 underline hover:text-red-900 font-medium"
+                      className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg text-sm hover:from-red-600 hover:to-rose-700 font-medium shadow-md"
                     >
                       Go to Settings to Import Products
                     </button>
@@ -535,8 +535,8 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                 disabled={totalProductCount === 0}
                 className={`p-6 border-2 border-blue-200 rounded-xl transition-all text-left group ${
                   totalProductCount === 0
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:border-blue-500 hover:bg-blue-50'
+                    ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                    : 'hover:border-blue-500 hover:shadow-lg bg-gradient-to-br from-white to-blue-50'
                 }`}
               >
                 <div className="flex items-center gap-3 mb-3">
@@ -564,8 +564,8 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                 disabled={totalProductCount === 0}
                 className={`p-6 border-2 border-purple-200 rounded-xl transition-all text-left group ${
                   totalProductCount === 0
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:border-purple-500 hover:bg-purple-50'
+                    ? 'opacity-50 cursor-not-allowed bg-gray-50'
+                    : 'hover:border-purple-500 hover:shadow-lg bg-gradient-to-br from-white to-purple-50'
                 }`}
               >
                 <div className="flex items-center gap-3 mb-3">
@@ -683,7 +683,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         if (settingsLink) (settingsLink as HTMLElement).click();
                       }, 100);
                     }}
-                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition"
+                    className="mt-3 px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg text-sm hover:from-red-600 hover:to-rose-700 transition shadow-md"
                   >
                     Go to Settings to Import Products
                   </button>
@@ -830,7 +830,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         const categoryProducts = filteredProducts.slice(0, formData.productCount);
                         setSelectedProducts(categoryProducts);
                       }}
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition shadow-md"
                     >
                       Auto-Select {formData.productCount} Products
                     </button>
@@ -864,7 +864,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                         <p className="text-sm mt-1">Please import products from Shopify first</p>
                         <button
                           onClick={() => window.open('/settings', '_blank')}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                          className="mt-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-sm hover:from-blue-600 hover:to-purple-700 shadow-md"
                         >
                           Go to Shopify Settings
                         </button>
@@ -999,7 +999,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                       />
                       <button
                         onClick={addKeyword}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition shadow-md"
                       >
                         Add
                       </button>
@@ -1541,7 +1541,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
             <button
               onClick={handleNext}
               disabled={!canProceed() || generating}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-md"
             >
               Next
               <ChevronRight className="w-5 h-5" />
@@ -1550,7 +1550,7 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
             <button
               onClick={handleGenerate}
               disabled={!canProceed() || generating || success}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-md"
             >
               {generating ? (
                 <>
