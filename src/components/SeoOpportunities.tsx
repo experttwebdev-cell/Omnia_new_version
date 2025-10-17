@@ -345,7 +345,7 @@ export function SeoOpportunities() {
       }
       console.log('🧹 Component unmounting, cleaning up...');
     };
-  }, [fetchProducts]);
+  }, []); // Empty dependency array - only load once on mount
 
   const handleGenerateSmartOpportunities = async () => {
     if (generatingSmart) return;
@@ -939,9 +939,26 @@ export function SeoOpportunities() {
             {templateLang === 'fr' ? 'Rafraîchir' : 'Refresh'}
           </button>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">{templateLang === 'fr' ? 'Chargement...' : 'Loading...'}</p>
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl shadow-sm border border-blue-100 p-12 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute inset-2 border-4 border-blue-100 rounded-full"></div>
+            <div className="absolute inset-2 border-4 border-t-blue-500 border-r-cyan-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Lightbulb className="w-10 h-10 text-blue-600 animate-pulse" />
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            {templateLang === 'fr' ? 'Chargement des opportunités...' : 'Loading opportunities...'}
+          </h3>
+          <p className="text-gray-600 text-sm">
+            {templateLang === 'fr' ? 'Analyse de votre catalogue produits' : 'Analyzing your product catalog'}
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
       </div>
     );
