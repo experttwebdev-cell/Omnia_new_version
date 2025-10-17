@@ -209,16 +209,19 @@ export function SeoOpportunities() {
     const startTime = Date.now();
 
     try {
+      console.log('🔍 [FETCH START]', new Date().toISOString(), 'Setting loading to true...');
       setLoading(true);
       setError('');
 
-      console.log('🔍 [FETCH START]', new Date().toISOString(), 'Fetching products from shopify_products table...');
+      console.log('🔍 [FETCH]', 'Fetching products from shopify_products table...');
 
       const { data: productsData, error: productsError } = await supabase
         .from('shopify_products')
         .select('id, title, category, sub_category, product_type, tags, status, enrichment_status, created_at')
         .order('created_at', { ascending: false })
         .limit(1000);
+
+      console.log('🔍 [FETCH]', 'Products query completed');
 
       if (productsError) {
         console.error('❌ Error fetching products:', productsError);
@@ -313,10 +316,23 @@ export function SeoOpportunities() {
 
   useEffect(() => {
     let isMounted = true;
+    let safetyTimeout: NodeJS.Timeout;
 
     const loadData = async () => {
       if (isMounted) {
+        // Safety timeout: force loading to false after 30 seconds
+        safetyTimeout = setTimeout(() => {
+          console.warn('⚠️ [SAFETY TIMEOUT] Forcing loading to false after 30 seconds');
+          if (isMounted) {
+            setLoading(false);
+            setError('Timeout: La requête a pris trop de temps. Veuillez réessayer.');
+          }
+        }, 30000);
+
         await fetchProducts();
+
+        // Clear safety timeout if fetch completes normally
+        clearTimeout(safetyTimeout);
       }
     };
 
@@ -324,6 +340,9 @@ export function SeoOpportunities() {
 
     return () => {
       isMounted = false;
+      if (safetyTimeout) {
+        clearTimeout(safetyTimeout);
+      }
       console.log('🧹 Component unmounting, cleaning up...');
     };
   }, [fetchProducts]);
