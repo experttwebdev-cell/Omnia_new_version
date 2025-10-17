@@ -1,37 +1,101 @@
-export function detectLanguage(text: string): 'fr' | 'en' | 'es' | 'de' | 'it' {
-  const frenchWords = ['le', 'la', 'les', 'de', 'des', 'un', 'une', 'du', 'et', 'à', 'en', 'pour', 'avec', 'dans'];
-  const englishWords = ['the', 'of', 'and', 'to', 'a', 'in', 'for', 'is', 'on', 'with', 'as', 'by'];
-  const spanishWords = ['el', 'la', 'los', 'las', 'de', 'del', 'y', 'en', 'un', 'una', 'con', 'para'];
-  const germanWords = ['der', 'die', 'das', 'den', 'dem', 'des', 'und', 'in', 'von', 'mit', 'für'];
-  const italianWords = ['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'da', 'in', 'con', 'per', 'su'];
+type Language = 'fr' | 'en' | 'es' | 'de' | 'it';
+type TemplateType = 'categoryGuide' | 'comparison' | 'subcategory' | 'color' | 'material' | 'priceRange';
 
-  const words = text.toLowerCase().split(/\s+/);
+interface TemplateConfig {
+  title: (...args: any[]) => string;
+  description: (...args: any[]) => string;
+  keywords: (...args: any[]) => string[];
+  structure?: (...args: any[]) => string[] | string[];
+}
 
-  let frenchCount = 0;
-  let englishCount = 0;
-  let spanishCount = 0;
-  let germanCount = 0;
-  let italianCount = 0;
+interface ContentPlan {
+  title: string;
+  description: string;
+  keywords: string[];
+  structure?: string[];
+}
 
-  words.forEach(word => {
-    if (frenchWords.includes(word)) frenchCount++;
-    if (englishWords.includes(word)) englishCount++;
-    if (spanishWords.includes(word)) spanishCount++;
-    if (germanWords.includes(word)) germanCount++;
-    if (italianWords.includes(word)) italianCount++;
-  });
+// Enhanced language detection with better patterns and fallback
+export function detectLanguage(text: string): Language {
+  if (!text || text.trim().length === 0) {
+    return 'en'; // Default fallback for empty text
+  }
 
-  const counts = {
-    fr: frenchCount,
-    en: englishCount,
-    es: spanishCount,
-    de: germanCount,
-    it: italianCount
+  const languagePatterns = {
+    fr: /\b(le|la|les|de|des|un|une|du|et|à|en|pour|avec|dans|est|son|ses|par|au|aux)\b/gi,
+    en: /\b(the|of|and|to|a|in|for|is|on|with|as|by|that|this|it|are|from|at)\b/gi,
+    es: /\b(el|la|los|las|de|del|y|en|un|una|con|para|por|que|se|no|al|lo)\b/gi,
+    de: /\b(der|die|das|den|dem|des|und|in|von|mit|für|ist|sich|nicht|auf|ein|eine)\b/gi,
+    it: /\b(il|lo|la|i|gli|le|di|da|in|con|per|su|che|non|una|è|del|della)\b/gi
   };
 
-  const maxLang = Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b);
+  const scores = {
+    fr: (text.toLowerCase().match(languagePatterns.fr) || []).length,
+    en: (text.toLowerCase().match(languagePatterns.en) || []).length,
+    es: (text.toLowerCase().match(languagePatterns.es) || []).length,
+    de: (text.toLowerCase().match(languagePatterns.de) || []).length,
+    it: (text.toLowerCase().match(languagePatterns.it) || []).length
+  };
 
-  return maxLang[0] as 'fr' | 'en' | 'es' | 'de' | 'it';
+  // Find the language with the highest score
+  const maxEntry = Object.entries(scores).reduce((a, b) => 
+    a[1] > b[1] ? a : b, ['en', 0]
+  );
+
+  return maxEntry[0] as Language;
+}
+
+// Safe template accessor with fallback
+export function getTemplate(lang: Language, type: TemplateType): TemplateConfig {
+  const template = opportunityTemplates[lang]?.[type];
+  if (!template) {
+    console.warn(`Template ${type} not found for language ${lang}, falling back to English`);
+    return opportunityTemplates.en[type];
+  }
+  return template;
+}
+
+// Generate complete content plan
+export function generateContentPlan(
+  lang: Language, 
+  type: TemplateType, 
+  ...params: any[]
+): ContentPlan {
+  const template = getTemplate(lang, type);
+  const result: ContentPlan = {
+    title: template.title(...params),
+    description: template.description(...params),
+    keywords: template.keywords(...params)
+  };
+
+  // Add structure if the template has it
+  if (template.structure) {
+    result.structure = Array.isArray(template.structure) 
+      ? template.structure 
+      : template.structure(...params);
+  }
+
+  return result;
+}
+
+// Detect language and generate content plan in one call
+export function autoGenerateContentPlan(
+  text: string,
+  type: TemplateType,
+  ...params: any[]
+): ContentPlan {
+  const detectedLang = detectLanguage(text);
+  return generateContentPlan(detectedLang, type, ...params);
+}
+
+// Utility to get all available languages
+export function getAvailableLanguages(): Language[] {
+  return ['fr', 'en', 'es', 'de', 'it'];
+}
+
+// Utility to get all template types
+export function getAvailableTemplateTypes(): TemplateType[] {
+  return ['categoryGuide', 'comparison', 'subcategory', 'color', 'material', 'priceRange'];
 }
 
 export const opportunityTemplates = {
@@ -44,7 +108,9 @@ export const opportunityTemplates = {
         `guide d'achat ${category.toLowerCase()}`,
         `meilleur ${category.toLowerCase()}`,
         `comparaison ${category.toLowerCase()}`,
-        `comment choisir ${category.toLowerCase()}`
+        `comment choisir ${category.toLowerCase()}`,
+        `avis ${category.toLowerCase()}`,
+        `test ${category.toLowerCase()}`
       ],
       structure: (category: string) => [
         `Introduction aux ${category}`,
@@ -52,7 +118,8 @@ export const opportunityTemplates = {
         'Comparaison des produits',
         'Options budget vs premium',
         'Recommandations d\'experts',
-        'Questions fréquentes'
+        'Questions fréquentes',
+        'Conclusion et verdict final'
       ]
     },
     comparison: {
@@ -62,24 +129,36 @@ export const opportunityTemplates = {
       keywords: (category: string) => [
         `comparaison ${category.toLowerCase()}`,
         `meilleur ${category.toLowerCase()} 2024`,
-        `avis ${category.toLowerCase()}`
+        `avis ${category.toLowerCase()}`,
+        `test ${category.toLowerCase()}`,
+        `classement ${category.toLowerCase()}`
       ],
       structure: [
         'Tableau comparatif rapide',
         'Revues de produits détaillées',
-        'Analyse des prix',
+        'Analyse des prix et valeur',
         'Meilleur pour différents besoins',
-        'Verdict final'
+        'Avantages et inconvénients',
+        'Verdict final et recommandation'
       ]
     },
     subcategory: {
       title: (subCategory: string, category: string) => `Guide ${subCategory} ${category}`,
       description: (subCategory: string, category: string, count: number) =>
-        `Guide spécialisé sur les options ${subCategory.toLowerCase()} dans la catégorie ${category.toLowerCase()}. Couvre ${count} produits.`,
+        `Guide spécialisé sur les options ${subCategory.toLowerCase()} dans la catégorie ${category.toLowerCase()}. Couvre ${count} produits avec analyse experte.`,
       keywords: (subCategory: string, category: string) => [
         `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
         `guide ${subCategory.toLowerCase()}`,
-        `meilleur ${subCategory.toLowerCase()}`
+        `meilleur ${subCategory.toLowerCase()}`,
+        `avis ${subCategory.toLowerCase()} ${category.toLowerCase()}`,
+        `comparaison ${subCategory.toLowerCase()}`
+      ],
+      structure: (subCategory: string, category: string) => [
+        `Introduction à ${subCategory} ${category}`,
+        'Critères de sélection spécifiques',
+        'Comparaison des modèles',
+        'Cas d utilisation recommandés',
+        'Guide d achat'
       ]
     },
     color: {
@@ -88,17 +167,36 @@ export const opportunityTemplates = {
         `Collection sélectionnée de ${category.toLowerCase()} ${color.toLowerCase()}. Parfait pour les clients avec des préférences de couleur spécifiques.`,
       keywords: (color: string, category: string) => [
         `${category.toLowerCase()} ${color.toLowerCase()}`,
-        `${color.toLowerCase()} ${category.toLowerCase()}`
+        `${color.toLowerCase()} ${category.toLowerCase()}`,
+        `couleur ${color.toLowerCase()} ${category.toLowerCase()}`,
+        `design ${color.toLowerCase()}`,
+        `style ${color.toLowerCase()}`
+      ],
+      structure: (color: string, category: string) => [
+        `Introduction aux ${category} ${color}`,
+        'Avantages du design et style',
+        'Options disponibles',
+        'Conseils de style et coordination',
+        'Entretien et maintenance'
       ]
     },
     material: {
-      title: (material: string, category: string) => `${category} en ${material}: Guide & Entretien`,
+      title: (material: string, category: string) => `${category} en ${material} : Guide & Entretien`,
       description: (material: string, category: string) =>
         `Contenu éducatif sur les ${category.toLowerCase()} en ${material.toLowerCase()}. Avantages, entretien et recommandations de produits.`,
       keywords: (material: string, category: string) => [
         `${category.toLowerCase()} ${material.toLowerCase()}`,
         `${material.toLowerCase()} ${category.toLowerCase()}`,
-        `entretien ${material.toLowerCase()}`
+        `entretien ${material.toLowerCase()}`,
+        `avantages ${material.toLowerCase()}`,
+        `durabilité ${material.toLowerCase()}`
+      ],
+      structure: (material: string, category: string) => [
+        `Introduction aux ${category} en ${material}`,
+        `Avantages du ${material}`,
+        'Guide d entretien et maintenance',
+        'Comparaison avec autres matériaux',
+        'Recommandations produits'
       ]
     },
     priceRange: {
@@ -109,7 +207,16 @@ export const opportunityTemplates = {
       keywords: (category: string, range: string, max: number) => [
         `${category.toLowerCase()} abordable`,
         `${category.toLowerCase()} ${range.toLowerCase()}`,
-        `meilleur ${category.toLowerCase()} moins de ${max}€`
+        `meilleur ${category.toLowerCase()} moins de ${max}€`,
+        `bon rapport qualité-prix ${category.toLowerCase()}`,
+        `économie ${category.toLowerCase()}`
+      ],
+      structure: (range: string, category: string) => [
+        `Introduction aux ${category} ${range}`,
+        'Meilleures options par budget',
+        'Comparaison valeur/prix',
+        'Conseils d achat intelligents',
+        'Alternatives premium'
       ]
     }
   },
@@ -122,7 +229,9 @@ export const opportunityTemplates = {
         `${category.toLowerCase()} buying guide`,
         `best ${category.toLowerCase()}`,
         `${category.toLowerCase()} comparison`,
-        `how to choose ${category.toLowerCase()}`
+        `how to choose ${category.toLowerCase()}`,
+        `${category.toLowerCase()} reviews`,
+        `${category.toLowerCase()} guide 2024`
       ],
       structure: (category: string) => [
         `Introduction to ${category}`,
@@ -130,7 +239,8 @@ export const opportunityTemplates = {
         'Product Comparisons',
         'Budget vs Premium Options',
         'Expert Recommendations',
-        'Frequently Asked Questions'
+        'Frequently Asked Questions',
+        'Final Verdict & Conclusion'
       ]
     },
     comparison: {
@@ -140,24 +250,36 @@ export const opportunityTemplates = {
       keywords: (category: string) => [
         `${category.toLowerCase()} comparison`,
         `best ${category.toLowerCase()} 2024`,
-        `${category.toLowerCase()} reviews`
+        `${category.toLowerCase()} reviews`,
+        `${category.toLowerCase()} buying guide`,
+        `top rated ${category.toLowerCase()}`
       ],
       structure: [
         'Quick Comparison Table',
         'Detailed Product Reviews',
-        'Price Analysis',
+        'Price & Value Analysis',
         'Best for Different Needs',
-        'Final Verdict'
+        'Pros and Cons',
+        'Final Verdict & Recommendation'
       ]
     },
     subcategory: {
       title: (subCategory: string, category: string) => `${subCategory} ${category} Guide`,
       description: (subCategory: string, category: string, count: number) =>
-        `Specialized guide focusing on ${subCategory.toLowerCase()} options within ${category.toLowerCase()}. Cover ${count} products.`,
+        `Specialized guide focusing on ${subCategory.toLowerCase()} options within ${category.toLowerCase()}. Cover ${count} products with expert analysis.`,
       keywords: (subCategory: string, category: string) => [
         `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
         `best ${subCategory.toLowerCase()}`,
-        `${subCategory.toLowerCase()} guide`
+        `${subCategory.toLowerCase()} guide`,
+        `${subCategory.toLowerCase()} ${category.toLowerCase()} reviews`,
+        `compare ${subCategory.toLowerCase()}`
+      ],
+      structure: (subCategory: string, category: string) => [
+        `Introduction to ${subCategory} ${category}`,
+        'Specific Selection Criteria',
+        'Model Comparison',
+        'Recommended Use Cases',
+        'Buying Guide'
       ]
     },
     color: {
@@ -166,7 +288,17 @@ export const opportunityTemplates = {
         `Curated collection of ${color.toLowerCase()} ${category.toLowerCase()} items. Perfect for customers with specific color preferences.`,
       keywords: (color: string, category: string) => [
         `${color.toLowerCase()} ${category.toLowerCase()}`,
-        `${category.toLowerCase()} in ${color.toLowerCase()}`
+        `${category.toLowerCase()} in ${color.toLowerCase()}`,
+        `${color.toLowerCase()} design ${category.toLowerCase()}`,
+        `${color.toLowerCase()} style`,
+        `${category.toLowerCase()} color options`
+      ],
+      structure: (color: string, category: string) => [
+        `Introduction to ${color} ${category}`,
+        'Design & Style Benefits',
+        'Available Options',
+        'Styling & Coordination Tips',
+        'Care & Maintenance'
       ]
     },
     material: {
@@ -176,7 +308,16 @@ export const opportunityTemplates = {
       keywords: (material: string, category: string) => [
         `${material.toLowerCase()} ${category.toLowerCase()}`,
         `${category.toLowerCase()} ${material.toLowerCase()}`,
-        `${material.toLowerCase()} care`
+        `${material.toLowerCase()} care`,
+        `${material.toLowerCase()} benefits`,
+        `${material.toLowerCase()} durability`
+      ],
+      structure: (material: string, category: string) => [
+        `Introduction to ${material} ${category}`,
+        `Benefits of ${material}`,
+        'Care & Maintenance Guide',
+        'Comparison with Other Materials',
+        'Product Recommendations'
       ]
     },
     priceRange: {
@@ -187,7 +328,16 @@ export const opportunityTemplates = {
       keywords: (category: string, range: string, max: number) => [
         `affordable ${category.toLowerCase()}`,
         `${range.toLowerCase()} ${category.toLowerCase()}`,
-        `best ${category.toLowerCase()} under ${max}`
+        `best ${category.toLowerCase()} under $${max}`,
+        `value ${category.toLowerCase()}`,
+        `budget ${category.toLowerCase()}`
+      ],
+      structure: (range: string, category: string) => [
+        `Introduction to ${range} ${category}`,
+        'Best Options by Budget',
+        'Value for Money Comparison',
+        'Smart Buying Tips',
+        'Premium Alternatives'
       ]
     }
   },
@@ -200,7 +350,9 @@ export const opportunityTemplates = {
         `guía de compra ${category.toLowerCase()}`,
         `mejor ${category.toLowerCase()}`,
         `comparación ${category.toLowerCase()}`,
-        `cómo elegir ${category.toLowerCase()}`
+        `cómo elegir ${category.toLowerCase()}`,
+        `reseñas ${category.toLowerCase()}`,
+        `guía ${category.toLowerCase()} 2024`
       ],
       structure: (category: string) => [
         `Introducción a ${category}`,
@@ -208,7 +360,8 @@ export const opportunityTemplates = {
         'Comparación de productos',
         'Opciones económicas vs premium',
         'Recomendaciones de expertos',
-        'Preguntas frecuentes'
+        'Preguntas frecuentes',
+        'Veredicto final y conclusión'
       ]
     },
     comparison: {
@@ -218,24 +371,36 @@ export const opportunityTemplates = {
       keywords: (category: string) => [
         `comparación ${category.toLowerCase()}`,
         `mejor ${category.toLowerCase()} 2024`,
-        `reseñas ${category.toLowerCase()}`
+        `reseñas ${category.toLowerCase()}`,
+        `guía compra ${category.toLowerCase()}`,
+        `top ${category.toLowerCase()}`
       ],
       structure: [
         'Tabla comparativa rápida',
         'Reseñas detalladas de productos',
-        'Análisis de precios',
+        'Análisis de precios y valor',
         'Mejor para diferentes necesidades',
-        'Veredicto final'
+        'Ventajas y desventajas',
+        'Veredicto final y recomendación'
       ]
     },
     subcategory: {
       title: (subCategory: string, category: string) => `Guía ${subCategory} ${category}`,
       description: (subCategory: string, category: string, count: number) =>
-        `Guía especializada sobre opciones ${subCategory.toLowerCase()} en la categoría ${category.toLowerCase()}. Cubre ${count} productos.`,
+        `Guía especializada sobre opciones ${subCategory.toLowerCase()} en la categoría ${category.toLowerCase()}. Cubre ${count} productos con análisis experto.`,
       keywords: (subCategory: string, category: string) => [
         `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
         `guía ${subCategory.toLowerCase()}`,
-        `mejor ${subCategory.toLowerCase()}`
+        `mejor ${subCategory.toLowerCase()}`,
+        `reseñas ${subCategory.toLowerCase()} ${category.toLowerCase()}`,
+        `comparar ${subCategory.toLowerCase()}`
+      ],
+      structure: (subCategory: string, category: string) => [
+        `Introducción a ${subCategory} ${category}`,
+        'Criterios de selección específicos',
+        'Comparación de modelos',
+        'Casos de uso recomendados',
+        'Guía de compra'
       ]
     },
     color: {
@@ -244,7 +409,17 @@ export const opportunityTemplates = {
         `Colección curada de ${category.toLowerCase()} ${color.toLowerCase()}. Perfecto para clientes con preferencias de color específicas.`,
       keywords: (color: string, category: string) => [
         `${category.toLowerCase()} ${color.toLowerCase()}`,
-        `${color.toLowerCase()} ${category.toLowerCase()}`
+        `${color.toLowerCase()} ${category.toLowerCase()}`,
+        `diseño ${color.toLowerCase()} ${category.toLowerCase()}`,
+        `estilo ${color.toLowerCase()}`,
+        `opciones color ${category.toLowerCase()}`
+      ],
+      structure: (color: string, category: string) => [
+        `Introducción a ${category} ${color}`,
+        'Beneficios de diseño y estilo',
+        'Opciones disponibles',
+        'Consejos de estilo y coordinación',
+        'Cuidado y mantenimiento'
       ]
     },
     material: {
@@ -254,7 +429,16 @@ export const opportunityTemplates = {
       keywords: (material: string, category: string) => [
         `${category.toLowerCase()} ${material.toLowerCase()}`,
         `${material.toLowerCase()} ${category.toLowerCase()}`,
-        `cuidado ${material.toLowerCase()}`
+        `cuidado ${material.toLowerCase()}`,
+        `beneficios ${material.toLowerCase()}`,
+        `durabilidad ${material.toLowerCase()}`
+      ],
+      structure: (material: string, category: string) => [
+        `Introducción a ${category} de ${material}`,
+        `Beneficios del ${material}`,
+        'Guía de cuidado y mantenimiento',
+        'Comparación con otros materiales',
+        'Recomendaciones de productos'
       ]
     },
     priceRange: {
@@ -265,7 +449,16 @@ export const opportunityTemplates = {
       keywords: (category: string, range: string, max: number) => [
         `${category.toLowerCase()} asequible`,
         `${category.toLowerCase()} ${range.toLowerCase()}`,
-        `mejor ${category.toLowerCase()} menos de ${max}€`
+        `mejor ${category.toLowerCase()} menos de ${max}€`,
+        `valor ${category.toLowerCase()}`,
+        `económico ${category.toLowerCase()}`
+      ],
+      structure: (range: string, category: string) => [
+        `Introducción a ${category} ${range}`,
+        'Mejores opciones por presupuesto',
+        'Comparación calidad-precio',
+        'Consejos de compra inteligente',
+        'Alternativas premium'
       ]
     }
   },
@@ -278,7 +471,9 @@ export const opportunityTemplates = {
         `${category.toLowerCase()} Kaufratgeber`,
         `beste ${category.toLowerCase()}`,
         `${category.toLowerCase()} Vergleich`,
-        `wie wählt man ${category.toLowerCase()}`
+        `wie wählt man ${category.toLowerCase()}`,
+        `${category.toLowerCase()} Bewertungen`,
+        `${category.toLowerCase()} Ratgeber 2024`
       ],
       structure: (category: string) => [
         `Einführung in ${category}`,
@@ -286,7 +481,8 @@ export const opportunityTemplates = {
         'Produktvergleiche',
         'Budget vs Premium Optionen',
         'Expertenempfehlungen',
-        'Häufig gestellte Fragen'
+        'Häufig gestellte Fragen',
+        'Endgültiges Urteil & Fazit'
       ]
     },
     comparison: {
@@ -296,24 +492,36 @@ export const opportunityTemplates = {
       keywords: (category: string) => [
         `${category.toLowerCase()} Vergleich`,
         `beste ${category.toLowerCase()} 2024`,
-        `${category.toLowerCase()} Bewertungen`
+        `${category.toLowerCase()} Bewertungen`,
+        `${category.toLowerCase()} Kaufberatung`,
+        `top bewertete ${category.toLowerCase()}`
       ],
       structure: [
         'Schnelle Vergleichstabelle',
         'Detaillierte Produktbewertungen',
-        'Preisanalyse',
+        'Preis- und Wertanalyse',
         'Am besten für verschiedene Bedürfnisse',
-        'Endgültiges Urteil'
+        'Vor- und Nachteile',
+        'Endgültiges Urteil & Empfehlung'
       ]
     },
     subcategory: {
       title: (subCategory: string, category: string) => `${subCategory} ${category} Ratgeber`,
       description: (subCategory: string, category: string, count: number) =>
-        `Spezialisierter Ratgeber zu ${subCategory.toLowerCase()} Optionen in der Kategorie ${category.toLowerCase()}. Umfasst ${count} Produkte.`,
+        `Spezialisierter Ratgeber zu ${subCategory.toLowerCase()} Optionen in der Kategorie ${category.toLowerCase()}. Umfasst ${count} Produkte mit Expertenanalyse.`,
       keywords: (subCategory: string, category: string) => [
         `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
         `beste ${subCategory.toLowerCase()}`,
-        `${subCategory.toLowerCase()} Ratgeber`
+        `${subCategory.toLowerCase()} Ratgeber`,
+        `${subCategory.toLowerCase()} ${category.toLowerCase()} Bewertungen`,
+        `${subCategory.toLowerCase()} vergleichen`
+      ],
+      structure: (subCategory: string, category: string) => [
+        `Einführung in ${subCategory} ${category}`,
+        'Spezifische Auswahlkriterien',
+        'Modellvergleich',
+        'Empfohlene Anwendungsfälle',
+        'Kaufberatung'
       ]
     },
     color: {
@@ -322,7 +530,17 @@ export const opportunityTemplates = {
         `Kuratierte Auswahl an ${color.toLowerCase()} ${category.toLowerCase()} Artikeln. Perfekt für Kunden mit spezifischen Farbpräferenzen.`,
       keywords: (color: string, category: string) => [
         `${color.toLowerCase()} ${category.toLowerCase()}`,
-        `${category.toLowerCase()} in ${color.toLowerCase()}`
+        `${category.toLowerCase()} in ${color.toLowerCase()}`,
+        `${color.toLowerCase()} Design ${category.toLowerCase()}`,
+        `${color.toLowerCase()} Stil`,
+        `${category.toLowerCase()} Farboptionen`
+      ],
+      structure: (color: string, category: string) => [
+        `Einführung in ${color} ${category}`,
+        'Design- & Stilvorteile',
+        'Verfügbare Optionen',
+        'Styling- & Koordinationstipps',
+        'Pflege & Wartung'
       ]
     },
     material: {
@@ -332,7 +550,16 @@ export const opportunityTemplates = {
       keywords: (material: string, category: string) => [
         `${material.toLowerCase()} ${category.toLowerCase()}`,
         `${category.toLowerCase()} ${material.toLowerCase()}`,
-        `${material.toLowerCase()} Pflege`
+        `${material.toLowerCase()} Pflege`,
+        `${material.toLowerCase()} Vorteile`,
+        `${material.toLowerCase()} Haltbarkeit`
+      ],
+      structure: (material: string, category: string) => [
+        `Einführung in ${material} ${category}`,
+        `Vorteile von ${material}`,
+        'Pflege- und Wartungsanleitung',
+        'Vergleich mit anderen Materialien',
+        'Produktempfehlungen'
       ]
     },
     priceRange: {
@@ -343,7 +570,16 @@ export const opportunityTemplates = {
       keywords: (category: string, range: string, max: number) => [
         `erschwingliche ${category.toLowerCase()}`,
         `${range.toLowerCase()} ${category.toLowerCase()}`,
-        `beste ${category.toLowerCase()} unter ${max}€`
+        `beste ${category.toLowerCase()} unter ${max}€`,
+        `Wert ${category.toLowerCase()}`,
+        `Budget ${category.toLowerCase()}`
+      ],
+      structure: (range: string, category: string) => [
+        `Einführung in ${range} ${category}`,
+        'Beste Optionen nach Budget',
+        'Preis-Leistungs-Vergleich',
+        'Kaufberatungstipps',
+        'Premium-Alternativen'
       ]
     }
   },
@@ -356,7 +592,9 @@ export const opportunityTemplates = {
         `guida acquisto ${category.toLowerCase()}`,
         `migliore ${category.toLowerCase()}`,
         `confronto ${category.toLowerCase()}`,
-        `come scegliere ${category.toLowerCase()}`
+        `come scegliere ${category.toLowerCase()}`,
+        `recensioni ${category.toLowerCase()}`,
+        `guida ${category.toLowerCase()} 2024`
       ],
       structure: (category: string) => [
         `Introduzione a ${category}`,
@@ -364,7 +602,8 @@ export const opportunityTemplates = {
         'Confronto prodotti',
         'Opzioni budget vs premium',
         'Raccomandazioni degli esperti',
-        'Domande frequenti'
+        'Domande frequenti',
+        'Verdetto finale e conclusione'
       ]
     },
     comparison: {
@@ -374,24 +613,36 @@ export const opportunityTemplates = {
       keywords: (category: string) => [
         `confronto ${category.toLowerCase()}`,
         `migliore ${category.toLowerCase()} 2024`,
-        `recensioni ${category.toLowerCase()}`
+        `recensioni ${category.toLowerCase()}`,
+        `guida acquisto ${category.toLowerCase()}`,
+        `top ${category.toLowerCase()}`
       ],
       structure: [
         'Tabella comparativa rapida',
         'Recensioni dettagliate dei prodotti',
-        'Analisi dei prezzi',
+        'Analisi prezzi e valore',
         'Migliore per diverse esigenze',
-        'Verdetto finale'
+        'Pro e contro',
+        'Verdetto finale e raccomandazione'
       ]
     },
     subcategory: {
       title: (subCategory: string, category: string) => `Guida ${subCategory} ${category}`,
       description: (subCategory: string, category: string, count: number) =>
-        `Guida specializzata sulle opzioni ${subCategory.toLowerCase()} nella categoria ${category.toLowerCase()}. Copre ${count} prodotti.`,
+        `Guida specializzata sulle opzioni ${subCategory.toLowerCase()} nella categoria ${category.toLowerCase()}. Copre ${count} prodotti con analisi esperta.`,
       keywords: (subCategory: string, category: string) => [
         `${subCategory.toLowerCase()} ${category.toLowerCase()}`,
         `guida ${subCategory.toLowerCase()}`,
-        `migliore ${subCategory.toLowerCase()}`
+        `migliore ${subCategory.toLowerCase()}`,
+        `recensioni ${subCategory.toLowerCase()} ${category.toLowerCase()}`,
+        `confronta ${subCategory.toLowerCase()}`
+      ],
+      structure: (subCategory: string, category: string) => [
+        `Introduzione a ${subCategory} ${category}`,
+        'Criteri di selezione specifici',
+        'Confronto modelli',
+        'Casi d uso consigliati',
+        'Guida all acquisto'
       ]
     },
     color: {
@@ -400,7 +651,17 @@ export const opportunityTemplates = {
         `Collezione curata di ${category.toLowerCase()} ${color.toLowerCase()}. Perfetto per clienti con preferenze di colore specifiche.`,
       keywords: (color: string, category: string) => [
         `${category.toLowerCase()} ${color.toLowerCase()}`,
-        `${color.toLowerCase()} ${category.toLowerCase()}`
+        `${color.toLowerCase()} ${category.toLowerCase()}`,
+        `design ${color.toLowerCase()} ${category.toLowerCase()}`,
+        `stile ${color.toLowerCase()}`,
+        `opzioni colore ${category.toLowerCase()}`
+      ],
+      structure: (color: string, category: string) => [
+        `Introduzione a ${category} ${color}`,
+        'Vantaggi design e stile',
+        'Opzioni disponibili',
+        'Consigli stile e coordinamento',
+        'Cura e manutenzione'
       ]
     },
     material: {
@@ -410,7 +671,16 @@ export const opportunityTemplates = {
       keywords: (material: string, category: string) => [
         `${category.toLowerCase()} ${material.toLowerCase()}`,
         `${material.toLowerCase()} ${category.toLowerCase()}`,
-        `cura ${material.toLowerCase()}`
+        `cura ${material.toLowerCase()}`,
+        `vantaggi ${material.toLowerCase()}`,
+        `durata ${material.toLowerCase()}`
+      ],
+      structure: (material: string, category: string) => [
+        `Introduzione a ${category} in ${material}`,
+        `Vantaggi del ${material}`,
+        'Guida alla cura e manutenzione',
+        'Confronto con altri materiali',
+        'Raccomandazioni prodotti'
       ]
     },
     priceRange: {
@@ -421,7 +691,16 @@ export const opportunityTemplates = {
       keywords: (category: string, range: string, max: number) => [
         `${category.toLowerCase()} economico`,
         `${category.toLowerCase()} ${range.toLowerCase()}`,
-        `migliore ${category.toLowerCase()} sotto ${max}€`
+        `migliore ${category.toLowerCase()} sotto ${max}€`,
+        `valore ${category.toLowerCase()}`,
+        `budget ${category.toLowerCase()}`
+      ],
+      structure: (range: string, category: string) => [
+        `Introduzione a ${category} ${range}`,
+        'Migliori opzioni per budget',
+        'Confronto qualità-prezzo',
+        'Consigli acquisto intelligente',
+        'Alternative premium'
       ]
     }
   }
