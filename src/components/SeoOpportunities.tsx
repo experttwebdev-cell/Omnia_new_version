@@ -276,7 +276,7 @@ export function SeoOpportunities() {
             difficulty: opp.difficulty || 'medium',
             suggestedStructure: []
           }));
-          setOpportunities(formattedOpps);
+          setOpportunities(formattedOpps.slice(0, 5));
         } else {
           setOpportunities([]);
         }
@@ -442,7 +442,7 @@ export function SeoOpportunities() {
       if (result.opportunities && Array.isArray(result.opportunities)) {
         setGenerationProgress({ current: 85, total: 100, currentItem: language === 'fr' ? 'Finalisation des opportunités...' : 'Finalizing opportunities...' });
 
-        const formattedOpps: Opportunity[] = result.opportunities.map((opp: any, index: number) => ({
+        const formattedOpps: Opportunity[] = result.opportunities.slice(0, 5).map((opp: any, index: number) => ({
           id: opp.id || `smart-opp-${index}`,
           type: opp.type || 'category-guide',
           title: opp.article_title || opp.title,
@@ -453,7 +453,8 @@ export function SeoOpportunities() {
           score: opp.score || 50,
           estimatedWordCount: opp.estimated_word_count || 2000,
           difficulty: opp.difficulty || 'medium',
-          suggestedStructure: opp.structure?.h2_sections || []
+          suggestedStructure: opp.structure?.h2_sections || [],
+          featured_products: opp.featured_products || []
         }));
 
         setOpportunities(formattedOpps);
@@ -702,7 +703,7 @@ export function SeoOpportunities() {
     });
 
     opps.sort((a, b) => b.score - a.score);
-    setOpportunities(opps);
+    setOpportunities(opps.slice(0, 5));
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -918,9 +919,9 @@ export function SeoOpportunities() {
     }
   };
 
-  const filteredOpportunities = filterType === 'all'
+  const filteredOpportunities = (filterType === 'all'
     ? opportunities
-    : opportunities.filter(o => o.type === filterType);
+    : opportunities.filter(o => o.type === filterType)).slice(0, 5);
 
   if (loading) {
     return (
@@ -1050,6 +1051,15 @@ export function SeoOpportunities() {
             <p className="text-sm text-gray-600 mt-1">
               {ui.subtitle}
             </p>
+            {opportunities.length > 0 && (
+              <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                <Lightbulb className="w-3 h-3" />
+                {language === 'fr'
+                  ? `${opportunities.length} opportunité${opportunities.length > 1 ? 's' : ''} générée${opportunities.length > 1 ? 's' : ''} (max 5)`
+                  : `${opportunities.length} opportunit${opportunities.length > 1 ? 'ies' : 'y'} generated (max 5)`
+                }
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
