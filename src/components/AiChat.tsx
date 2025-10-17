@@ -198,9 +198,21 @@ export function AiChat() {
       console.error("Error sending message:", err);
       const errorText =
         err instanceof Error ? err.message : "Erreur inconnue.";
+
+      // Friendly error message for user
+      let userFriendlyMessage = "Désolé, je rencontre un problème technique. Pouvez-vous réessayer ?";
+
+      // Check for specific error types
+      if (errorText.includes("401") || errorText.includes("authorization")) {
+        userFriendlyMessage = "Le service de chat est temporairement indisponible. Notre équipe a été notifiée. Veuillez réessayer dans quelques instants.";
+        console.error("⚠️ API Authentication Error - Please configure API keys in Supabase Edge Function Secrets");
+      } else if (errorText.includes("429") || errorText.includes("quota")) {
+        userFriendlyMessage = "Le service est temporairement saturé. Veuillez patienter quelques secondes et réessayer.";
+      }
+
       const errorMessage: ChatMessage = {
         role: "assistant",
-        content: `Désolé, une erreur s'est produite : ${errorText}`,
+        content: userFriendlyMessage,
         timestamp: new Date().toISOString(),
         sector: "meubles",
       };
