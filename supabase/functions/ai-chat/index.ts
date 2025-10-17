@@ -209,12 +209,20 @@ Produits: ${JSON.stringify(productsData, null, 2)}`;
       console.log(`   API Key: ${provider.key.substring(0, 10)}... (${provider.key.length} chars)`);
       console.log(`   URL: ${provider.url}`);
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // DeepSeek and OpenAI both use Bearer token authentication
+      if (provider.key) {
+        headers["Authorization"] = `Bearer ${provider.key}`;
+      }
+
+      console.log(`   Headers:`, JSON.stringify({ ...headers, Authorization: headers.Authorization ? `Bearer ${provider.key.substring(0, 10)}...` : 'NOT SET' }));
+
       const res = await fetch(provider.url, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${provider.key}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           model: provider.model,
           messages: [{ role: "user", content: prompt }],
@@ -226,10 +234,17 @@ Produits: ${JSON.stringify(productsData, null, 2)}`;
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`❌ ${provider.name} API error:`, res.status, errorText);
+        console.error(`   Full response:`, {
+          status: res.status,
+          statusText: res.statusText,
+          headers: Object.fromEntries(res.headers.entries()),
+          body: errorText
+        });
 
         // If it's a quota/auth error, try next provider
         if (res.status === 429 || res.status === 401 || res.status === 403) {
-          lastError = new Error(`${provider.name} API error: ${res.status}`);
+          lastError = new Error(`${provider.name} API error: ${res.status} - ${errorText}`);
+          console.log(`⏭️ Skipping to next provider due to ${res.status} error`);
           continue;
         }
 
