@@ -12,7 +12,6 @@ import {
   Loader2,
   AlertCircle,
   Search,
-  Image as ImageIcon,
   Link,
   Layers,
   Package,
@@ -89,6 +88,8 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
   const [shopifyBlogs, setShopifyBlogs] = useState<any[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState('');
+  const [totalProductCount, setTotalProductCount] = useState(0);
+  const [categoryProductCounts, setCategoryProductCounts] = useState<Record<string, number>>({});
 
   const steps = mode === 'quick' ? quickSteps : advancedSteps;
 
@@ -116,7 +117,15 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
       setLoadingProducts(true);
       try {
         console.log('🔄 Fetching products from shopify_products...');
-        
+
+        // First, get total count
+        const { count } = await supabase
+          .from('shopify_products')
+          .select('*', { count: 'exact', head: true });
+
+        setTotalProductCount(count || 0);
+        console.log('📊 Total products in database:', count);
+
         const { data, error } = await supabase
           .from('shopify_products')
           .select('*')
@@ -150,9 +159,20 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           setProducts(transformedProducts);
           console.log('🎯 Transformed products count:', transformedProducts.length);
           console.log('🏷️ Categories found:', [...new Set(transformedProducts.map(p => p.category).filter(Boolean))]);
+
+          // Calculate products per category
+          const counts: Record<string, number> = {};
+          transformedProducts.forEach(p => {
+            if (p.category) {
+              counts[p.category] = (counts[p.category] || 0) + 1;
+            }
+          });
+          setCategoryProductCounts(counts);
+          console.log('📈 Products per category:', counts);
         } else {
           console.log('📭 No products found in database');
           setProducts([]);
+          setError('Aucun produit trouvé dans votre catalogue. Veuillez d\'abord importer des produits depuis Shopify via "Paramètres" > "Import Shopify".');
         }
       } catch (err) {
         console.error('💥 Error fetching products:', err);
@@ -463,15 +483,61 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
           <div className="p-8 text-center">
             <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
             <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Blog Article</h2>
-            <p className="text-gray-600 mb-8">Choose your creation mode</p>
-            
+            <p className="text-gray-600 mb-4">Choose your creation mode</p>
+
+            {/* Product availability indicator */}
+            {loadingProducts ? (
+              <div className="flex items-center justify-center gap-2 mb-6 text-sm text-gray-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Checking product availability...</span>
+              </div>
+            ) : totalProductCount === 0 ? (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-red-800 mb-1">No Products Found</p>
+                    <p className="text-sm text-red-700 mb-2">
+                      You need to import products from Shopify before creating blog articles.
+                    </p>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        setTimeout(() => {
+                          const settingsLink = document.querySelector('a[href="#settings"]');
+                          if (settingsLink) (settingsLink as HTMLElement).click();
+                        }, 100);
+                      }}
+                      className="text-sm text-red-800 underline hover:text-red-900 font-medium"
+                    >
+                      Go to Settings to Import Products
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-center gap-2 text-sm text-green-800">
+                  <CheckCircle className="w-4 h-4" />
+                  <span><strong>{totalProductCount}</strong> products available in {Object.keys(categoryProductCounts).length} categories</span>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-6 mb-8">
               <button
                 onClick={() => {
-                  setMode('quick');
-                  setCurrentStep(1);
+                  if (totalProductCount > 0) {
+                    setMode('quick');
+                    setCurrentStep(1);
+                  }
                 }}
-                className="p-6 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+                disabled={totalProductCount === 0}
+                className={`p-6 border-2 border-blue-200 rounded-xl transition-all text-left group ${
+                  totalProductCount === 0
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:border-blue-500 hover:bg-blue-50'
+                }`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <Zap className="w-8 h-8 text-blue-600" />
@@ -490,10 +556,17 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
 
               <button
                 onClick={() => {
-                  setMode('advanced');
-                  setCurrentStep(1);
+                  if (totalProductCount > 0) {
+                    setMode('advanced');
+                    setCurrentStep(1);
+                  }
                 }}
-                className="p-6 border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
+                disabled={totalProductCount === 0}
+                className={`p-6 border-2 border-purple-200 rounded-xl transition-all text-left group ${
+                  totalProductCount === 0
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:border-purple-500 hover:bg-purple-50'
+                }`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <User className="w-8 h-8 text-purple-600" />
@@ -596,9 +669,32 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
 
         <div className="p-6">
           {error && (
-            <div className="mb-4 flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-800 mb-1">Error</p>
+                <div className="text-sm text-red-700 whitespace-pre-line">{error}</div>
+                {error.includes('Paramètres') && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setTimeout(() => {
+                        const settingsLink = document.querySelector('a[href="#settings"]');
+                        if (settingsLink) (settingsLink as HTMLElement).click();
+                      }, 100);
+                    }}
+                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition"
+                  >
+                    Go to Settings to Import Products
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setError('')}
+                className="text-red-600 hover:text-red-800"
+              >
+                <span className="text-lg">×</span>
+              </button>
             </div>
           )}
 

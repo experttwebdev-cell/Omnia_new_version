@@ -40,6 +40,33 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const requestData: BlogRequest = await req.json();
 
+    // Early validation: Check if ANY products exist in database
+    console.log('[VALIDATION] Checking product availability...');
+    const { count: totalProducts, error: countError } = await supabase
+      .from('shopify_products')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      console.error('[VALIDATION ERROR]', countError);
+      throw new Error('Erreur lors de la vérification des produits dans la base de données.');
+    }
+
+    if (!totalProducts || totalProducts === 0) {
+      console.error('[VALIDATION FAILED] No products in database');
+      throw new Error(
+        'Aucun produit trouvé dans votre catalogue.\n\n' +
+        'Pour générer des articles de blog, vous devez d\'abord importer vos produits depuis Shopify.\n\n' +
+        'Étapes à suivre :\n' +
+        '1. Allez dans "Paramètres"\n' +
+        '2. Cliquez sur "Import Shopify"\n' +
+        '3. Entrez vos identifiants Shopify\n' +
+        '4. Importez vos produits\n' +
+        '5. Revenez ici pour générer votre article'
+      );
+    }
+
+    console.log(`[VALIDATION SUCCESS] ${totalProducts} products available in database`);
+
     let topicData: any;
 
     if (requestData.mode === 'manual') {
@@ -177,7 +204,32 @@ Deno.serve(async (req: Request) => {
 
     if (relatedProducts.length === 0) {
       console.error('[CRITICAL] No products found in database at all!');
-      throw new Error(`Aucun produit trouvé dans votre catalogue. Veuillez d'abord importer des produits depuis Shopify en utilisant la section "Paramètres" > "Import Shopify".`);
+      console.error('[DEBUG] Search attempted with:', {
+        category: topicData.category,
+        subcategory: topicData.subcategory,
+        keywords: requestData.keywords
+      });
+
+      // Provide detailed error based on what was searched
+      let errorMessage = 'Impossible de générer l\'article : aucun produit correspondant n\'a été trouvé.\n\n';
+
+      if (topicData.category) {
+        errorMessage += `Catégorie recherchée : "${topicData.category}"\n`;
+      }
+      if (topicData.subcategory) {
+        errorMessage += `Sous-catégorie recherchée : "${topicData.subcategory}"\n`;
+      }
+      if (requestData.keywords && requestData.keywords.length > 0) {
+        errorMessage += `Mots-clés recherchés : ${requestData.keywords.join(', ')}\n`;
+      }
+
+      errorMessage += '\nSolutions possibles :\n';
+      errorMessage += '1. Vérifiez que des produits existent dans votre base de données\n';
+      errorMessage += '2. Importez des produits depuis Shopify via "Paramètres" > "Import Shopify"\n';
+      errorMessage += '3. Essayez avec une catégorie différente ou des mots-clés plus généraux\n';
+      errorMessage += '4. Vérifiez que vos produits ont bien des catégories assignées';
+
+      throw new Error(errorMessage);
     }
 
     console.log(`[SUCCESS] Using ${relatedProducts.length} products (search method: ${searchMethod})`);

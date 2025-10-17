@@ -95,7 +95,7 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       }
 
       if (!products || products.length === 0) {
-        setError('Aucun produit trouvé dans votre catalogue. Veuillez importer des produits depuis Shopify via "Paramètres" > "Import Shopify".');
+        setError('⚠️ Aucun produit trouvé dans votre catalogue.\n\nPour utiliser l\'AI Blog Writer, vous devez d\'abord importer vos produits depuis Shopify.\n\nAllez dans "Paramètres" pour importer vos produits.');
       }
 
       const uniqueCategories = [...new Set(products?.map((p: any) => p.category).filter(Boolean))].sort();
@@ -273,12 +273,17 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
       }
 
       const result = await response.json();
-      setSuccess(`Article de blog "${result.article?.title || 'Sans titre'}" généré avec succès!`);
 
-      // Refresh stats
-      await fetchBlogStats();
+      if (result.success) {
+        setSuccess(`✅ Article de blog "${result.article?.title || 'Sans titre'}" généré avec succès!`);
 
-      setTimeout(() => setSuccess(''), 5000);
+        // Refresh stats
+        await fetchBlogStats();
+
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        throw new Error(result.error || 'Échec de la génération de l\'article');
+      }
     } catch (err) {
       console.error('Error generating blog:', err);
       setError(err instanceof Error ? err.message : 'Échec de la génération de l\'article de blog');
@@ -385,7 +390,18 @@ export function AiBlogWriter({ onNavigateToCampaigns }: AiBlogWriterProps = {}) 
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm text-red-800 font-medium">Error</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+            <div className="text-sm text-red-700 mt-1 whitespace-pre-line">{error}</div>
+            {error.includes('Paramètres') && (
+              <button
+                onClick={() => {
+                  const settingsLink = document.querySelector('a[href="#settings"]');
+                  if (settingsLink) (settingsLink as HTMLElement).click();
+                }}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition"
+              >
+                Go to Settings
+              </button>
+            )}
           </div>
           <button
             onClick={() => setError('')}
