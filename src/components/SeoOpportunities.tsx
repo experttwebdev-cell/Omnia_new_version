@@ -416,6 +416,7 @@ export function SeoOpportunities() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+          'apikey': getEnvVar('VITE_SUPABASE_ANON_KEY'),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

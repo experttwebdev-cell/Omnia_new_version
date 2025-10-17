@@ -182,10 +182,7 @@ function App() {
           <div className="p-2 bg-white/20 rounded-lg">
             <ShoppingBag className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <span className="font-bold text-white text-base">Product Catalogue</span>
-            <p className="text-xs text-white/80">Management System</p>
-          </div>
+          <span className="font-bold text-white text-base">Product Catalogue</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -212,10 +209,7 @@ function App() {
             <div className="p-2 bg-white/20 rounded-lg">
               <ShoppingBag className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 className="font-bold text-white text-lg">Product Catalogue</h1>
-              <p className="text-xs text-white/90">Management System</p>
-            </div>
+            <h1 className="font-bold text-white text-lg">Product Catalogue</h1>
           </div>
         </div>
 
