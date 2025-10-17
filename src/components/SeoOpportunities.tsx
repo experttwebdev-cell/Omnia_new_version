@@ -544,7 +544,7 @@ export function SeoOpportunities() {
     }
   };
 
-  const generateBasicOpportunities = (products: Product[]) => {
+  const generateBasicOpportunities = async (products: Product[]) => {
     const opps: Opportunity[] = [];
 
     const categoryMap = new Map<string, Product[]>();
@@ -725,7 +725,62 @@ export function SeoOpportunities() {
     });
 
     opps.sort((a, b) => b.score - a.score);
-    setOpportunities(opps.slice(0, 5));
+    const topOpps = opps.slice(0, 5);
+    setOpportunities(topOpps);
+
+    // Sauvegarder les opportunités en base de données
+    try {
+      console.log('💾 Saving basic opportunities to database...');
+
+      // Supprimer les anciennes opportunités (pour éviter les doublons)
+      await supabase
+        .from('blog_opportunities')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Supprimer tous les enregistrements
+
+      console.log('🗑️ Cleared old opportunities');
+
+      for (const opp of topOpps) {
+        // Extraire la catégorie depuis l'ID ou les related products
+        let category = '';
+        let subCategory = '';
+
+        if (opp.id.startsWith('cat-')) {
+          category = opp.id.replace(/^cat-(guide|comp)-/, '');
+        } else if (opp.id.startsWith('subcat-')) {
+          const parts = opp.id.replace('subcat-', '').split(':');
+          category = parts[0] || '';
+          subCategory = parts[1] || '';
+        } else if (opp.id.startsWith('color-') || opp.id.startsWith('material-')) {
+          const parts = opp.id.replace(/^(color|material)-/, '').split(':');
+          category = parts[0] || '';
+        }
+
+        // Récupérer les IDs des produits liés
+        const relatedProductIds = products
+          .filter(p => opp.relatedProducts.includes(p.title))
+          .map(p => p.id)
+          .slice(0, 10);
+
+        await supabase.from('blog_opportunities').insert({
+          title: opp.title,
+          description: opp.description,
+          type: opp.type,
+          target_keywords: opp.targetKeywords,
+          related_product_ids: relatedProductIds,
+          category: category,
+          sub_category: subCategory,
+          score: opp.score,
+          estimated_word_count: opp.estimatedWordCount,
+          difficulty: opp.difficulty,
+          product_language: language
+        });
+      }
+      console.log('✅ Basic opportunities saved to database');
+    } catch (saveError) {
+      console.error('❌ Error saving opportunities:', saveError);
+      // Ne pas bloquer l'affichage si la sauvegarde échoue
+    }
   };
 
   const handleCopy = (text: string, id: string) => {
