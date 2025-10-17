@@ -39,13 +39,18 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
     const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
 
     if (!supabaseUrl || !supabaseKey)
       throw new Error("Supabase configuration missing");
 
-    if (!deepseekKey)
-      throw new Error("DeepSeek API key missing in environment");
+    // Use OpenAI if DeepSeek is not configured
+    const aiKey = deepseekKey || openaiKey;
+    const aiProvider = deepseekKey ? "deepseek" : "openai";
+
+    if (!aiKey)
+      throw new Error("AI API key missing (OpenAI or DeepSeek required)");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { message, history = [], storeId = null } = await req.json();
@@ -58,7 +63,8 @@ Deno.serve(async (req: Request) => {
       message,
       products,
       attributes,
-      deepseekKey
+      aiKey,
+      aiProvider
     );
 
     return new Response(
@@ -163,7 +169,7 @@ function generateProductSummary(products: Product[]) {
   };
 }
 
-async function generateResponse(message: string, products: Product[], filters: any, apiKey: string): Promise<string> {
+async function generateResponse(message: string, products: Product[], filters: any, apiKey: string, provider: string): Promise<string> {
   if (!products.length)
     return `Je n'ai trouvé aucun produit correspondant. 😊 Souhaitez-vous préciser le style, la couleur ou votre budget ?`;
 
@@ -182,21 +188,33 @@ Mets en avant les promotions (prix barré, réduction %), les matériaux et styl
 Demande du client: "${message}"
 Produits: ${JSON.stringify(productsData, null, 2)}`;
 
-  const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+  // Choose API endpoint and model based on provider
+  const apiUrl = provider === "deepseek"
+    ? "https://api.deepseek.com/v1/chat/completions"
+    : "https://api.openai.com/v1/chat/completions";
+
+  const model = provider === "deepseek" ? "deepseek-chat" : "gpt-4o-mini";
+
+  const res = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 200,
       temperature: 0.7,
     }),
   });
 
-  if (!res.ok) throw new Error(`DeepSeek API error: ${res.status} - ${await res.text()}`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`${provider} API error:`, res.status, errorText);
+    throw new Error(`${provider} API error: ${res.status} - ${errorText}`);
+  }
+
   const data = await res.json();
   return data.choices?.[0]?.message?.content || "Voici quelques articles susceptibles de vous plaire.";
 }
