@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test DeepSeek API Key</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .key-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: monospace;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+            color: #0c5460;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Test de la Clé API DeepSeek</h1>
+        <p class="subtitle">Diagnostic complet de votre configuration DeepSeek</p>
+
+        <div class="test-section">
+            <h3>1️⃣ Entrez votre clé API DeepSeek</h3>
+            <input
+                type="text"
+                id="apiKey"
+                class="key-input"
+                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value="sk-401fbd42cf00493b8c28db07f3027460"
+            >
+            <button onclick="testDirectAPI()">Test Direct de l'API</button>
+        </div>
+
+        <div class="test-section">
+            <h3>2️⃣ Test via Edge Function Supabase</h3>
+            <button onclick="testViaEdgeFunction()">Test via ai-chat Edge Function</button>
+            <p style="color: #666; font-size: 13px; margin-top: 10px;">
+                ⚠️ Ceci teste l'edge function qui devrait utiliser DeepSeek automatiquement
+            </p>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script src="config-local.js"></script>
+    <script>
+        async function testDirectAPI() {
+            const resultDiv = document.getElementById('result');
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            if (!apiKey) {
+                resultDiv.innerHTML = '<div class="result error">❌ Veuillez entrer une clé API</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="result info">⏳ Test en cours...</div>';
+
+            try {
+                console.log('🔍 Testing DeepSeek API...');
+                console.log('   Key:', apiKey.substring(0, 10) + '...');
+                console.log('   Key length:', apiKey.length);
+
+                const requestBody = {
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'user', content: 'Dis "test réussi" en français' }
+                    ],
+                    max_tokens: 50,
+                    temperature: 0.7
+                };
+
+                console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('📥 Response status:', response.status);
+                console.log('📥 Response headers:', [...response.headers.entries()]);
+
+                const data = await response.json();
+                console.log('📥 Response data:', data);
+
+                if (response.ok) {
+                    const usage = data.usage || {};
+                    const cost = calculateCost(usage.total_tokens || 0);
+
+                    resultDiv.innerHTML = `<div class="result success">
+✅ Succès ! Votre clé DeepSeek fonctionne parfaitement
+
+🎯 Réponse de l'API:
+"${data.choices?.[0]?.message?.content || 'Pas de contenu'}"
+
+📊 Statistiques:
+- Status HTTP: ${response.status}
+- Modèle: ${data.model || 'deepseek-chat'}
+- Tokens utilisés: ${usage.total_tokens || 'N/A'}
+  • Input: ${usage.prompt_tokens || 'N/A'}
+  • Output: ${usage.completion_tokens || 'N/A'}
+- Coût estimé: $${cost.toFixed(6)} (~${(cost * 1000).toFixed(3)} pour 1000 requêtes)
+
+🔑 Clé API:
+${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 5)}
+
+✨ Conclusion:
+Votre clé DeepSeek est VALIDE et fonctionnelle.
+Le problème vient probablement de la configuration Supabase.
+
+🛠️ Action recommandée:
+Vérifiez que DEEPSEEK_API_KEY est bien configurée dans les secrets Supabase
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">
+❌ Erreur de l'API DeepSeek
+
+📛 Status: ${response.status}
+📛 Message: ${data.message || data.error || 'Erreur inconnue'}
+
+🔍 Détails complets:
+${JSON.stringify(data, null, 2)}
+
+🔑 Clé utilisée:
+${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 5)}
+
+💡 Solutions possibles:
+${response.status === 401 ? `
+- ✅ Vérifiez que votre clé commence bien par "sk-"
+- ✅ Vérifiez que vous avez copié la clé complète (sans espaces)
+- ✅ Régénérez une nouvelle clé sur https://platform.deepseek.com/api_keys
+- ✅ Vérifiez que votre compte DeepSeek est actif
+` : response.status === 429 ? `
+- ⏰ Vous avez dépassé le quota/limite de requêtes
+- ⏰ Attendez quelques minutes et réessayez
+- ⏰ Vérifiez vos limites sur https://platform.deepseek.com
+` : `
+- 🔄 Réessayez dans quelques instants
+- 🔍 Consultez la documentation DeepSeek
+- 💬 Contactez le support DeepSeek
+`}
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('💥 Error:', error);
+                resultDiv.innerHTML = `<div class="result error">
+❌ Erreur réseau
+
+Message: ${error.message}
+
+Stack trace:
+${error.stack}
+
+💡 Vérifiez:
+- Votre connexion internet
+- Les CORS (l'API DeepSeek autorise les requêtes depuis le navigateur)
+- Que l'URL de l'API est correcte
+                </div>`;
+            }
+        }
+
+        async function testViaEdgeFunction() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result info">⏳ Test de l\'edge function en cours...</div>';
+
+            try {
+                const supabaseUrl = window.ENV?.VITE_SUPABASE_URL;
+                const anonKey = window.ENV?.VITE_SUPABASE_ANON_KEY;
+
+                if (!supabaseUrl || !anonKey) {
+                    resultDiv.innerHTML = '<div class="result error">❌ Configuration Supabase manquante</div>';
+                    return;
+                }
+
+                console.log('🚀 Testing via edge function...');
+                console.log('   URL:', `${supabaseUrl}/functions/v1/ai-chat`);
+
+                const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${anonKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'test',
+                        storeId: null
+                    })
+                });
+
+                console.log('📥 Edge function response status:', response.status);
+                const data = await response.json();
+                console.log('📥 Edge function response data:', data);
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="result success">
+✅ Edge Function fonctionne !
+
+📨 Réponse:
+${data.response}
+
+📊 Résultat:
+${JSON.stringify(data, null, 2)}
+
+💡 L'edge function a réussi à appeler un provider AI
+Consultez les logs Supabase pour voir quel provider a été utilisé:
+https://supabase.com/dashboard/project/ufdhzgqrubbnornjdvgv/logs/edge-functions
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">
+❌ Erreur de l'edge function
+
+Status: ${response.status}
+Erreur: ${data.error || 'Inconnue'}
+
+Détails complets:
+${JSON.stringify(data, null, 2)}
+
+🔍 Vérifiez les logs Supabase pour plus de détails:
+https://supabase.com/dashboard/project/ufdhzgqrubbnornjdvgv/logs/edge-functions
+
+Recherchez la fonction "ai-chat" et examinez les logs détaillés.
+                    </div>`;
+                }
+            } catch (error) {
+                console.error('💥 Error:', error);
+                resultDiv.innerHTML = `<div class="result error">
+❌ Erreur: ${error.message}
+
+${error.stack}
+                </div>`;
+            }
+        }
+
+        function calculateCost(tokens) {
+            const inputTokens = tokens / 2;
+            const outputTokens = tokens / 2;
+            return (inputTokens * 0.014 / 1000000) + (outputTokens * 0.028 / 1000000);
+        }
+
+        // Auto-test on load if API key is present
+        window.addEventListener('load', () => {
+            const apiKey = document.getElementById('apiKey').value;
+            if (apiKey && apiKey.startsWith('sk-')) {
+                console.log('🔄 Auto-testing API key...');
+                setTimeout(testDirectAPI, 500);
+            }
+        });
+    </script>
+</body>
+</html>
