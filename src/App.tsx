@@ -177,10 +177,15 @@ function App() {
     <LanguageContext.Provider value={{ language, setLanguage: handleLanguageChange, t }}>
     <CacheProvider>
     <div className="min-h-screen bg-gray-50">
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-40">
+      <div className="lg:hidden fixed top-0 left-0 right-0 px-4 py-3 flex items-center justify-between z-40 shadow-md" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="flex items-center gap-2">
-          <ShoppingBag className="w-6 h-6 text-blue-600" />
-          <span className="font-bold text-gray-800">Product Catalogue</span>
+          <div className="p-2 bg-white/20 rounded-lg">
+            <ShoppingBag className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <span className="font-bold text-white text-base">Product Catalogue</span>
+            <p className="text-xs text-white/80">Management System</p>
+          </div>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -202,14 +207,14 @@ function App() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
+            <div className="p-2 bg-white/20 rounded-lg">
               <ShoppingBag className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-800">Product Catalogue</h1>
-              <p className="text-xs text-gray-500">Management System</p>
+              <h1 className="font-bold text-white text-lg">Product Catalogue</h1>
+              <p className="text-xs text-white/90">Management System</p>
             </div>
           </div>
         </div>
