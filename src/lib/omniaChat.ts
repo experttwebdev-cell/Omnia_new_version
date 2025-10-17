@@ -8,13 +8,20 @@ interface ChatMessage {
 interface ProductAttributes {
   intent: string;
   type?: string;
+  category?: string;
+  subcategory?: string;
   style?: string;
   color?: string;
   material?: string;
+  shape?: string;
   room?: string;
   dimensions?: string;
+  size?: string;
   maxPrice?: number;
   minPrice?: number;
+  vendor?: string;
+  hasPromo?: boolean;
+  searchPromo?: boolean;
 }
 
 interface ChatSettings {
@@ -267,6 +274,33 @@ async function extractProductAttributesWithAI(userMessage: string, history: Chat
         console.log('✅ [EXTRACT] Detected max price:', attributes.maxPrice);
       }
 
+      // Détection promo
+      const promoKeywords = ['promo', 'promotion', 'solde', 'réduction', 'bon plan', 'offre', 'pas cher', 'discount'];
+      for (const keyword of promoKeywords) {
+        if (msg.includes(keyword)) {
+          attributes.searchPromo = true;
+          console.log('✅ [EXTRACT] Detected promo search');
+          break;
+        }
+      }
+
+      // Détection forme
+      const shapes = ['rond', 'ronde', 'rectangulaire', 'carré', 'carrée', 'ovale'];
+      for (const shape of shapes) {
+        if (msg.includes(shape)) {
+          attributes.shape = shape;
+          console.log('✅ [EXTRACT] Detected shape:', shape);
+          break;
+        }
+      }
+
+      // Détection dimensions
+      const dimMatch = msg.match(/(\d+)\s*[x×]\s*(\d+)/);
+      if (dimMatch) {
+        attributes.dimensions = `${dimMatch[1]}x${dimMatch[2]}`;
+        console.log('✅ [EXTRACT] Detected dimensions:', attributes.dimensions);
+      }
+
       const extractTime = performance.now() - extractStart;
       console.log('🏁 [EXTRACT] Quick extraction completed in', extractTime.toFixed(0), 'ms');
       console.log('📋 [EXTRACT] Final attributes:', attributes);
@@ -420,6 +454,57 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
     });
     console.log('📊 [SEARCH] Price filter result:', before, '→', priceFiltered.length, 'products');
     results = priceFiltered;
+  }
+
+  // Filtre forme
+  if (filters.shape && results.length > 0) {
+    console.log('🔷 [SEARCH] Applying shape filter:', filters.shape);
+    const shapeFiltered = results.filter(p =>
+      p.ai_shape?.toLowerCase().includes(filters.shape!.toLowerCase()) ||
+      p.title?.toLowerCase().includes(filters.shape!.toLowerCase()) ||
+      p.tags?.toLowerCase().includes(filters.shape!.toLowerCase())
+    );
+    console.log('📊 [SEARCH] Shape filter result:', shapeFiltered.length, 'products');
+    results = shapeFiltered;
+  }
+
+  // Filtre vendor/marque
+  if (filters.vendor && results.length > 0) {
+    console.log('🏷️ [SEARCH] Applying vendor filter:', filters.vendor);
+    const vendorFiltered = results.filter(p =>
+      p.vendor?.toLowerCase().includes(filters.vendor!.toLowerCase())
+    );
+    console.log('📊 [SEARCH] Vendor filter result:', vendorFiltered.length, 'products');
+    results = vendorFiltered;
+  }
+
+  // Filtre dimensions
+  if (filters.dimensions && results.length > 0) {
+    console.log('📏 [SEARCH] Applying dimensions filter:', filters.dimensions);
+    const [width, height] = filters.dimensions.split('x').map(d => parseInt(d.trim()));
+    const dimensionFiltered = results.filter(p => {
+      if (!p.smart_width && !p.smart_length) return false;
+      const pWidth = p.smart_width || p.smart_length || 0;
+      const pHeight = p.smart_height || p.smart_length || 0;
+      // Allow ±10cm tolerance
+      return Math.abs(pWidth - width) <= 10 && (!height || Math.abs(pHeight - height) <= 10);
+    });
+    console.log('📊 [SEARCH] Dimensions filter result:', dimensionFiltered.length, 'products');
+    if (dimensionFiltered.length > 0) {
+      results = dimensionFiltered;
+    }
+  }
+
+  // Filtre promo - priorité aux produits en promotion
+  if (filters.searchPromo && results.length > 0) {
+    console.log('💸 [SEARCH] Applying promo filter');
+    const promoFiltered = results.filter(p =>
+      p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+    );
+    console.log('📊 [SEARCH] Promo filter result:', promoFiltered.length, 'products');
+    if (promoFiltered.length > 0) {
+      results = promoFiltered;
+    }
   }
 
   const finalResults = results.slice(0, 8);
