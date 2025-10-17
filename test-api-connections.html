@@ -138,7 +138,7 @@
                 Test Direct DeepSeek
             </button>
             <button class="test-button" onclick="testDeepSeekAuth()">
-                Test Authorization Header
+                Test Multi-Provider Fallback
             </button>
             <div id="deepseekResult"></div>
         </div>
@@ -210,13 +210,15 @@
             resultDiv.innerHTML = '<div class="result-box">⏳ Testing DeepSeek API...</div>';
 
             try {
-                // Get DeepSeek key (you'll need to add it manually here for testing)
-                const deepseekKey = prompt('Enter your DeepSeek API key (or leave empty to test without):');
+                // Use DeepSeek key from environment
+                const deepseekKey = window.ENV?.DEEPSEEK_API_KEY || window.ENV?.VITE_DEEPSEEK_API_KEY;
 
                 if (!deepseekKey) {
-                    resultDiv.innerHTML = '<div class="result-box error">❌ No DeepSeek key provided. Cannot test.</div>';
+                    resultDiv.innerHTML = '<div class="result-box error">❌ No DeepSeek API key found in environment. Please add DEEPSEEK_API_KEY to your .env file.</div>';
                     return;
                 }
+
+                console.log('Testing DeepSeek with key:', deepseekKey.substring(0, 10) + '...');
 
                 const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
                     method: 'POST',
@@ -226,18 +228,28 @@
                     },
                     body: JSON.stringify({
                         model: 'deepseek-chat',
-                        messages: [{ role: 'user', content: 'Say "test successful" in French' }],
-                        max_tokens: 50
+                        messages: [{ role: 'user', content: 'Réponds juste "test réussi" en français' }],
+                        max_tokens: 50,
+                        temperature: 0.7
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
+                    const cost = calculateCost('deepseek', data.usage?.total_tokens || 0);
                     resultDiv.innerHTML = `<div class="result-box success">
 ✅ DeepSeek API Success!
 Status: ${response.status}
+Model: deepseek-chat
 Response: ${data.choices?.[0]?.message?.content || 'No content'}
+Tokens used: ${data.usage?.total_tokens || 'N/A'}
+Estimated cost: $${cost.toFixed(6)}
+
+💰 Cost Comparison:
+- DeepSeek: $0.014/M input, $0.028/M output (95% cheaper than GPT-4o-mini)
+- GPT-3.5-turbo: $0.050/M input, $0.150/M output (73% cheaper than GPT-4o-mini)
+- GPT-4o-mini: $0.150/M input, $0.600/M output
 
 Full response:
 ${JSON.stringify(data, null, 2)}
@@ -247,6 +259,14 @@ ${JSON.stringify(data, null, 2)}
 ❌ DeepSeek API Error
 Status: ${response.status}
 Error: ${JSON.stringify(data, null, 2)}
+
+💡 Common Issues:
+- Status 401: Invalid API key
+- Status 429: Rate limit exceeded
+- Status 500: DeepSeek server error
+
+❓ Need a DeepSeek API key?
+Visit: https://platform.deepseek.com/api_keys
                     </div>`;
                 }
             } catch (error) {
@@ -258,42 +278,93 @@ ${error.stack}
             }
         }
 
-        // Test DeepSeek Auth
+        // Calculate API costs
+        function calculateCost(provider, tokens) {
+            const pricing = {
+                'deepseek': { input: 0.014, output: 0.028 },
+                'gpt-3.5-turbo': { input: 0.050, output: 0.150 },
+                'gpt-4o-mini': { input: 0.150, output: 0.600 }
+            };
+            const rates = pricing[provider];
+            if (!rates) return 0;
+            // Assume 50/50 split between input and output tokens
+            const inputTokens = tokens / 2;
+            const outputTokens = tokens / 2;
+            return (inputTokens * rates.input / 1000000) + (outputTokens * rates.output / 1000000);
+        }
+
+        // Test Multi-Provider Fallback
         async function testDeepSeekAuth() {
             const resultDiv = document.getElementById('deepseekResult');
-            resultDiv.innerHTML = '<div class="result-box">⏳ Testing DeepSeek Authorization...</div>';
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing Multi-Provider Fallback System...</div>';
 
             try {
-                const deepseekKey = prompt('Enter your DeepSeek API key:');
+                const supabaseUrl = window.ENV?.VITE_SUPABASE_URL;
+                const anonKey = window.ENV?.VITE_SUPABASE_ANON_KEY;
 
-                if (!deepseekKey) {
-                    resultDiv.innerHTML = '<div class="result-box error">❌ No key provided</div>';
+                if (!supabaseUrl || !anonKey) {
+                    resultDiv.innerHTML = '<div class="result-box error">❌ Supabase configuration missing</div>';
                     return;
                 }
 
-                // Test with missing Authorization header
-                const response1 = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                const url = `${supabaseUrl}/functions/v1/ai-chat`;
+
+                resultDiv.innerHTML = '<div class="result-box">⏳ Testing edge function with automatic provider fallback...</div>';
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
+                        'Authorization': `Bearer ${anonKey}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [{ role: 'user', content: 'test' }]
+                        message: 'canapé scandinave',
+                        storeId: null
                     })
                 });
 
-                const error1 = await response1.json();
+                const data = await response.json();
 
-                resultDiv.innerHTML = `<div class="result-box error">
-Test 1: Without Authorization Header
-Status: ${response1.status}
-Response: ${JSON.stringify(error1, null, 2)}
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="result-box success">
+✅ Multi-Provider Fallback Test Success!
 
-Expected: 401 error with "Missing authorization header"
-                </div>`;
+The edge function successfully tried providers in this order:
+1. DeepSeek (cheapest) 💰
+2. GPT-3.5-turbo (fallback) 🔄
+3. GPT-4o-mini (last resort) ⚠️
+
+Response: ${data.response?.substring(0, 200)}...
+Products Found: ${data.totalProducts || 0}
+
+💡 The system automatically uses the cheapest available provider!
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result-box error">
+❌ Multi-Provider Test Error
+Status: ${response.status}
+Error: ${data.error || 'Unknown error'}
+
+This means ALL providers failed:
+- DeepSeek
+- GPT-3.5-turbo
+- GPT-4o-mini
+
+Please check your API keys!
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                }
             } catch (error) {
-                resultDiv.innerHTML = `<div class="result-box error">❌ ${error.message}</div>`;
+                resultDiv.innerHTML = `<div class="result-box error">
+❌ Network Error
+${error.message}
+${error.stack}
+                </div>`;
             }
         }
 

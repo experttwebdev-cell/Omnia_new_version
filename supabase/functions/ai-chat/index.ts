@@ -45,11 +45,8 @@ Deno.serve(async (req: Request) => {
     if (!supabaseUrl || !supabaseKey)
       throw new Error("Supabase configuration missing");
 
-    // Use OpenAI if DeepSeek is not configured
-    const aiKey = deepseekKey || openaiKey;
-    const aiProvider = deepseekKey ? "deepseek" : "openai";
-
-    if (!aiKey)
+    // Check if at least one AI provider is configured
+    if (!deepseekKey && !openaiKey)
       throw new Error("AI API key missing (OpenAI or DeepSeek required)");
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -63,8 +60,8 @@ Deno.serve(async (req: Request) => {
       message,
       products,
       attributes,
-      aiKey,
-      aiProvider
+      deepseekKey,
+      openaiKey
     );
 
     return new Response(
@@ -169,7 +166,7 @@ function generateProductSummary(products: Product[]) {
   };
 }
 
-async function generateResponse(message: string, products: Product[], filters: any, apiKey: string, provider: string): Promise<string> {
+async function generateResponse(message: string, products: Product[], filters: any, deepseekKey: string | undefined, openaiKey: string | undefined): Promise<string> {
   if (!products.length)
     return `Je n'ai trouvé aucun produit correspondant. 😊 Souhaitez-vous préciser le style, la couleur ou votre budget ?`;
 
@@ -188,33 +185,71 @@ Mets en avant les promotions (prix barré, réduction %), les matériaux et styl
 Demande du client: "${message}"
 Produits: ${JSON.stringify(productsData, null, 2)}`;
 
-  // Choose API endpoint and model based on provider
-  const apiUrl = provider === "deepseek"
-    ? "https://api.deepseek.com/v1/chat/completions"
-    : "https://api.openai.com/v1/chat/completions";
+  // Priority order: DeepSeek (cheapest) -> GPT-3.5-turbo -> GPT-4o-mini (fallback)
+  const providers = [
+    { name: "deepseek", key: deepseekKey, url: "https://api.deepseek.com/v1/chat/completions", model: "deepseek-chat" },
+    { name: "openai-3.5", key: openaiKey, url: "https://api.openai.com/v1/chat/completions", model: "gpt-3.5-turbo" },
+    { name: "openai-4o", key: openaiKey, url: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+  ];
 
-  const model = provider === "deepseek" ? "deepseek-chat" : "gpt-3.5-turbo";
+  let lastError: Error | null = null;
 
-  const res = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 200,
-      temperature: 0.7,
-    }),
-  });
+  for (const provider of providers) {
+    if (!provider.key) {
+      console.log(`⏭️ Skipping ${provider.name}: no API key configured`);
+      continue;
+    }
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error(`${provider} API error:`, res.status, errorText);
-    throw new Error(`${provider} API error: ${res.status} - ${errorText}`);
+    try {
+      console.log(`🔄 Trying ${provider.name} with model ${provider.model}...`);
+
+      const res = await fetch(provider.url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${provider.key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: provider.model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 200,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`❌ ${provider.name} API error:`, res.status, errorText);
+
+        // If it's a quota/auth error, try next provider
+        if (res.status === 429 || res.status === 401 || res.status === 403) {
+          lastError = new Error(`${provider.name} API error: ${res.status}`);
+          continue;
+        }
+
+        throw new Error(`${provider.name} API error: ${res.status} - ${errorText}`);
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (content) {
+        console.log(`✅ Success with ${provider.name}`);
+        return content;
+      }
+
+      console.log(`⚠️ ${provider.name} returned empty content, trying next provider...`);
+      lastError = new Error(`${provider.name} returned empty content`);
+    } catch (error) {
+      console.error(`❌ Error with ${provider.name}:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || "Voici quelques articles susceptibles de vous plaire.";
+  // All providers failed
+  console.error("💥 All AI providers failed");
+  if (lastError) {
+    throw lastError;
+  }
+  throw new Error("All AI providers are unavailable");
 }

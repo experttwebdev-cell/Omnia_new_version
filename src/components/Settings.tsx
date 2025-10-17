@@ -5,6 +5,7 @@ import { Language } from '../lib/translations';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
+import { AiProviderConfig } from './AiProviderConfig';
 
 interface SettingsData {
   enrichment_mode: 'manual' | 'auto';
@@ -203,6 +204,8 @@ export function Settings() {
           )}
         </div>
       </div>
+
+      <AiProviderConfig />
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center gap-3 mb-4">
