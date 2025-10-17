@@ -34,14 +34,45 @@ interface Product {
 }
 
 //
-// ⚙️ APPEL DU PROXY DEEPSEEK VIA SUPABASE
+// ⚙️ 1. STREAMING DIRECT VIA DEEPSEEK PROXY
+//
+async function streamDeepSeek(
+  messages: ChatMessage[],
+  onChunk: (text: string) => void
+): Promise<void> {
+  const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
+  const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messages,
+      model: "deepseek-chat",
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!response.body) {
+    throw new Error("No response body for stream");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value);
+    onChunk(text); // ⚡ envoie le texte partiel au fur et à mesure
+  }
+}
+
+//
+// ⚙️ 2. Fallback classique (si le stream ne répond pas)
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 120): Promise<string> {
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 9000);
-
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
       method: "POST",
@@ -52,27 +83,22 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 120): Promise<s
         temperature: 0.7,
         max_tokens: maxTokens,
       }),
-      signal: controller.signal,
     });
 
-    clearTimeout(timeout);
-
-    const data = await response.json().catch(() => ({}));
+    const data = await response.json();
     const content =
       data?.choices?.[0]?.message?.content ||
       data?.response ||
       "Je n’ai pas pu générer de réponse pour le moment.";
-
-    console.log("🤖 DeepSeek OK:", content.slice(0, 80) + "...");
     return content;
   } catch (err) {
-    console.error("❌ DeepSeek error:", err);
+    console.error("❌ DeepSeek fallback error:", err);
     return "Je cherche encore la meilleure réponse pour vous…";
   }
 }
 
 //
-// 🧠 DÉTECTION D’INTENTION (chat ou recherche produit)
+// 🧠 3. Détection d’intention
 //
 async function detectIntent(userMessage: string): Promise<"chat" | "product_search"> {
   const msg = userMessage.toLowerCase();
@@ -86,7 +112,7 @@ async function detectIntent(userMessage: string): Promise<"chat" | "product_sear
 }
 
 //
-// 🔍 RECHERCHE PRODUITS SUPABASE
+// 🔍 4. Recherche produit Supabase
 //
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
   console.log("🔍 [OMNIA SEARCH] Filters:", filters);
@@ -132,21 +158,22 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
 }
 
 //
-// ✨ GÉNÉRATION RÉPONSE PRODUIT
+// ✨ 5. Génération de réponse IA pour les produits
 //
 async function generateProductPresentation(
   products: Product[],
   userMessage: string,
-  sector: string
+  sector: string,
+  onChunk?: (text: string) => void
 ): Promise<string> {
   if (!products.length) {
     return `Je n’ai trouvé aucun produit correspondant à "${userMessage}". 🛋️  
 Souhaitez-vous préciser la couleur, le style ou votre budget ?`;
   }
 
-  const systemPrompt = `Tu es OmnIA, un assistant e-commerce expert du secteur "${sector}".
-Ta mission : répondre en français naturel (<120 mots), avec un ton professionnel et engageant.
-Mentionne au moins un produit par son nom et parle des promotions si présentes. Termine par une question ouverte.`;
+  const systemPrompt = `Tu es OmnIA, expert e-commerce du secteur "${sector}".
+Réponds en français naturel (max 120 mots), présente les produits de manière engageante et professionnelle.
+Mentionne les promotions s’il y en a, et termine par une question ouverte.`;
 
   const productData = products.map((p) => ({
     titre: p.title,
@@ -159,43 +186,52 @@ Mentionne au moins un produit par son nom et parle des promotions si présentes.
         : null,
     couleur: p.ai_color,
     materiau: p.ai_material,
-    categorie: p.category,
   }));
 
-  const userPrompt = `Demande du client : "${userMessage}"  
-Produits correspondants : ${JSON.stringify(productData, null, 2)}.  
-Présente ces produits de manière engageante.`;
+  const userPrompt = `Demande client : "${userMessage}"
+Produits trouvés :
+${JSON.stringify(productData, null, 2)}
+Présente ces produits au client.`;
 
-  return await callDeepSeek(
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    250
-  );
+  const messages: ChatMessage[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ];
+
+  // 🌊 Si une fonction de stream est fournie, on stream la réponse
+  if (onChunk) {
+    try {
+      await streamDeepSeek(messages, onChunk);
+      return ""; // le texte est streamé directement
+    } catch (err) {
+      console.error("Stream error:", err);
+    }
+  }
+
+  // sinon fallback normal
+  return await callDeepSeek(messages, 250);
 }
 
 //
-// 🧩 FONCTION PRINCIPALE : appelée par ton composant React
+// 🧩 6. Fonction principale OmnIAChat (stream + fallback)
 //
 export async function OmnIAChat(
   userMessage: string,
   history: ChatMessage[] = [],
-  storeId?: string
+  storeId?: string,
+  onChunk?: (text: string) => void
 ) {
-  console.log("🚀 [OMNIA] New message:", userMessage);
+  console.log("🚀 [OMNIA] Message reçu:", userMessage);
 
   const intent = await detectIntent(userMessage);
   const msg = userMessage.toLowerCase();
 
   const filters: ProductAttributes = { intent: "product_search", sector: "meubles" };
 
-  // Détection du secteur
   if (["montre", "bracelet"].some((x) => msg.includes(x))) filters.sector = "montres";
   else if (["robe", "chemise", "pantalon"].some((x) => msg.includes(x)))
     filters.sector = "pret_a_porter";
 
-  // Extraction basique
   const types = ["table", "chaise", "canapé", "lit", "armoire", "bureau"];
   filters.type = types.find((t) => msg.includes(t)) || undefined;
 
@@ -211,18 +247,17 @@ export async function OmnIAChat(
   const price = msg.match(/(moins de|max|sous)\s*(\d+)/);
   if (price) filters.maxPrice = Number(price[2]);
 
-  // 🔹 Mode conversation simple
   if (intent === "chat") {
     const chatResponse = await callDeepSeek(
       [
         {
           role: "system",
           content:
-            "Tu es OmnIA, un assistant amical pour un site e-commerce. Réponds brièvement, en français, avec une touche humaine.",
+            "Tu es OmnIA, un assistant amical pour un site e-commerce. Réponds brièvement et naturellement.",
         },
         { role: "user", content: userMessage },
       ],
-      100
+      120
     );
 
     return {
@@ -235,9 +270,14 @@ export async function OmnIAChat(
     };
   }
 
-  // 🔹 Recherche produit intelligente
+  // 🔍 Recherche produit intelligente
   const products = await searchProducts(filters, storeId);
-  const aiResponse = await generateProductPresentation(products, userMessage, filters.sector!);
+  const aiResponse = await generateProductPresentation(
+    products,
+    userMessage,
+    filters.sector!,
+    onChunk
+  );
 
   return {
     role: "assistant" as const,
