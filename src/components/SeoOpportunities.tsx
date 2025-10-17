@@ -305,7 +305,6 @@ export function SeoOpportunities() {
       setProducts([]);
       setOpportunities([]);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
       const totalTime = Date.now() - startTime;
       console.log(`🏁 [FINALLY BLOCK] Loading set to false after ${totalTime}ms`);
