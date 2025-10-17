@@ -317,8 +317,39 @@ export function SeoTag() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{t.seo.tags}</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {t.seo.tagsDescription || 'Génération et gestion des tags produits'}
+            </p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-sm border border-purple-100 p-12 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute inset-2 border-4 border-purple-100 rounded-full"></div>
+            <div className="absolute inset-2 border-4 border-t-purple-500 border-r-pink-500 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative">
+                <TagIcon className="w-10 h-10 text-purple-600 animate-pulse" />
+                <Sparkles className="w-4 h-4 text-pink-500 absolute -top-1 -right-1 animate-ping" />
+              </div>
+            </div>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            {t.language === 'fr' ? 'Chargement des tags...' : 'Loading tags...'}
+          </h3>
+          <p className="text-gray-600 text-sm">
+            {t.language === 'fr' ? 'Récupération des tags produits' : 'Fetching product tags'}
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
     );
   }
