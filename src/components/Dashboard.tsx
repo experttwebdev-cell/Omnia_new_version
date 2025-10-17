@@ -361,10 +361,10 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Product Types */}
-        <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-blue-100/50 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
                 <Package className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-xl font-bold text-gray-800">Top Product Types</h2>
@@ -406,10 +406,10 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         </div>
 
         {/* Inventory Insights */}
-        <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
+        <div className="bg-gradient-to-br from-white via-blue-50/30 to-blue-100/50 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg shadow-md">
                 <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <h2 className="text-xl font-bold text-gray-800">Inventory Insights</h2>
@@ -451,7 +451,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-500 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -546,15 +546,15 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, color, subtitle, trend, alert }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-500 text-white',
-    green: 'bg-emerald-500 text-white',
-    teal: 'bg-cyan-500 text-white',
-    orange: 'bg-amber-500 text-white',
-    purple: 'bg-violet-500 text-white'
+    blue: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg',
+    green: 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg',
+    teal: 'bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-lg',
+    orange: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg',
+    purple: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg'
   };
 
   return (
-    <div className={`bg-gradient-to-br from-white to-gray-50 rounded-lg shadow-lg p-6 relative ${alert ? 'ring-2 ring-orange-400' : ''}`}>
+    <div className={`bg-gradient-to-br from-white via-gray-50/50 to-gray-100/80 rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 p-6 relative ${alert ? 'ring-2 ring-orange-400' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-600 text-sm font-medium mb-1">{title}</p>
@@ -589,21 +589,21 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   const colorClasses = {
-    blue: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg',
-    green: 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg',
-    purple: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg',
-    orange: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg'
+    blue: 'bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white shadow-xl hover:shadow-2xl',
+    green: 'bg-gradient-to-br from-emerald-500 via-green-600 to-green-700 text-white shadow-xl hover:shadow-2xl',
+    purple: 'bg-gradient-to-br from-violet-500 via-purple-600 to-purple-700 text-white shadow-xl hover:shadow-2xl',
+    orange: 'bg-gradient-to-br from-amber-500 via-orange-600 to-orange-700 text-white shadow-xl hover:shadow-2xl'
   };
 
   return (
-    <div className={`rounded-xl p-6 ${colorClasses[color]} transition-transform hover:scale-105`}>
+    <div className={`rounded-xl p-6 ${colorClasses[color]} transition-all duration-300 hover:scale-105 hover:-translate-y-1`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-white/90 text-sm font-medium mb-2">{title}</p>
           <p className="text-3xl font-bold text-white">{value}</p>
         </div>
-        <div className="p-3 bg-white/20 rounded-lg">
-          <Icon className="w-8 h-8 text-white" />
+        <div className="p-3 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-lg shadow-lg">
+          <Icon className="w-8 h-8 text-white drop-shadow-md" />
         </div>
       </div>
     </div>
