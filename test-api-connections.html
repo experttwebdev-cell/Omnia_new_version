@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Connections - DeepSeek & OpenAI</title>
+    <script src="/config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        .test-button:hover {
+            transform: translateY(-2px);
+        }
+        .test-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result-box {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+        .error {
+            border-left-color: #f56565;
+            background: #fff5f5;
+        }
+        .info {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .key-display {
+            background: #edf2f7;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Test Connexions API - DeepSeek & OpenAI</h1>
+            <p>Diagnostic des connexions aux APIs pour le Chat AI</p>
+        </div>
+
+        <!-- Environment Check -->
+        <div class="test-section">
+            <h2>📋 Variables d'environnement</h2>
+            <div id="envCheck"></div>
+        </div>
+
+        <!-- DeepSeek Tests -->
+        <div class="test-section">
+            <h2>🤖 Test DeepSeek API</h2>
+            <div class="info">
+                <strong>Endpoint:</strong> https://api.deepseek.com/v1/chat/completions<br>
+                <strong>Model:</strong> deepseek-chat
+            </div>
+            <button class="test-button" onclick="testDeepSeekDirect()">
+                Test Direct DeepSeek
+            </button>
+            <button class="test-button" onclick="testDeepSeekAuth()">
+                Test Authorization Header
+            </button>
+            <div id="deepseekResult"></div>
+        </div>
+
+        <!-- OpenAI Tests -->
+        <div class="test-section">
+            <h2>🧠 Test OpenAI API</h2>
+            <div class="info">
+                <strong>Endpoint:</strong> https://api.openai.com/v1/chat/completions<br>
+                <strong>Model:</strong> gpt-4o-mini
+            </div>
+            <button class="test-button" onclick="testOpenAIDirect()">
+                Test Direct OpenAI
+            </button>
+            <button class="test-button" onclick="testOpenAIAuth()">
+                Test Authorization Header
+            </button>
+            <div id="openaiResult"></div>
+        </div>
+
+        <!-- Edge Function Test -->
+        <div class="test-section">
+            <h2>⚡ Test Edge Function ai-chat</h2>
+            <div class="info">
+                <strong>Endpoint:</strong> <span id="edgeFunctionUrl"></span><br>
+                <strong>Note:</strong> Teste la fonction avec les secrets Supabase configurés
+            </div>
+            <button class="test-button" onclick="testEdgeFunction()">
+                Test Edge Function
+            </button>
+            <div id="edgeFunctionResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check environment variables
+        function checkEnvironment() {
+            const envCheck = document.getElementById('envCheck');
+            const hasSupabase = window.ENV?.VITE_SUPABASE_URL;
+            const hasOpenAI = window.ENV?.VITE_OPENAI_API_KEY;
+
+            let html = '';
+
+            if (hasSupabase) {
+                html += `<div class="key-display">✅ SUPABASE_URL: ${window.ENV.VITE_SUPABASE_URL}</div>`;
+            } else {
+                html += `<div class="key-display error">❌ SUPABASE_URL: Missing</div>`;
+            }
+
+            if (hasOpenAI) {
+                const key = window.ENV.VITE_OPENAI_API_KEY;
+                html += `<div class="key-display">✅ OPENAI_API_KEY: ${key.substring(0, 20)}...${key.substring(key.length - 8)}</div>`;
+            } else {
+                html += `<div class="key-display error">❌ OPENAI_API_KEY: Missing</div>`;
+            }
+
+            envCheck.innerHTML = html;
+
+            // Display edge function URL
+            if (hasSupabase) {
+                const url = `${window.ENV.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+                document.getElementById('edgeFunctionUrl').textContent = url;
+            }
+        }
+
+        // Test DeepSeek Direct
+        async function testDeepSeekDirect() {
+            const resultDiv = document.getElementById('deepseekResult');
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing DeepSeek API...</div>';
+
+            try {
+                // Get DeepSeek key (you'll need to add it manually here for testing)
+                const deepseekKey = prompt('Enter your DeepSeek API key (or leave empty to test without):');
+
+                if (!deepseekKey) {
+                    resultDiv.innerHTML = '<div class="result-box error">❌ No DeepSeek key provided. Cannot test.</div>';
+                    return;
+                }
+
+                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${deepseekKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [{ role: 'user', content: 'Say "test successful" in French' }],
+                        max_tokens: 50
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="result-box success">
+✅ DeepSeek API Success!
+Status: ${response.status}
+Response: ${data.choices?.[0]?.message?.content || 'No content'}
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result-box error">
+❌ DeepSeek API Error
+Status: ${response.status}
+Error: ${JSON.stringify(data, null, 2)}
+                    </div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">
+❌ Network Error
+${error.message}
+${error.stack}
+                </div>`;
+            }
+        }
+
+        // Test DeepSeek Auth
+        async function testDeepSeekAuth() {
+            const resultDiv = document.getElementById('deepseekResult');
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing DeepSeek Authorization...</div>';
+
+            try {
+                const deepseekKey = prompt('Enter your DeepSeek API key:');
+
+                if (!deepseekKey) {
+                    resultDiv.innerHTML = '<div class="result-box error">❌ No key provided</div>';
+                    return;
+                }
+
+                // Test with missing Authorization header
+                const response1 = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [{ role: 'user', content: 'test' }]
+                    })
+                });
+
+                const error1 = await response1.json();
+
+                resultDiv.innerHTML = `<div class="result-box error">
+Test 1: Without Authorization Header
+Status: ${response1.status}
+Response: ${JSON.stringify(error1, null, 2)}
+
+Expected: 401 error with "Missing authorization header"
+                </div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ ${error.message}</div>`;
+            }
+        }
+
+        // Test OpenAI Direct
+        async function testOpenAIDirect() {
+            const resultDiv = document.getElementById('openaiResult');
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing OpenAI API...</div>';
+
+            try {
+                const openaiKey = window.ENV?.VITE_OPENAI_API_KEY;
+
+                if (!openaiKey) {
+                    resultDiv.innerHTML = '<div class="result-box error">❌ OpenAI key not found in environment</div>';
+                    return;
+                }
+
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${openaiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [{ role: 'user', content: 'Say "test successful" in French' }],
+                        max_tokens: 50
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="result-box success">
+✅ OpenAI API Success!
+Status: ${response.status}
+Response: ${data.choices?.[0]?.message?.content || 'No content'}
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result-box error">
+❌ OpenAI API Error
+Status: ${response.status}
+Error: ${JSON.stringify(data, null, 2)}
+                    </div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">
+❌ Network Error
+${error.message}
+${error.stack}
+                </div>`;
+            }
+        }
+
+        // Test OpenAI Auth
+        async function testOpenAIAuth() {
+            const resultDiv = document.getElementById('openaiResult');
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing OpenAI Authorization...</div>';
+
+            try {
+                // Test with invalid key
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer invalid-key',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        messages: [{ role: 'user', content: 'test' }]
+                    })
+                });
+
+                const error = await response.json();
+
+                resultDiv.innerHTML = `<div class="result-box">
+Test: Invalid Authorization Key
+Status: ${response.status}
+Response: ${JSON.stringify(error, null, 2)}
+
+Expected: 401 error with authentication message
+                </div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">❌ ${error.message}</div>`;
+            }
+        }
+
+        // Test Edge Function
+        async function testEdgeFunction() {
+            const resultDiv = document.getElementById('edgeFunctionResult');
+            resultDiv.innerHTML = '<div class="result-box">⏳ Testing Edge Function...</div>';
+
+            try {
+                const supabaseUrl = window.ENV?.VITE_SUPABASE_URL;
+                const anonKey = window.ENV?.VITE_SUPABASE_ANON_KEY;
+
+                if (!supabaseUrl || !anonKey) {
+                    resultDiv.innerHTML = '<div class="result-box error">❌ Supabase configuration missing</div>';
+                    return;
+                }
+
+                const url = `${supabaseUrl}/functions/v1/ai-chat`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${anonKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Je cherche un canapé scandinave',
+                        storeId: null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="result-box success">
+✅ Edge Function Success!
+Status: ${response.status}
+
+Response: ${data.response || 'No response'}
+Products Found: ${data.totalProducts || 0}
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result-box error">
+❌ Edge Function Error
+Status: ${response.status}
+Error: ${data.error || 'Unknown error'}
+
+Full response:
+${JSON.stringify(data, null, 2)}
+                    </div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result-box error">
+❌ Network Error
+${error.message}
+${error.stack}
+                </div>`;
+            }
+        }
+
+        // Initialize
+        checkEnvironment();
+    </script>
+</body>
+</html>
