@@ -412,26 +412,37 @@ export function SeoOpportunities() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-          'apikey': getEnvVar('VITE_SUPABASE_ANON_KEY'),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          products: productsData,
-          language: effectiveLanguage
-        }),
-        signal: controller.signal
-      });
+      let response;
+      try {
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
+            'apikey': getEnvVar('VITE_SUPABASE_ANON_KEY'),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            products: productsData,
+            language: effectiveLanguage
+          }),
+          signal: controller.signal
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error:', response.status, errorText);
-        throw new Error(`API returned ${response.status}: ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error:', response.status, errorText);
+          throw new Error(`API error ${response.status}`);
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw fetchError;
+        }
+        // Si c'est une erreur réseau, passer directement au mode basique
+        console.error('❌ Network Error:', fetchError);
+        throw new Error('Edge function not available');
       }
 
       console.log('✅ API Response received');
@@ -511,14 +522,24 @@ export function SeoOpportunities() {
 
       setShowGenerationProgress(false);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      let userFriendlyMessage = errorMessage;
+      if (errorMessage.includes('Edge function not available') || errorMessage.includes('Failed to fetch')) {
+        userFriendlyMessage = language === 'fr'
+          ? 'La fonction IA n\'est pas déployée ou inaccessible'
+          : 'AI function not deployed or unavailable';
+      }
+
       addNotification({
-        type: 'warning',
-        title: language === 'fr' ? 'Mode basique activé' : 'Basic Mode Activated',
+        type: 'info',
+        title: language === 'fr' ? '✨ Mode Basique Activé' : '✨ Basic Mode Activated',
         message: language === 'fr'
-          ? `L'IA n'est pas disponible (${errorMessage}). Génération d'opportunités basiques...`
-          : `AI unavailable (${errorMessage}). Generating basic opportunities...`,
-        duration: 6000
+          ? `Génération d'opportunités sans IA. ${userFriendlyMessage}`
+          : `Generating opportunities without AI. ${userFriendlyMessage}`,
+        duration: 8000
       });
+
+      console.log('🔄 Falling back to basic opportunity generation');
       generateBasicOpportunities(products);
     }
   };
@@ -988,7 +1009,7 @@ export function SeoOpportunities() {
           <p className="text-red-700 mb-6">{error}</p>
           <button
             onClick={fetchProducts}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition inline-flex items-center gap-2"
+            className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium rounded-lg transition inline-flex items-center gap-2 shadow-md"
           >
             <RefreshCw className="w-5 h-5" />
             {templateLang === 'fr' ? 'Réessayer' : 'Retry'}
@@ -1066,7 +1087,7 @@ export function SeoOpportunities() {
             <button
               onClick={handleGenerateSmartOpportunities}
               disabled={generatingSmart || products.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:to-gray-400 text-white text-sm font-medium rounded-lg transition shadow-md"
             >
               {generatingSmart ? (
                 <>
