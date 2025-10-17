@@ -108,7 +108,7 @@ export function Settings() {
         <h1 className="text-2xl font-bold text-gray-800">{t.settings.title}</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <Globe className="w-5 h-5 text-gray-600" />
           <h2 className="text-lg font-semibold text-gray-800">{t.settings.language}</h2>
@@ -140,7 +140,7 @@ export function Settings() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           {t.settings.enrichmentSettings}
         </h2>
@@ -207,7 +207,7 @@ export function Settings() {
 
       <AiProviderConfig />
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <MessageSquare className="w-5 h-5 text-gray-600" />
           <h2 className="text-lg font-semibold text-gray-800">Paramètres du Chat IA</h2>
@@ -297,7 +297,7 @@ export function Settings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition"
+          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:to-gray-400 text-white font-medium rounded-lg transition shadow-lg"
         >
           {saving ? (
             <>
@@ -319,7 +319,7 @@ export function Settings() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <Activity className="w-5 h-5 text-gray-600" />
           <h2 className="text-lg font-semibold text-gray-800">Database Connection</h2>
@@ -329,14 +329,14 @@ export function Settings() {
         </p>
         <button
           onClick={() => setShowDiagnostics(true)}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-medium rounded-lg transition shadow-lg"
         >
           <Activity className="w-4 h-4" />
           Run Connection Diagnostics
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           {t.settings.aboutEnrichment}
         </h2>

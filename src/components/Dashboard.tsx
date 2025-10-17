@@ -251,7 +251,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         <p className="text-red-600 mb-4">{error}</p>
         <button
           onClick={fetchDashboardData}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+          className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition shadow-lg"
         >
           Retry Loading
         </button>
@@ -274,7 +274,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportData}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border border-gray-300 rounded-lg transition shadow-md"
           >
             <Download className="w-4 h-4" />
             Export
@@ -282,7 +282,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white rounded-lg transition disabled:opacity-50 shadow-lg"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -361,7 +361,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Product Types */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500 rounded-lg">
@@ -372,7 +372,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
             {stats.productTypes.length > 5 && (
               <button
                 onClick={() => onViewAllProducts?.('types')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-md font-medium shadow-md transition"
               >
                 View All
               </button>
@@ -381,7 +381,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           {stats.productTypes.length > 0 ? (
             <div className="space-y-3">
               {stats.productTypes.slice(0, 5).map((type, idx) => (
-                <div key={idx} className="flex items-center justify-between group hover:bg-gray-50 p-2 rounded-lg transition">
+                <div key={idx} className="flex items-center justify-between group hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 p-2 rounded-lg transition cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${
                       idx === 0 ? 'bg-blue-500' :
@@ -406,7 +406,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         </div>
 
         {/* Inventory Insights */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-cyan-500 rounded-lg">
@@ -416,7 +416,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
             </div>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg shadow-sm">
               <div className="flex items-center gap-3">
                 <Package className="w-5 h-5 text-gray-600" />
                 <span className="text-gray-700">Total Inventory Value</span>
@@ -489,7 +489,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
             </div>
             <button
               onClick={() => setShowAllProducts(!showAllProducts)}
-              className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white rounded-lg transition shadow-md"
             >
               {showAllProducts ? 'Show Less' : `Show All (${filteredProducts.length})`}
             </button>
@@ -509,7 +509,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
               <div className="text-center pt-4 border-t">
                 <button
                   onClick={() => setShowAllProducts(true)}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg font-medium shadow-md transition"
                 >
                   Show {filteredProducts.length - 5} more products
                 </button>
@@ -554,7 +554,7 @@ function StatCard({ title, value, icon: Icon, color, subtitle, trend, alert }: S
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-6 relative ${alert ? 'ring-2 ring-orange-400' : ''}`}>
+    <div className={`bg-gradient-to-br from-white to-gray-50 rounded-lg shadow-lg p-6 relative ${alert ? 'ring-2 ring-orange-400' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-600 text-sm font-medium mb-1">{title}</p>
@@ -589,10 +589,10 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, icon: Icon, color }: MetricCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-500 text-white shadow-md',
-    green: 'bg-emerald-500 text-white shadow-md',
-    purple: 'bg-violet-500 text-white shadow-md',
-    orange: 'bg-amber-500 text-white shadow-md'
+    blue: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg',
+    green: 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg',
+    purple: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg',
+    orange: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg'
   };
 
   return (
@@ -625,7 +625,7 @@ function ProductCard({ product, onView }: ProductCardProps) {
 
   return (
     <div
-      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition cursor-pointer group"
+      className="border border-gray-200 bg-gradient-to-br from-white to-blue-50/30 rounded-lg p-4 hover:border-blue-400 hover:shadow-xl transition cursor-pointer group"
       onClick={onView}
     >
       <div className="flex items-start gap-4">

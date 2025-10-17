@@ -363,7 +363,7 @@ export function BlogArticles() {
           </h2>
           <button
             onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-md"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition shadow-lg"
           >
             <Plus className="w-5 h-5" />
             {ui.createArticle}
@@ -399,7 +399,7 @@ export function BlogArticles() {
                 onClick={() => setViewMode('grid')}
                 className={`p-2 transition ${
                   viewMode === 'grid'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
                 title={ui.gridView}
@@ -410,7 +410,7 @@ export function BlogArticles() {
                 onClick={() => setViewMode('list')}
                 className={`p-2 transition ${
                   viewMode === 'list'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
                 title={ui.listView}
@@ -534,7 +534,7 @@ export function BlogArticles() {
                             setShowConfirm(true);
                           }}
                           disabled={syncing === article.id || article.sync_status === 'synced'}
-                          className="ml-auto flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {syncing === article.id ? (
                             <>
@@ -712,7 +712,7 @@ export function BlogArticles() {
                       setShowConfirm(true);
                     }}
                     disabled={syncing === article.id || article.sync_status === 'synced'}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {syncing === article.id ? (
                       <>
