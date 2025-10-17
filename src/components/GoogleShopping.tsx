@@ -57,7 +57,7 @@ export function GoogleShopping() {
               href="https://merchants.google.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-lg"
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-medium rounded-lg transition shadow-xl"
             >
               Ouvrir Google Merchant Center
             </a>
