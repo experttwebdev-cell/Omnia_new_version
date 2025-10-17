@@ -237,7 +237,7 @@ export function AiCampaigns() {
         </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-md"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition shadow-lg"
         >
           <Plus className="w-5 h-5" />
           {t.campaigns.createCampaign}
@@ -298,7 +298,7 @@ export function AiCampaigns() {
           </p>
           <button
             onClick={() => setShowWizard(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Create Your First Campaign

@@ -169,7 +169,7 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
           <p className="text-red-600 mb-4 text-lg">{error || 'Product not found'}</p>
           <button
             onClick={onClose}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition shadow-lg"
           >
             Close
           </button>
@@ -244,7 +244,7 @@ export function ProductDetail({ productId, onClose }: ProductDetailProps) {
                 href={`https://${product.shop_name}.myshopify.com/products/${product.handle}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white text-sm font-medium rounded-lg transition shadow-lg"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span className="hidden sm:inline">View in Store</span>

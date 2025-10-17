@@ -728,7 +728,7 @@ export function CampaignWizard({ campaign, onClose }: CampaignWizardProps) {
           />
           <button
             onClick={addKeyword}
-            className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+            className="px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition flex items-center gap-2 shadow-lg"
           >
             <Plus className="w-5 h-5" />
             {t.campaigns.addKeyword}
@@ -891,7 +891,7 @@ export function CampaignWizard({ campaign, onClose }: CampaignWizardProps) {
           {step < totalSteps ? (
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white rounded-lg transition shadow-lg"
             >
               {t.common.next}
               <ChevronRight className="w-5 h-5" />
@@ -900,7 +900,7 @@ export function CampaignWizard({ campaign, onClose }: CampaignWizardProps) {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition disabled:opacity-50 shadow-lg"
             >
               {loading ? (
                 <>

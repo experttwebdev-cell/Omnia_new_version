@@ -636,9 +636,9 @@ export function BlogWizard({ onClose, categories }: BlogWizardProps) {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                       currentStep === step.id
-                        ? 'bg-blue-600 text-white scale-110 shadow-lg'
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white scale-110 shadow-xl'
                         : currentStep > step.id
-                        ? 'bg-green-500 text-white'
+                        ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg'
                         : 'bg-gray-200 text-gray-400'
                     }`}
                   >

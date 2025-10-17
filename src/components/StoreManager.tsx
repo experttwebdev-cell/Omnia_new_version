@@ -335,7 +335,7 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
           </button>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition shadow-lg"
           >
             <Plus className="w-5 h-5" />
             Add Store
@@ -414,7 +414,7 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Adding...' : 'Add Store'}
               </button>
@@ -643,7 +643,7 @@ export function StoreManager({ onImportStart }: StoreManagerProps) {
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={() => handleSaveSyncSettings(store.id)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition shadow-lg"
                       >
                         Save Settings
                       </button>

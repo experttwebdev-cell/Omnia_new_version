@@ -388,7 +388,7 @@ export function SeoOptimization() {
             }}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
               activeTab === tab.id
-                ? 'bg-blue-600 text-white'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -458,7 +458,7 @@ export function SeoOptimization() {
           <button
             onClick={handleBulkPushToShopify}
             disabled={pushingToShopify || selectedEnrichedCount === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:to-gray-400 text-white text-sm font-medium rounded-lg transition shadow-lg"
           >
             {pushingToShopify ? (
               <>

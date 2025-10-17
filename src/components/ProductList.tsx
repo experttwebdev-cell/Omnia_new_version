@@ -134,7 +134,7 @@ export function ProductList() {
             onClick={() => setEnrichmentFilter('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
               enrichmentFilter === 'all'
-                ? 'bg-blue-600 text-white shadow-md'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -329,7 +329,7 @@ export function ProductList() {
                     href={`https://${product.shop_name}.myshopify.com/products/${product.handle}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-medium rounded-lg transition shadow-lg"
                   >
                     <ExternalLink className="w-4 h-4" />
                     Voir dans la boutique
