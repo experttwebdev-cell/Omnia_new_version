@@ -1,80 +1,115 @@
-// @deno-types="jsr:@supabase/functions-js/edge-runtime.d.ts"
+//
+// 🧩 FONCTION PRINCIPALE - VERSION STABLE
+//
+export async function OmnIAChat(
+  userMessage: string,
+  history: ChatMessage[] = [],
+  storeId?: string,
+  onChunk?: (text: string) => void
+): Promise<ChatResponse> {
+  console.log("🚀 [OMNIA] Message reçu:", userMessage);
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+  // ✅ Gestion immédiate des salutations simples
+  const msg = userMessage.toLowerCase().trim();
+  
+  if (["bonjour", "salut", "hello", "coucou", "hey"].some(greet => msg.includes(greet))) {
+    return {
+      role: "assistant",
+      content: "Bonjour ! 👋 Je suis OmnIA, votre assistant shopping. Que souhaitez-vous découvrir aujourd'hui ?",
+      intent: "conversation",
+      products: [],
+      mode: "conversation",
+      sector: "meubles"
+    };
   }
 
   try {
-    const { messages, model = "deepseek-chat", temperature = 0.7, stream = false } = await req.json();
-    const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
+    const intent = await detectIntent(userMessage);
 
-    if (!apiKey) {
-      throw new Error("Missing DEEPSEEK_API_KEY");
+    // Configuration des filtres
+    const filters: ProductAttributes = { 
+      intent: "product_search", 
+      sector: "meubles" 
+    };
+
+    // Détection du secteur (code existant...)
+    if (["montre", "bracelet", "bijou", "horlogerie", "chrono"].some(x => msg.includes(x))) {
+      filters.sector = "montres";
+    } else if (["robe", "chemise", "pantalon", "vêtement", "vetement", "mode", "sac", "chaussure"].some(x => msg.includes(x))) {
+      filters.sector = "pret_a_porter";
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // Augmenté à 30s
-
-    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature,
-        stream,
-        max_tokens: 500,
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status}`);
-    }
-
-    // Support pour le streaming
-    if (stream) {
-      return new Response(response.body, {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache",
+    // Mode conversation simple
+    if (intent === "chat") {
+      const messages: ChatMessage[] = [
+        {
+          role: "system",
+          content: `Tu es OmnIA, assistant e-commerce amical et professionnel. 
+Réponds de manière concise, naturelle et utile (80-120 mots maximum).
+Sois chaleureux et engageant.`
         },
-      });
+        { role: "user", content: userMessage },
+      ];
+
+      const chatResponse = await callDeepSeek(messages, 120);
+
+      return {
+        role: "assistant",
+        content: chatResponse,
+        intent: "conversation",
+        products: [],
+        mode: "conversation",
+        sector: filters.sector || "meubles",
+      };
     }
 
-    const data = await response.json();
-    return new Response(JSON.stringify(data), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
-
-  } catch (err) {
-    console.error("Proxy error:", err);
-    return new Response(
-      JSON.stringify({
-        error: true,
-        message: err.message,
-        response: "Erreur de communication avec DeepSeek API",
-      }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    // 🔍 RECHERCHE PRODUIT
+    const products = await searchProducts(filters, storeId);
+    
+    // ✅ Utiliser le streaming si disponible, sinon fallback
+    let aiResponse = "";
+    
+    if (onChunk) {
+      try {
+        await streamDeepSeek(
+          [
+            {
+              role: "system",
+              content: `Tu es OmnIA, expert e-commerce. Présente les produits de manière engageante et naturelle. Réponse en français (120-180 mots).`
+            },
+            { role: "user", content: `Produits: ${JSON.stringify(products.map(p => p.title))}. Demande: ${userMessage}` }
+          ],
+          onChunk
+        );
+        aiResponse = ""; // Le contenu est streamé via onChunk
+      } catch (streamError) {
+        console.error("Stream failed, using fallback:", streamError);
+        aiResponse = await generateProductPresentation(products, userMessage, filters.sector || "meubles");
       }
-    );
+    } else {
+      aiResponse = await generateProductPresentation(products, userMessage, filters.sector || "meubles");
+    }
+
+    return {
+      role: "assistant",
+      content: aiResponse,
+      intent: "product_show",
+      products,
+      mode: "product_show",
+      sector: filters.sector || "meubles",
+    };
+
+  } catch (error) {
+    console.error("❌ [OMNIA] Global error:", error);
+    
+    // ✅ Fallback générique en cas d'erreur globale
+    return {
+      role: "assistant",
+      content: "Je suis désolé, je rencontre un problème technique. Pouvez-vous réessayer dans un instant ? En attendant, vous pouvez me décrire ce que vous cherchez !",
+      intent: "conversation",
+      products: [],
+      mode: "conversation",
+      sector: "meubles"
+    };
   }
-});
+}
