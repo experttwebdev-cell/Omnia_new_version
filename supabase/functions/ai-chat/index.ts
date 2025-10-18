@@ -81,6 +81,10 @@ function extractFiltersFromQuery(query: string): ProductSearchFilters {
   const normalized = normalizeText(query);
   const lowerQuery = query.toLowerCase();
 
+  // Generic request keywords (show all products)
+  const genericKeywords = ['produits', 'articles', 'catalogue', 'collection', 'tout', 'tous', 'tes', 'vos'];
+  const isGenericRequest = genericKeywords.some(word => normalized.includes(word));
+
   // Colors (French and English)
   const colors = ['blanc', 'noir', 'gris', 'beige', 'bois', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'white', 'black', 'gray', 'brown', 'blue', 'green', 'red', 'yellow', 'pink', 'purple'];
   const foundColor = colors.find(c => normalized.includes(normalizeText(c)));
@@ -109,8 +113,19 @@ function extractFiltersFromQuery(query: string): ProductSearchFilters {
     filters.room = foundRoom;
   }
 
-  // Extract main search query
-  filters.query = query;
+  // Product categories (French)
+  const categories = ['canape', 'table', 'chaise', 'fauteuil', 'meuble', 'armoire', 'lit', 'bureau', 'lampe', 'miroir'];
+  const foundCategory = categories.find(c => normalized.includes(c));
+  if (foundCategory) {
+    filters.query = foundCategory;
+  } else if (isGenericRequest) {
+    // Generic request - show all products (no query filter)
+    filters.query = '';
+  } else {
+    // Use the full query for search
+    filters.query = query;
+  }
+
   filters.status = 'active';
   filters.limit = 12;
 
@@ -133,7 +148,7 @@ async function searchProducts(filters: ProductSearchFilters, storeId?: string): 
     }
 
     // Build search conditions
-    if (filters.query) {
+    if (filters.query && filters.query.trim().length > 0) {
       const searchTerms = normalizeText(filters.query).split(' ').filter(term => term.length > 2);
 
       if (searchTerms.length > 0) {
@@ -157,6 +172,7 @@ async function searchProducts(filters: ProductSearchFilters, storeId?: string): 
         query = query.or(orConditions);
       }
     }
+    // If no query, return all active products (generic request)
 
     // Apply additional filters
     if (filters.color) {

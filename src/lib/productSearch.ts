@@ -122,7 +122,7 @@ export async function searchProducts(
     }
 
     // ✅ CORRECTION CRITIQUE : Recherche améliorée avec TOUS vos champs
-    if (filters.query) {
+    if (filters.query && filters.query.trim().length > 0) {
       const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
 
       if (searchTerms.length > 0) {
@@ -379,10 +379,16 @@ export function extractFiltersFromQuery(query: string): Partial<ProductSearchFil
   }
 
   // ✅ CORRECTION : Si demande générique, on cherche dans tous les produits
-  const genericWords = ['produits', 'articles', 'catalogue', 'collection', 'choix', 'sélection', 'quelque chose', 'quelques'];
+  const genericWords = ['produits', 'articles', 'catalogue', 'collection', 'choix', 'sélection', 'quelque chose', 'quelques', 'tout', 'tous', 'tes', 'vos'];
   const hasGenericWord = genericWords.some(word => lowerQuery.includes(word));
-  
-  if (hasGenericWord) {
+
+  // Product categories (French) - prioritize specific product searches
+  const categories = ['canapé', 'canape', 'table', 'chaise', 'fauteuil', 'meuble', 'armoire', 'lit', 'bureau', 'lampe', 'miroir'];
+  const foundCategory = categories.find(c => lowerQuery.includes(c));
+
+  if (foundCategory) {
+    filters.query = foundCategory;
+  } else if (hasGenericWord) {
     filters.query = ''; // Recherche vide = tous les produits
   } else {
     // Nettoyer la requête
