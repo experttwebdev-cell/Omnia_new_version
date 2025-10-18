@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Edge Function Logs</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .header {
+            background: #2d2d30;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background: #1177bb;
+        }
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .log-container {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 8px;
+            margin: 4px 0;
+            border-left: 3px solid #4ec9b0;
+            background: #252526;
+            font-size: 13px;
+        }
+        .log-error {
+            border-left-color: #f48771;
+            background: #3b1e1e;
+        }
+        .log-success {
+            border-left-color: #4ec9b0;
+            background: #1e3a28;
+        }
+        .log-warning {
+            border-left-color: #dcdcaa;
+            background: #3a3a1e;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .status.success { background: #1e3a28; color: #4ec9b0; }
+        .status.error { background: #3b1e1e; color: #f48771; }
+        .status.info { background: #1e2a3a; color: #569cd6; }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #555;
+            border-top: 3px solid #4ec9b0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .response {
+            background: #252526;
+            border: 1px solid #3e3e42;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Edge Function Deep Diagnostic</h1>
+        <p>Test avec logs console et network détaillés</p>
+        <button class="btn" onclick="testSimple()">1️⃣ Test Simple (2 produits)</button>
+        <button class="btn" onclick="testEmpty()">2️⃣ Test Vide (DB fetch)</button>
+        <button class="btn" onclick="checkLogs()">3️⃣ Voir Logs Supabase</button>
+        <button class="btn" onclick="clearAll()">🗑️ Clear</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="logs" class="log-container"></div>
+    <div id="response"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : type === 'warning' ? 'log-warning' : 'log-entry';
+            logs.push(`<div class="${logClass}">[${timestamp}] ${message}</div>`);
+            document.getElementById('logs').innerHTML = logs.join('');
+            document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function clearAll() {
+            logs = [];
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('response').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+            showStatus('🗑️ Cleared', 'info');
+        }
+
+        async function testSimple() {
+            clearAll();
+            addLog('🎯 Starting simple test with 2 products');
+            showStatus('<span class="spinner"></span> Testing...', 'info');
+
+            const products = [
+                { id: '1', title: 'Test Product 1', category: 'Test', ai_color: 'Red', ai_material: 'Wood' },
+                { id: '2', title: 'Test Product 2', category: 'Test', ai_color: 'Blue', ai_material: 'Metal' }
+            ];
+
+            const payload = {
+                products: products,
+                language: 'fr'
+            };
+
+            addLog(`📦 Payload: ${JSON.stringify(payload, null, 2)}`);
+
+            try {
+                const apiUrl = `${SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+                addLog(`🌐 URL: ${apiUrl}`);
+
+                const startTime = Date.now();
+                addLog('📤 Sending POST request...');
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                addLog(`⏱️ Response received in ${duration}s`, 'success');
+                addLog(`📊 HTTP Status: ${response.status} ${response.statusText}`);
+
+                const contentType = response.headers.get('content-type');
+                addLog(`📄 Content-Type: ${contentType}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog(`❌ HTTP Error: ${errorText}`, 'error');
+                    showStatus(`❌ Error ${response.status}`, 'error');
+                    document.getElementById('response').innerHTML = `<div class="response">${errorText}</div>`;
+                    return;
+                }
+
+                const result = await response.json();
+                addLog(`✅ Parsed JSON successfully`, 'success');
+                addLog(`📊 Opportunities created: ${result.opportunities?.length || 0}`, 'success');
+
+                showStatus(`✅ Success in ${duration}s`, 'success');
+                document.getElementById('response').innerHTML = `<div class="response">${JSON.stringify(result, null, 2)}</div>`;
+
+            } catch (error) {
+                addLog(`💥 Exception: ${error.message}`, 'error');
+                addLog(`🔍 Error stack: ${error.stack}`, 'error');
+                showStatus(`❌ Failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testEmpty() {
+            clearAll();
+            addLog('🎯 Starting empty test (DB fetch)');
+            showStatus('<span class="spinner"></span> Testing...', 'info');
+
+            const payload = {
+                products: [],
+                language: 'fr'
+            };
+
+            addLog(`📦 Payload: ${JSON.stringify(payload)}`);
+
+            try {
+                const apiUrl = `${SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+                addLog(`🌐 URL: ${apiUrl}`);
+
+                const startTime = Date.now();
+                addLog('📤 Sending POST request...');
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                addLog(`⏱️ Response received in ${duration}s`, 'success');
+                addLog(`📊 HTTP Status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog(`❌ HTTP Error: ${errorText}`, 'error');
+                    showStatus(`❌ Error ${response.status}`, 'error');
+                    document.getElementById('response').innerHTML = `<div class="response">${errorText}</div>`;
+                    return;
+                }
+
+                const result = await response.json();
+                addLog(`✅ Parsed JSON successfully`, 'success');
+                addLog(`📊 Result: ${JSON.stringify(result)}`, 'success');
+
+                showStatus(`✅ Success in ${duration}s`, 'success');
+                document.getElementById('response').innerHTML = `<div class="response">${JSON.stringify(result, null, 2)}</div>`;
+
+            } catch (error) {
+                addLog(`💥 Exception: ${error.message}`, 'error');
+                showStatus(`❌ Failed: ${error.message}`, 'error');
+            }
+        }
+
+        function checkLogs() {
+            addLog('📋 Pour voir les logs Supabase:', 'warning');
+            addLog('1. Allez sur https://supabase.com/dashboard/project/ufdhzgqrubbnornjdvgv/functions/generate-seo-opportunities/logs', 'warning');
+            addLog('2. Ou: Dashboard > Edge Functions > generate-seo-opportunities > Logs', 'warning');
+            showStatus('ℹ️ Check Supabase Dashboard for server logs', 'info');
+        }
+
+        showStatus('✅ Ready', 'success');
+        addLog('🚀 Diagnostic tool ready');
+        addLog('💡 Click a button to start testing');
+    </script>
+</body>
+</html>
