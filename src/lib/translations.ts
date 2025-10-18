@@ -1,5 +1,7 @@
 export type Language = 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'zh' | 'ja';
 
+export type SupportedLanguage = keyof typeof translations;
+
 export interface Translations {
   nav: {
     dashboard: string;
@@ -228,6 +230,21 @@ export interface Translations {
       keywordsRequired: string;
     };
   };
+}
+
+// Deep merge function for fallback translations
+function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+  
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] as any, source[key] as any);
+    } else if (source[key] !== undefined) {
+      result[key] = source[key] as T[Extract<keyof T, string>];
+    }
+  }
+  
+  return result;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -840,6 +857,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Hora programada',
       dayOfWeek: 'Día de la semana',
       dayOfMonth: 'Día del mes'
+    },
+    campaigns: {
+      title: 'Campañas IA',
+      createCampaign: 'Crear campaña',
+      campaignName: 'Nombre de la campaña',
+      description: 'Descripción',
+      topicNiche: 'Tema/Nicho del contenido',
+      targetAudience: 'Audiencia objetivo',
+      startDate: 'Fecha de inicio',
+      endDate: 'Fecha de fin (Opcional)',
+      noCampaigns: 'Aún no hay campañas',
+      createFirst: 'Crea tu primera campaña IA para comenzar a generar contenido de blog automáticamente',
+      campaignConfig: 'Configuración de campaña',
+      contentEnhancement: 'Mejora de contenido',
+      articleParams: 'Parámetros de generación de artículos',
+      reviewLaunch: 'Revisión y lanzamiento',
+      minWordCount: 'Mínimo de palabras',
+      maxWordCount: 'Máximo de palabras',
+      writingStyle: 'Estilo de escritura',
+      tone: 'Tono',
+      targetKeywords: 'Palabras clave objetivo',
+      addKeyword: 'Agregar',
+      contentStructure: 'Preferencias de estructura',
+      language: 'Idioma',
+      launchCampaign: 'Lanzar campaña',
+      creating: 'Creando...',
+      campaignDetails: 'Detalles de la campaña',
+      contentSettings: 'Configuración de contenido',
+      enhancementFeatures: 'Características de mejora',
+      readyToLaunch: '¡Listo para lanzar!',
+      generated: 'Generados',
+      published: 'Publicados',
+      lastRun: 'Última ejecución',
+      nextRun: 'Próxima ejecución',
+      recentExecutions: 'Ejecuciones recientes',
+      articlesGenerated: 'artículo(s) generado(s)',
+      pauseCampaign: 'Pausar campaña',
+      resumeCampaign: 'Reanudar campaña',
+      runNow: 'Ejecutar ahora',
+      stopCampaign: 'Detener campaña',
+      deleteCampaign: 'Eliminar campaña',
+      stopConfirm: '¿Estás seguro de que quieres detener esta campaña? Esta acción no se puede deshacer.',
+      deleteConfirm: '¿Estás seguro de que quieres eliminar esta campaña? Todos los datos se perderán.',
+      status: {
+        draft: 'Borrador',
+        active: 'Activa',
+        paused: 'En pausa',
+        stopped: 'Detenida',
+        completed: 'Completada'
+      },
+      frequency: {
+        daily: 'Diario',
+        weekly: 'Semanal',
+        biWeekly: 'Quincenal',
+        monthly: 'Mensual'
+      },
+      writingStyles: {
+        professional: 'Profesional',
+        casual: 'Informal',
+        technical: 'Técnico',
+        conversational: 'Conversacional'
+      },
+      tones: {
+        formal: 'Formal',
+        informal: 'Informal',
+        friendly: 'Amigable',
+        authoritative: 'Autoritario'
+      },
+      validation: {
+        nameRequired: 'El nombre de la campaña es obligatorio',
+        topicRequired: 'El tema/nicho es obligatorio',
+        startDateRequired: 'La fecha de inicio es obligatoria',
+        minWordCount: 'El mínimo de palabras debe ser al menos 300',
+        maxWordCount: 'El máximo debe ser mayor que el mínimo',
+        keywordsRequired: 'Se requiere al menos una palabra clave'
+      }
     }
   },
   de: {
@@ -913,7 +1006,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Status',
       vendor: 'Anbieter',
       category: 'Kategorie',
-      noProducts: 'Keine Produkte gefunden'
+      noProducts: 'Keine Produkte gefunden',
+      totalProducts: 'Gesamtprodukte',
+      enrichedProducts: 'Angereicherte Produkte',
+      syncedToShopify: 'Mit Shopify synchronisiert',
+      pendingSync: 'Synchronisierung ausstehend',
+      ofTotal: 'von insgesamt'
     },
     settings: {
       title: 'Einstellungen',
@@ -959,7 +1057,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Schwierigkeit',
       easy: 'Einfach',
       medium: 'Mittel',
-      hard: 'Schwer'
+      hard: 'Schwer',
+      allProducts: 'Alle Produkte',
+      notEnriched: 'Nicht angereichert',
+      toSync: 'Zu synchronisieren',
+      synced: 'Synchronisiert',
+      totalProducts: 'Gesamtprodukte',
+      optimizedProducts: 'Optimierte Produkte',
+      allCatalog: 'Alle Produkte im Katalog',
+      tags: 'Tags',
+      tagsNotEnriched: 'Tags nicht angereichert',
+      tagsEnriched: 'Tags angereichert'
     },
     blog: {
       autoBlogWriter: 'Auto-Blog-Schreiber',
@@ -978,6 +1086,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Geplante Zeit',
       dayOfWeek: 'Wochentag',
       dayOfMonth: 'Tag des Monats'
+    },
+    campaigns: {
+      title: 'KI-Kampagnen',
+      createCampaign: 'Kampagne erstellen',
+      campaignName: 'Kampagnenname',
+      description: 'Beschreibung',
+      topicNiche: 'Inhaltsthema/Nische',
+      targetAudience: 'Zielgruppe',
+      startDate: 'Startdatum',
+      endDate: 'Enddatum (Optional)',
+      noCampaigns: 'Noch keine Kampagnen',
+      createFirst: 'Erstellen Sie Ihre erste KI-Kampagne, um automatisch Blog-Inhalte zu generieren',
+      campaignConfig: 'Kampagnenkonfiguration',
+      contentEnhancement: 'Inhaltsverbesserung',
+      articleParams: 'Artikelgenerierungsparameter',
+      reviewLaunch: 'Überprüfung & Start',
+      minWordCount: 'Mindestwortzahl',
+      maxWordCount: 'Maximalwortzahl',
+      writingStyle: 'Schreibstil',
+      tone: 'Ton',
+      targetKeywords: 'Ziel-Keywords',
+      addKeyword: 'Hinzufügen',
+      contentStructure: 'Inhaltsstruktur-Präferenzen',
+      language: 'Sprache',
+      launchCampaign: 'Kampagne starten',
+      creating: 'Erstellt...',
+      campaignDetails: 'Kampagnendetails',
+      contentSettings: 'Inhaltseinstellungen',
+      enhancementFeatures: 'Verbesserungsfunktionen',
+      readyToLaunch: 'Bereit zum Start!',
+      generated: 'Generiert',
+      published: 'Veröffentlicht',
+      lastRun: 'Letzte Ausführung',
+      nextRun: 'Nächste Ausführung',
+      recentExecutions: 'Letzte Ausführungen',
+      articlesGenerated: 'Artikel generiert',
+      pauseCampaign: 'Kampagne pausieren',
+      resumeCampaign: 'Kampagne fortsetzen',
+      runNow: 'Jetzt ausführen',
+      stopCampaign: 'Kampagne stoppen',
+      deleteCampaign: 'Kampagne löschen',
+      stopConfirm: 'Sind Sie sicher, dass Sie diese Kampagne stoppen möchten? Diese Aktion kann nicht rückgängig gemacht werden.',
+      deleteConfirm: 'Sind Sie sicher, dass Sie diese Kampagne löschen möchten? Alle Daten gehen verloren.',
+      status: {
+        draft: 'Entwurf',
+        active: 'Aktiv',
+        paused: 'Pausiert',
+        stopped: 'Gestoppt',
+        completed: 'Abgeschlossen'
+      },
+      frequency: {
+        daily: 'Täglich',
+        weekly: 'Wöchentlich',
+        biWeekly: 'Zweiwöchentlich',
+        monthly: 'Monatlich'
+      },
+      writingStyles: {
+        professional: 'Professionell',
+        casual: 'Lässig',
+        technical: 'Technisch',
+        conversational: 'Unterhaltsam'
+      },
+      tones: {
+        formal: 'Formell',
+        informal: 'Informell',
+        friendly: 'Freundlich',
+        authoritative: 'Autoritär'
+      },
+      validation: {
+        nameRequired: 'Kampagnenname ist erforderlich',
+        topicRequired: 'Inhaltsthema/Nische ist erforderlich',
+        startDateRequired: 'Startdatum ist erforderlich',
+        minWordCount: 'Mindestwortzahl muss mindestens 300 betragen',
+        maxWordCount: 'Maximum muss größer als Minimum sein',
+        keywordsRequired: 'Mindestens ein Keyword ist erforderlich'
+      }
     }
   },
   it: {
@@ -1051,7 +1235,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Stato',
       vendor: 'Fornitore',
       category: 'Categoria',
-      noProducts: 'Nessun prodotto trovato'
+      noProducts: 'Nessun prodotto trovato',
+      totalProducts: 'Prodotti Totali',
+      enrichedProducts: 'Prodotti arricchiti',
+      syncedToShopify: 'Sincronizzati con Shopify',
+      pendingSync: 'In attesa di sincronizzazione',
+      ofTotal: 'del totale'
     },
     settings: {
       title: 'Impostazioni',
@@ -1097,7 +1286,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Difficoltà',
       easy: 'Facile',
       medium: 'Medio',
-      hard: 'Difficile'
+      hard: 'Difficile',
+      allProducts: 'Tutti i prodotti',
+      notEnriched: 'Non arricchiti',
+      toSync: 'Da sincronizzare',
+      synced: 'Sincronizzati',
+      totalProducts: 'Prodotti Totali',
+      optimizedProducts: 'Prodotti ottimizzati',
+      allCatalog: 'Tutti i prodotti nel catalogo',
+      tags: 'Tag',
+      tagsNotEnriched: 'Tag non arricchiti',
+      tagsEnriched: 'Tag arricchiti'
     },
     blog: {
       autoBlogWriter: 'Scrittore automatico',
@@ -1116,6 +1315,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Ora programmata',
       dayOfWeek: 'Giorno della settimana',
       dayOfMonth: 'Giorno del mese'
+    },
+    campaigns: {
+      title: 'Campagne IA',
+      createCampaign: 'Crea campagna',
+      campaignName: 'Nome campagna',
+      description: 'Descrizione',
+      topicNiche: 'Argomento/Niche del contenuto',
+      targetAudience: 'Pubblico target',
+      startDate: 'Data di inizio',
+      endDate: 'Data di fine (Opzionale)',
+      noCampaigns: 'Ancora nessuna campagna',
+      createFirst: 'Crea la tua prima campagna IA per iniziare a generare contenuti per il blog automaticamente',
+      campaignConfig: 'Configurazione campagna',
+      contentEnhancement: 'Miglioramento contenuto',
+      articleParams: 'Parametri generazione articoli',
+      reviewLaunch: 'Revisione e lancio',
+      minWordCount: 'Conteggio parole minimo',
+      maxWordCount: 'Conteggio parole massimo',
+      writingStyle: 'Stile di scrittura',
+      tone: 'Tono',
+      targetKeywords: 'Parole chiave target',
+      addKeyword: 'Aggiungi',
+      contentStructure: 'Preferenze struttura contenuto',
+      language: 'Lingua',
+      launchCampaign: 'Lancia campagna',
+      creating: 'Creazione...',
+      campaignDetails: 'Dettagli campagna',
+      contentSettings: 'Impostazioni contenuto',
+      enhancementFeatures: 'Funzionalità di miglioramento',
+      readyToLaunch: 'Pronto al lancio!',
+      generated: 'Generati',
+      published: 'Pubblicati',
+      lastRun: 'Ultima esecuzione',
+      nextRun: 'Prossima esecuzione',
+      recentExecutions: 'Esecuzioni recenti',
+      articlesGenerated: 'articolo(i) generato(i)',
+      pauseCampaign: 'Metti in pausa',
+      resumeCampaign: 'Riprendi',
+      runNow: 'Esegui ora',
+      stopCampaign: 'Ferma campagna',
+      deleteCampaign: 'Elimina campagna',
+      stopConfirm: 'Sei sicuro di voler fermare questa campagna? Questa azione non può essere annullata.',
+      deleteConfirm: 'Sei sicuro di voler eliminare questa campagna? Tutti i dati andranno persi.',
+      status: {
+        draft: 'Bozza',
+        active: 'Attiva',
+        paused: 'In pausa',
+        stopped: 'Fermata',
+        completed: 'Completata'
+      },
+      frequency: {
+        daily: 'Giornaliero',
+        weekly: 'Settimanale',
+        biWeekly: 'Bisettimanale',
+        monthly: 'Mensile'
+      },
+      writingStyles: {
+        professional: 'Professionale',
+        casual: 'Informale',
+        technical: 'Tecnico',
+        conversational: 'Conversazionale'
+      },
+      tones: {
+        formal: 'Formale',
+        informal: 'Informale',
+        friendly: 'Amichevole',
+        authoritative: 'Autorevole'
+      },
+      validation: {
+        nameRequired: 'Il nome della campagna è obbligatorio',
+        topicRequired: 'L\'argomento/niche è obbligatorio',
+        startDateRequired: 'La data di inizio è obbligatoria',
+        minWordCount: 'Il conteggio parole minimo deve essere almeno 300',
+        maxWordCount: 'Il massimo deve essere maggiore del minimo',
+        keywordsRequired: 'Almeno una parola chiave è richiesta'
+      }
     }
   },
   pt: {
@@ -1189,7 +1464,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Status',
       vendor: 'Fornecedor',
       category: 'Categoria',
-      noProducts: 'Nenhum produto encontrado'
+      noProducts: 'Nenhum produto encontrado',
+      totalProducts: 'Total de Produtos',
+      enrichedProducts: 'Produtos enriquecidos',
+      syncedToShopify: 'Sincronizados com Shopify',
+      pendingSync: 'Pendente de sincronização',
+      ofTotal: 'do total'
     },
     settings: {
       title: 'Configurações',
@@ -1235,7 +1515,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Dificuldade',
       easy: 'Fácil',
       medium: 'Médio',
-      hard: 'Difícil'
+      hard: 'Difícil',
+      allProducts: 'Todos os produtos',
+      notEnriched: 'Não enriquecidos',
+      toSync: 'A sincronizar',
+      synced: 'Sincronizados',
+      totalProducts: 'Total de Produtos',
+      optimizedProducts: 'Produtos otimizados',
+      allCatalog: 'Todos os produtos no catálogo',
+      tags: 'Tags',
+      tagsNotEnriched: 'Tags não enriquecidos',
+      tagsEnriched: 'Tags enriquecidos'
     },
     blog: {
       autoBlogWriter: 'Escritor automático',
@@ -1254,6 +1544,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Hora agendada',
       dayOfWeek: 'Dia da semana',
       dayOfMonth: 'Dia do mês'
+    },
+    campaigns: {
+      title: 'Campanhas IA',
+      createCampaign: 'Criar campanha',
+      campaignName: 'Nome da campanha',
+      description: 'Descrição',
+      topicNiche: 'Tópico/Nicho do conteúdo',
+      targetAudience: 'Público-alvo',
+      startDate: 'Data de início',
+      endDate: 'Data de fim (Opcional)',
+      noCampaigns: 'Ainda não há campanhas',
+      createFirst: 'Crie sua primeira campanha IA para começar a gerar conteúdo de blog automaticamente',
+      campaignConfig: 'Configuração da campanha',
+      contentEnhancement: 'Aprimoramento de conteúdo',
+      articleParams: 'Parâmetros de geração de artigos',
+      reviewLaunch: 'Revisão e lançamento',
+      minWordCount: 'Contagem mínima de palavras',
+      maxWordCount: 'Contagem máxima de palavras',
+      writingStyle: 'Estilo de escrita',
+      tone: 'Tom',
+      targetKeywords: 'Palavras-chave alvo',
+      addKeyword: 'Adicionar',
+      contentStructure: 'Preferências de estrutura',
+      language: 'Idioma',
+      launchCampaign: 'Lançar campanha',
+      creating: 'Criando...',
+      campaignDetails: 'Detalhes da campanha',
+      contentSettings: 'Configurações de conteúdo',
+      enhancementFeatures: 'Recursos de aprimoramento',
+      readyToLaunch: 'Pronto para lançar!',
+      generated: 'Gerados',
+      published: 'Publicados',
+      lastRun: 'Última execução',
+      nextRun: 'Próxima execução',
+      recentExecutions: 'Execuções recentes',
+      articlesGenerated: 'artigo(s) gerado(s)',
+      pauseCampaign: 'Pausar campanha',
+      resumeCampaign: 'Retomar campanha',
+      runNow: 'Executar agora',
+      stopCampaign: 'Parar campanha',
+      deleteCampaign: 'Excluir campanha',
+      stopConfirm: 'Tem certeza de que deseja parar esta campanha? Esta ação não pode ser desfeita.',
+      deleteConfirm: 'Tem certeza de que deseja excluir esta campanha? Todos os dados serão perdidos.',
+      status: {
+        draft: 'Rascunho',
+        active: 'Ativa',
+        paused: 'Pausada',
+        stopped: 'Parada',
+        completed: 'Concluída'
+      },
+      frequency: {
+        daily: 'Diário',
+        weekly: 'Semanal',
+        biWeekly: 'Quinzenal',
+        monthly: 'Mensal'
+      },
+      writingStyles: {
+        professional: 'Profissional',
+        casual: 'Casual',
+        technical: 'Técnico',
+        conversational: 'Conversacional'
+      },
+      tones: {
+        formal: 'Formal',
+        informal: 'Informal',
+        friendly: 'Amigável',
+        authoritative: 'Autoritário'
+      },
+      validation: {
+        nameRequired: 'O nome da campanha é obrigatório',
+        topicRequired: 'O tópico/niche é obrigatório',
+        startDateRequired: 'A data de início é obrigatória',
+        minWordCount: 'A contagem mínima de palavras deve ser pelo menos 300',
+        maxWordCount: 'O máximo deve ser maior que o mínimo',
+        keywordsRequired: 'Pelo menos uma palavra-chave é necessária'
+      }
     }
   },
   nl: {
@@ -1305,7 +1671,7 @@ export const translations: Record<Language, Translations> = {
       avgInventory: 'Gem. voorraad',
       activeProducts: 'Actieve producten',
       enrichedProducts: 'Verrijkte producten',
-      showAll: 'Alles tonen',
+      showAll: 'Alle tonen',
       showLess: 'Minder tonen',
       noEnrichedProducts: 'Geen verrijkte producten',
       enrichedAt: 'Verrijkt'
@@ -1320,14 +1686,19 @@ export const translations: Record<Language, Translations> = {
       enriched: 'Verrijkt',
       pending: 'In afwachting',
       failed: 'Mislukt',
-      enrichAll: 'Alles verrijken',
+      enrichAll: 'Alle verrijken',
       enriching: 'Verrijken...',
       price: 'Prijs',
       inventory: 'Voorraad',
       status: 'Status',
       vendor: 'Leverancier',
       category: 'Categorie',
-      noProducts: 'Geen producten gevonden'
+      noProducts: 'Geen producten gevonden',
+      totalProducts: 'Totaal Producten',
+      enrichedProducts: 'Verrijkte producten',
+      syncedToShopify: 'Gesynchroniseerd met Shopify',
+      pendingSync: 'Synchronisatie in afwachting',
+      ofTotal: 'van totaal'
     },
     settings: {
       title: 'Instellingen',
@@ -1373,7 +1744,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Moeilijkheid',
       easy: 'Makkelijk',
       medium: 'Gemiddeld',
-      hard: 'Moeilijk'
+      hard: 'Moeilijk',
+      allProducts: 'Alle producten',
+      notEnriched: 'Niet verrijkt',
+      toSync: 'Te synchroniseren',
+      synced: 'Gesynchroniseerd',
+      totalProducts: 'Totaal Producten',
+      optimizedProducts: 'Geoptimaliseerde producten',
+      allCatalog: 'Alle producten in catalogus',
+      tags: 'Tags',
+      tagsNotEnriched: 'Tags niet verrijkt',
+      tagsEnriched: 'Tags verrijkt'
     },
     blog: {
       autoBlogWriter: 'Auto Blog Schrijver',
@@ -1392,6 +1773,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Geplande tijd',
       dayOfWeek: 'Dag van de week',
       dayOfMonth: 'Dag van de maand'
+    },
+    campaigns: {
+      title: 'AI Campagnes',
+      createCampaign: 'Campagne aanmaken',
+      campaignName: 'Campagnenaam',
+      description: 'Beschrijving',
+      topicNiche: 'Inhoudsthema/Niche',
+      targetAudience: 'Doelgroep',
+      startDate: 'Startdatum',
+      endDate: 'Einddatum (Optioneel)',
+      noCampaigns: 'Nog geen campagnes',
+      createFirst: 'Maak uw eerste AI-campagne aan om automatisch bloginhoud te genereren',
+      campaignConfig: 'Campagneconfiguratie',
+      contentEnhancement: 'Inhoudsverbetering',
+      articleParams: 'Artikelgeneratieparameters',
+      reviewLaunch: 'Beoordeling & Lancering',
+      minWordCount: 'Minimaal aantal woorden',
+      maxWordCount: 'Maximaal aantal woorden',
+      writingStyle: 'Schrijfstijl',
+      tone: 'Toon',
+      targetKeywords: 'Doelzoekwoorden',
+      addKeyword: 'Toevoegen',
+      contentStructure: 'Inhoudsstructuurvoorkeuren',
+      language: 'Taal',
+      launchCampaign: 'Campagne lanceren',
+      creating: 'Aanmaken...',
+      campaignDetails: 'Campagnedetails',
+      contentSettings: 'Inhoudsinstellingen',
+      enhancementFeatures: 'Verbeteringsfuncties',
+      readyToLaunch: 'Klaar om te lanceren!',
+      generated: ' gegenereerd',
+      published: 'Gepubliceerd',
+      lastRun: 'Laatste uitvoering',
+      nextRun: 'Volgende uitvoering',
+      recentExecutions: 'Recente uitvoeringen',
+      articlesGenerated: 'artikel(s) gegenereerd',
+      pauseCampaign: 'Campagne pauzeren',
+      resumeCampaign: 'Campagne hervatten',
+      runNow: 'Nu uitvoeren',
+      stopCampaign: 'Campagne stoppen',
+      deleteCampaign: 'Campagne verwijderen',
+      stopConfirm: 'Weet u zeker dat u deze campagne wilt stoppen? Deze actie kan niet ongedaan worden gemaakt.',
+      deleteConfirm: 'Weet u zeker dat u deze campagne wilt verwijderen? Alle gegevens gaan verloren.',
+      status: {
+        draft: 'Concept',
+        active: 'Actief',
+        paused: 'Gepauzeerd',
+        stopped: 'Gestopt',
+        completed: 'Voltooid'
+      },
+      frequency: {
+        daily: 'Dagelijks',
+        weekly: 'Wekelijks',
+        biWeekly: 'Tweewekelijks',
+        monthly: 'Maandelijks'
+      },
+      writingStyles: {
+        professional: 'Professioneel',
+        casual: 'Informeel',
+        technical: 'Technisch',
+        conversational: 'Conversationeel'
+      },
+      tones: {
+        formal: 'Formeel',
+        informal: 'Informeel',
+        friendly: 'Vriendelijk',
+        authoritative: 'Autoritair'
+      },
+      validation: {
+        nameRequired: 'Campagnenaam is verplicht',
+        topicRequired: 'Inhoudsthema/niche is verplicht',
+        startDateRequired: 'Startdatum is verplicht',
+        minWordCount: 'Minimaal aantal woorden moet minimaal 300 zijn',
+        maxWordCount: 'Maximum moet groter zijn dan minimum',
+        keywordsRequired: 'Minstens één zoekwoord is vereist'
+      }
     }
   },
   ru: {
@@ -1465,7 +1922,12 @@ export const translations: Record<Language, Translations> = {
       status: 'Статус',
       vendor: 'Поставщик',
       category: 'Категория',
-      noProducts: 'Продукты не найдены'
+      noProducts: 'Продукты не найдены',
+      totalProducts: 'Всего продуктов',
+      enrichedProducts: 'Обогащенные продукты',
+      syncedToShopify: 'Синхронизировано с Shopify',
+      pendingSync: 'Ожидание синхронизации',
+      ofTotal: 'из всего'
     },
     settings: {
       title: 'Настройки',
@@ -1511,7 +1973,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: 'Сложность',
       easy: 'Легко',
       medium: 'Средне',
-      hard: 'Сложно'
+      hard: 'Сложно',
+      allProducts: 'Все продукты',
+      notEnriched: 'Не обогащены',
+      toSync: 'К синхронизации',
+      synced: 'Синхронизированы',
+      totalProducts: 'Всего продуктов',
+      optimizedProducts: 'Оптимизированные продукты',
+      allCatalog: 'Все продукты в каталоге',
+      tags: 'Теги',
+      tagsNotEnriched: 'Теги не обогащены',
+      tagsEnriched: 'Теги обогащены'
     },
     blog: {
       autoBlogWriter: 'Автоматический писатель',
@@ -1530,6 +2002,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'Время планирования',
       dayOfWeek: 'День недели',
       dayOfMonth: 'День месяца'
+    },
+    campaigns: {
+      title: 'ИИ Кампании',
+      createCampaign: 'Создать кампанию',
+      campaignName: 'Название кампании',
+      description: 'Описание',
+      topicNiche: 'Тема/Ниша контента',
+      targetAudience: 'Целевая аудитория',
+      startDate: 'Дата начала',
+      endDate: 'Дата окончания (Опционально)',
+      noCampaigns: 'Пока нет кампаний',
+      createFirst: 'Создайте свою первую ИИ-кампанию, чтобы начать автоматически генерировать контент для блога',
+      campaignConfig: 'Конфигурация кампании',
+      contentEnhancement: 'Улучшение контента',
+      articleParams: 'Параметры генерации статей',
+      reviewLaunch: 'Обзор и запуск',
+      minWordCount: 'Мин. количество слов',
+      maxWordCount: 'Макс. количество слов',
+      writingStyle: 'Стиль письма',
+      tone: 'Тон',
+      targetKeywords: 'Целевые ключевые слова',
+      addKeyword: 'Добавить',
+      contentStructure: 'Предпочтения структуры',
+      language: 'Язык',
+      launchCampaign: 'Запустить кампанию',
+      creating: 'Создание...',
+      campaignDetails: 'Детали кампании',
+      contentSettings: 'Настройки контента',
+      enhancementFeatures: 'Функции улучшения',
+      readyToLaunch: 'Готово к запуску!',
+      generated: 'Сгенерировано',
+      published: 'Опубликовано',
+      lastRun: 'Последний запуск',
+      nextRun: 'Следующий запуск',
+      recentExecutions: 'Недавние выполнения',
+      articlesGenerated: 'статья(ей) сгенерировано',
+      pauseCampaign: 'Приостановить кампанию',
+      resumeCampaign: 'Возобновить кампанию',
+      runNow: 'Запустить сейчас',
+      stopCampaign: 'Остановить кампанию',
+      deleteCampaign: 'Удалить кампанию',
+      stopConfirm: 'Вы уверены, что хотите остановить эту кампанию? Это действие нельзя отменить.',
+      deleteConfirm: 'Вы уверены, что хотите удалить эту кампанию? Все данные будут потеряны.',
+      status: {
+        draft: 'Черновик',
+        active: 'Активна',
+        paused: 'Приостановлена',
+        stopped: 'Остановлена',
+        completed: 'Завершена'
+      },
+      frequency: {
+        daily: 'Ежедневно',
+        weekly: 'Еженедельно',
+        biWeekly: 'Раз в две недели',
+        monthly: 'Ежемесячно'
+      },
+      writingStyles: {
+        professional: 'Профессиональный',
+        casual: 'Неформальный',
+        technical: 'Технический',
+        conversational: 'Разговорный'
+      },
+      tones: {
+        formal: 'Формальный',
+        informal: 'Неформальный',
+        friendly: 'Дружелюбный',
+        authoritative: 'Авторитетный'
+      },
+      validation: {
+        nameRequired: 'Название кампании обязательно',
+        topicRequired: 'Тема/ниша обязательна',
+        startDateRequired: 'Дата начала обязательна',
+        minWordCount: 'Минимальное количество слов должно быть не менее 300',
+        maxWordCount: 'Максимум должен быть больше минимума',
+        keywordsRequired: 'Требуется хотя бы одно ключевое слово'
+      }
     }
   },
   zh: {
@@ -1603,7 +2151,12 @@ export const translations: Record<Language, Translations> = {
       status: '状态',
       vendor: '供应商',
       category: '类别',
-      noProducts: '未找到产品'
+      noProducts: '未找到产品',
+      totalProducts: '总产品数',
+      enrichedProducts: '丰富产品',
+      syncedToShopify: '已同步到 Shopify',
+      pendingSync: '待同步',
+      ofTotal: '共'
     },
     settings: {
       title: '设置',
@@ -1649,7 +2202,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: '难度',
       easy: '简单',
       medium: '中等',
-      hard: '困难'
+      hard: '困难',
+      allProducts: '所有产品',
+      notEnriched: '未丰富',
+      toSync: '待同步',
+      synced: '已同步',
+      totalProducts: '总产品数',
+      optimizedProducts: '优化产品',
+      allCatalog: '目录中所有产品',
+      tags: '标签',
+      tagsNotEnriched: '标签未丰富',
+      tagsEnriched: '标签已丰富'
     },
     blog: {
       autoBlogWriter: '自动博客作者',
@@ -1668,6 +2231,82 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: '计划时间',
       dayOfWeek: '星期',
       dayOfMonth: '日期'
+    },
+    campaigns: {
+      title: 'AI 营销活动',
+      createCampaign: '创建营销活动',
+      campaignName: '营销活动名称',
+      description: '描述',
+      topicNiche: '内容主题/领域',
+      targetAudience: '目标受众',
+      startDate: '开始日期',
+      endDate: '结束日期 (可选)',
+      noCampaigns: '暂无营销活动',
+      createFirst: '创建您的第一个 AI 营销活动，开始自动生成博客内容',
+      campaignConfig: '营销活动配置',
+      contentEnhancement: '内容增强',
+      articleParams: '文章生成参数',
+      reviewLaunch: '审核与启动',
+      minWordCount: '最小字数',
+      maxWordCount: '最大字数',
+      writingStyle: '写作风格',
+      tone: '语气',
+      targetKeywords: '目标关键词',
+      addKeyword: '添加',
+      contentStructure: '内容结构偏好',
+      language: '语言',
+      launchCampaign: '启动营销活动',
+      creating: '创建中...',
+      campaignDetails: '营销活动详情',
+      contentSettings: '内容设置',
+      enhancementFeatures: '增强功能',
+      readyToLaunch: '准备启动！',
+      generated: '已生成',
+      published: '已发布',
+      lastRun: '上次运行',
+      nextRun: '下次运行',
+      recentExecutions: '最近执行',
+      articlesGenerated: '篇文章已生成',
+      pauseCampaign: '暂停营销活动',
+      resumeCampaign: '恢复营销活动',
+      runNow: '立即运行',
+      stopCampaign: '停止营销活动',
+      deleteCampaign: '删除营销活动',
+      stopConfirm: '确定要停止此营销活动吗？此操作无法撤销。',
+      deleteConfirm: '确定要删除此营销活动吗？所有数据将丢失。',
+      status: {
+        draft: '草稿',
+        active: '活跃',
+        paused: '已暂停',
+        stopped: '已停止',
+        completed: '已完成'
+      },
+      frequency: {
+        daily: '每日',
+        weekly: '每周',
+        biWeekly: '每两周',
+        monthly: '每月'
+      },
+      writingStyles: {
+        professional: '专业',
+        casual: '休闲',
+        technical: '技术',
+        conversational: '对话'
+      },
+      tones: {
+        formal: '正式',
+        informal: '非正式',
+        friendly: '友好',
+        authoritative: '权威'
+      },
+      validation: {
+        nameRequired: '营销活动名称必填',
+        topicRequired: '内容主题/领域必填',
+        startDateRequired: '开始日期必填',
+        minWordCount: '最小字数必须至少 300',
+        maxWordCount: '最大值必须大于最小值',
+        keywordsRequired: '至少需要一个关键词'
+      }
     }
   },
   ja: {
@@ -1741,7 +2380,12 @@ export const translations: Record<Language, Translations> = {
       status: 'ステータス',
       vendor: 'ベンダー',
       category: 'カテゴリ',
-      noProducts: '製品が見つかりません'
+      noProducts: '製品が見つかりません',
+      totalProducts: '合計製品数',
+      enrichedProducts: '強化製品',
+      syncedToShopify: 'Shopifyと同期済み',
+      pendingSync: '同期保留中',
+      ofTotal: '/合計'
     },
     settings: {
       title: '設定',
@@ -1787,7 +2431,17 @@ export const translations: Record<Language, Translations> = {
       difficulty: '難易度',
       easy: '簡単',
       medium: '中程度',
-      hard: '難しい'
+      hard: '難しい',
+      allProducts: 'すべての製品',
+      notEnriched: '未強化',
+      toSync: '同期待ち',
+      synced: '同期済み',
+      totalProducts: '合計製品数',
+      optimizedProducts: '最適化製品',
+      allCatalog: 'カタログ内の全製品',
+      tags: 'タグ',
+      tagsNotEnriched: 'タグ未強化',
+      tagsEnriched: 'タグ強化済み'
     },
     blog: {
       autoBlogWriter: '自動ブログライター',
@@ -1806,10 +2460,115 @@ export const translations: Record<Language, Translations> = {
       scheduleTime: 'スケジュール時間',
       dayOfWeek: '曜日',
       dayOfMonth: '日'
+    },
+    campaigns: {
+      title: 'AIキャンペーン',
+      createCampaign: 'キャンペーン作成',
+      campaignName: 'キャンペーン名',
+      description: '説明',
+      topicNiche: 'コンテンツトピック/ニッチ',
+      targetAudience: 'ターゲットオーディエンス',
+      startDate: '開始日',
+      endDate: '終了日 (任意)',
+      noCampaigns: 'まだキャンペーンがありません',
+      createFirst: '最初のAIキャンペーンを作成して、自動的にブログコンテンツを生成しましょう',
+      campaignConfig: 'キャンペーン設定',
+      contentEnhancement: 'コンテンツ強化',
+      articleParams: '記事生成パラメータ',
+      reviewLaunch: 'レビューと開始',
+      minWordCount: '最小単語数',
+      maxWordCount: '最大単語数',
+      writingStyle: '執筆スタイル',
+      tone: 'トーン',
+      targetKeywords: 'ターゲットキーワード',
+      addKeyword: '追加',
+      contentStructure: 'コンテンツ構造設定',
+      language: '言語',
+      launchCampaign: 'キャンペーン開始',
+      creating: '作成中...',
+      campaignDetails: 'キャンペーン詳細',
+      contentSettings: 'コンテンツ設定',
+      enhancementFeatures: '強化機能',
+      readyToLaunch: '開始準備完了！',
+      generated: '生成済み',
+      published: '公開済み',
+      lastRun: '最終実行',
+      nextRun: '次回実行',
+      recentExecutions: '最近の実行',
+      articlesGenerated: '記事生成済み',
+      pauseCampaign: 'キャンペーン一時停止',
+      resumeCampaign: 'キャンペーン再開',
+      runNow: '今すぐ実行',
+      stopCampaign: 'キャンペーン停止',
+      deleteCampaign: 'キャンペーン削除',
+      stopConfirm: 'このキャンペーンを停止してもよろしいですか？この操作は元に戻せません。',
+      deleteConfirm: 'このキャンペーンを削除してもよろしいですか？すべてのデータが失われます。',
+      status: {
+        draft: '下書き',
+        active: 'アクティブ',
+        paused: '一時停止',
+        stopped: '停止',
+        completed: '完了'
+      },
+      frequency: {
+        daily: '毎日',
+        weekly: '毎週',
+        biWeekly: '隔週',
+        monthly: '毎月'
+      },
+      writingStyles: {
+        professional: 'プロフェッショナル',
+        casual: 'カジュアル',
+        technical: 'テクニカル',
+        conversational: '会話型'
+      },
+      tones: {
+        formal: 'フォーマル',
+        informal: 'インフォーマル',
+        friendly: 'フレンドリー',
+        authoritative: '権威的'
+      },
+      validation: {
+        nameRequired: 'キャンペーン名は必須です',
+        topicRequired: 'コンテンツトピック/ニッチは必須です',
+        startDateRequired: '開始日は必須です',
+        minWordCount: '最小単語数は300以上である必要があります',
+        maxWordCount: '最大値は最小値より大きい必要があります',
+        keywordsRequired: '少なくとも1つのキーワードが必要です'
+      }
     }
   }
 };
 
 export function getTranslation(lang: Language): Translations {
-  return translations[lang] || translations.en;
+  const selectedLang = translations[lang];
+  if (!selectedLang) {
+    console.warn(`Language "${lang}" not found, falling back to English`);
+    return translations.en;
+  }
+  return selectedLang;
+}
+
+// Utility function to get translation with fallback for missing keys
+export function getTranslationWithFallback(lang: Language): Translations {
+  const baseTranslation = translations.en;
+  const targetTranslation = translations[lang] || translations.en;
+  
+  return deepMerge(baseTranslation, targetTranslation);
+}
+
+// Helper to get available languages with their display names
+export function getAvailableLanguages(): { code: Language; name: string; nativeName: string }[] {
+  return [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'fr', name: 'French', nativeName: 'Français' },
+    { code: 'es', name: 'Spanish', nativeName: 'Español' },
+    { code: 'de', name: 'German', nativeName: 'Deutsch' },
+    { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+    { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+    { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
+    { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+    { code: 'zh', name: 'Chinese', nativeName: '中文' },
+    { code: 'ja', name: 'Japanese', nativeName: '日本語' }
+  ];
 }
