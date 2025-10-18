@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
       throw new Error("Missing DEEPSEEK_API_KEY");
     }
 
-    console.log(`📨 Received ${messages.length} messages, stream: ${stream}`);
+    console.log(`📨 Received request with ${messages.length} messages`);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
         model,
         messages,
         temperature,
-        stream: stream // ⚠️ Respecter le paramètre stream du frontend
+        stream: stream
       }),
       signal: controller.signal
     });
@@ -44,17 +44,10 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("DeepSeek API error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ 
-          error: true,
-          message: `API error: ${response.status}`,
-          response: "Erreur de communication avec DeepSeek"
-        }),
-        { status: response.status, headers: corsHeaders }
-      );
+      throw new Error(`API error: ${response.status}`);
     }
 
-    // 🔥 SI STREAMING = true
+    // Handle streaming response
     if (stream) {
       if (!response.body) {
         throw new Error("No response body for streaming");
@@ -69,9 +62,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 🔥 SI STREAMING = false (MODE NORMAL - JSON)
+    // Handle non-streaming response
     const data = await response.json();
-    
+    console.log("✅ DeepSeek response received");
+
     return new Response(JSON.stringify(data), {
       headers: {
         ...corsHeaders,
@@ -86,7 +80,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         error: true,
         message: err.message,
-        response: "Erreur technique temporaire"
+        response: "Erreur de communication avec le service IA"
       }),
       {
         status: 500,
