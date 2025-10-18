@@ -1,3 +1,4 @@
+// productSearch.ts - VERSION CORRECTE
 import { supabase } from "./supabase";
 import type { Database } from "./database.types";
 
@@ -41,10 +42,10 @@ export async function searchProducts(
   console.log('🔍 [SEARCH] Starting product search with filters:', filters);
 
   try {
+    // ✅ CORRECTION : Pas de colonne item_type dans votre table
     let query = supabase
       .from('shopify_products')
-      .select('*', { count: 'exact' })
-      .eq('item_type', 'product');
+      .select('*', { count: 'exact' });
 
     if (storeId) {
       query = query.eq('store_id', storeId);
@@ -120,6 +121,7 @@ export async function searchProducts(
       query = query.or(`ai_craftsmanship_level.ilike.%${filters.craftsmanship}%`);
     }
 
+    // ✅ CORRECTION CRITIQUE : Recherche améliorée avec TOUS vos champs
     if (filters.query) {
       const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
 
@@ -154,7 +156,8 @@ export async function searchProducts(
           `google_custom_label_1.ilike.%${term}%`,
           `google_custom_label_2.ilike.%${term}%`,
           `google_custom_label_3.ilike.%${term}%`,
-          `google_custom_label_4.ilike.%${term}%`
+          `google_custom_label_4.ilike.%${term}%`,
+          `chat_text.ilike.%${term}%` // ✅ Votre champ de synthèse
         ]).join(',');
 
         query = query.or(orConditions);
@@ -248,18 +251,19 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
     const aiColor = product.ai_color?.toLowerCase() || '';
     const aiMaterial = product.ai_material?.toLowerCase() || '';
     const aiShape = product.ai_shape?.toLowerCase() || '';
-    const aiTexture = (product as any).ai_texture?.toLowerCase() || '';
-    const aiPattern = (product as any).ai_pattern?.toLowerCase() || '';
-    const aiFinish = (product as any).ai_finish?.toLowerCase() || '';
-    const aiDesign = (product as any).ai_design_elements?.toLowerCase() || '';
-    const room = (product as any).room?.toLowerCase() || '';
-    const style = (product as any).style?.toLowerCase() || '';
-    const dimensions = (product as any).dimensions_text?.toLowerCase() || '';
-    const characteristics = (product as any).characteristics?.toLowerCase() || '';
+    const aiTexture = product.ai_texture?.toLowerCase() || '';
+    const aiPattern = product.ai_pattern?.toLowerCase() || '';
+    const aiFinish = product.ai_finish?.toLowerCase() || '';
+    const aiDesign = product.ai_design_elements?.toLowerCase() || '';
+    const room = product.room?.toLowerCase() || '';
+    const style = product.style?.toLowerCase() || '';
+    const dimensions = product.dimensions_text?.toLowerCase() || '';
+    const characteristics = product.characteristics?.toLowerCase() || '';
     const seoTitle = product.seo_title?.toLowerCase() || '';
     const seoDescription = product.seo_description?.toLowerCase() || '';
     const visionAnalysis = product.ai_vision_analysis?.toLowerCase() || '';
-    const craftsmanship = (product as any).ai_craftsmanship_level?.toLowerCase() || '';
+    const craftsmanship = product.ai_craftsmanship_level?.toLowerCase() || '';
+    const chatText = product.chat_text?.toLowerCase() || '';
 
     searchTerms.forEach(term => {
       if (title.includes(term)) score += 10;
@@ -283,6 +287,7 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
       if (seoDescription.includes(term)) score += 2;
       if (description.includes(term)) score += 1;
       if (visionAnalysis.includes(term)) score += 1;
+      if (chatText.includes(term)) score += 6; // ✅ Bonus pour chat_text
     });
 
     return { product, score };
@@ -293,6 +298,7 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
     .map(item => item.product);
 }
 
+// ✅ CORRECTION des autres fonctions
 export async function searchProductsByIds(productIds: string[]): Promise<Product[]> {
   if (productIds.length === 0) {
     return [];
@@ -302,8 +308,7 @@ export async function searchProductsByIds(productIds: string[]): Promise<Product
     const { data, error } = await supabase
       .from('shopify_products')
       .select('*')
-      .in('id', productIds)
-      .eq('item_type', 'product');
+      .in('id', productIds);
 
     if (error) {
       console.error('❌ Error searching products by IDs:', error);
@@ -325,7 +330,6 @@ export async function searchProductsByCategory(
     const { data, error } = await supabase
       .from('shopify_products')
       .select('*')
-      .eq('item_type', 'product')
       .eq('status', 'active')
       .ilike('category', `%${category}%`)
       .order('created_at', { ascending: false })
@@ -339,74 +343,6 @@ export async function searchProductsByCategory(
     return data || [];
   } catch (error) {
     console.error('❌ Error in searchProductsByCategory:', error);
-    return [];
-  }
-}
-
-export async function findSimilarProducts(
-  productId: string,
-  limit: number = 5
-): Promise<Product[]> {
-  try {
-    const { data: product, error: productError } = await supabase
-      .from('shopify_products')
-      .select('*')
-      .eq('id', productId)
-      .maybeSingle();
-
-    if (productError || !product) {
-      return [];
-    }
-
-    const filters: ProductSearchFilters = {
-      category: product.category || undefined,
-      limit,
-      sortBy: 'relevance'
-    };
-
-    if (product.ai_color) {
-      filters.color = product.ai_color;
-    }
-
-    if (product.ai_material) {
-      filters.material = product.ai_material;
-    }
-
-    const result = await searchProducts(filters);
-
-    return result.products.filter(p => p.id !== productId);
-
-  } catch (error) {
-    console.error('❌ Error finding similar products:', error);
-    return [];
-  }
-}
-
-export async function getProductSuggestions(
-  query: string,
-  limit: number = 5
-): Promise<string[]> {
-  if (!query || query.length < 2) {
-    return [];
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('shopify_products')
-      .select('title')
-      .eq('item_type', 'product')
-      .eq('status', 'active')
-      .ilike('title', `%${query}%`)
-      .limit(limit);
-
-    if (error) {
-      console.error('❌ Error getting suggestions:', error);
-      return [];
-    }
-
-    return (data || []).map(p => p.title);
-  } catch (error) {
-    console.error('❌ Error in getProductSuggestions:', error);
     return [];
   }
 }
@@ -442,15 +378,24 @@ export function extractFiltersFromQuery(query: string): Partial<ProductSearchFil
     filters.maxPrice = Number(priceRangeMatch[2] || priceRangeMatch[4]);
   }
 
-  const cleanQuery = query
-    .replace(new RegExp(`\\b(${colors.join('|')})\\b`, 'gi'), '')
-    .replace(new RegExp(`\\b(${materials.join('|')})\\b`, 'gi'), '')
-    .replace(/\b(promo|promotion|solde|réduction|reduction|discount|sale)\b/gi, '')
-    .replace(/\d+\s*(€|euros?|dollars?|\$)/gi, '')
-    .trim();
+  // ✅ CORRECTION : Si demande générique, on cherche dans tous les produits
+  const genericWords = ['produits', 'articles', 'catalogue', 'collection', 'choix', 'sélection', 'quelque chose', 'quelques'];
+  const hasGenericWord = genericWords.some(word => lowerQuery.includes(word));
+  
+  if (hasGenericWord) {
+    filters.query = ''; // Recherche vide = tous les produits
+  } else {
+    // Nettoyer la requête
+    const cleanQuery = query
+      .replace(new RegExp(`\\b(${colors.join('|')})\\b`, 'gi'), '')
+      .replace(new RegExp(`\\b(${materials.join('|')})\\b`, 'gi'), '')
+      .replace(/\b(promo|promotion|solde|réduction|reduction|discount|sale)\b/gi, '')
+      .replace(/\d+\s*(€|euros?|dollars?|\$)/gi, '')
+      .trim();
 
-  if (cleanQuery) {
-    filters.query = cleanQuery;
+    if (cleanQuery) {
+      filters.query = cleanQuery;
+    }
   }
 
   return filters;
