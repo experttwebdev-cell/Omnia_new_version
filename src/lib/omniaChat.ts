@@ -1,42 +1,120 @@
 import { supabase, getEnvVar } from "./supabase";
 import { searchProducts, extractFiltersFromQuery, type ProductSearchFilters } from "./productSearch";
-import type { Database } from "./database.types";
-
-type Product = Database['public']['Tables']['shopify_products']['Row'];
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
 }
 
-interface ProductAttributes {
-  intent: string;
-  type?: string;
-  style?: string;
-  color?: string;
-  material?: string;
-  maxPrice?: number;
-  searchPromo?: boolean;
-  sector?: "meubles" | "montres" | "pret_a_porter";
+interface Product {
+  id: string;
+  title: string;
+  price: string;
+  compare_at_price?: string;
+  ai_color?: string;
+  ai_material?: string;
+  ai_shape?: string;
+  image_url?: string;
+  category?: string;
+  sub_category?: string;
+  tags?: string;
+  handle?: string;
+  vendor?: string;
+  currency?: string;
+  product_url?: string;
 }
 
 interface ChatResponse {
   role: "assistant";
   content: string;
-  intent: "conversation" | "product_show";
+  intent: "simple_chat" | "product_chat" | "product_show";
   products: Product[];
   mode: "conversation" | "product_show";
   sector: string;
 }
 
 //
-// ⚙️ 1. APPEL DEEPSEEK SIMPLE
+// 🧠 DÉTECTION D'INTENTION - 3 TYPES
+//
+async function detectIntent(userMessage: string): Promise<"simple_chat" | "product_chat" | "product_show"> {
+  const msg = userMessage.toLowerCase().trim();
+  
+  console.log("🧠 Analyse intention pour:", msg);
+
+  // 1. CHAT SIMPLE - Salutations basiques
+  const simpleChatKeywords = [
+    "bonjour", "salut", "hello", "coucou", "hey", "hi", 
+    "comment ça va", "ça va", "how are you", "bien et toi",
+    "merci", "thanks", "thank you", "de rien", "au revoir", "bye"
+  ];
+
+  // 2. INTENTION PRODUIT - Discussion sur produits
+  const productChatKeywords = [
+    "caractéristique", "spécification", "description", "matériau", "couleur",
+    "dimension", "taille", "poids", "qualité", "avantage", "inconvénient",
+    "durable", "résistant", "entretien", "garantie", "livraison",
+    "comment est", "est-ce que", "quelle est", "quelles sont"
+  ];
+
+  // 3. RECHERCHE PRODUIT - Montrer des produits
+  const productShowKeywords = [
+    "cherche", "trouve", "trouver", "acheter", "voir", "recherche", 
+    "disponible", "propose", "conseille", "recommande", "suggère",
+    "montre", "présente", "affiche", "donne", "veux", "voudrais",
+    "je veux", "je voudrais", "j'aimerais", "donne-moi", "montre-moi"
+  ];
+
+  // Mots-clés produits
+  const productKeywords = [
+    "table", "chaise", "canapé", "canape", "montre", "robe", "bureau",
+    "armoire", "lit", "fauteuil", "meuble", "décor", "décoration",
+    "accessoire", "bijou", "vêtement", "vetement", "mobilier"
+  ];
+
+  // 🔥 LOGIQUE DE DÉTECTION
+  const isSimpleChat = simpleChatKeywords.some(word => msg.includes(word));
+  const isProductChat = productChatKeywords.some(word => msg.includes(word));
+  const hasShowIntent = productShowKeywords.some(word => msg.includes(word));
+  const hasProductKeyword = productKeywords.some(word => msg.includes(word));
+
+  console.log("🔍 Intent - Simple:", isSimpleChat, "ProductChat:", isProductChat, "Show:", hasShowIntent, "Product:", hasProductKeyword);
+
+  // 1. Chat simple prioritaire
+  if (isSimpleChat && !hasProductKeyword) {
+    console.log("🎯 Décision: CHAT SIMPLE");
+    return "simple_chat";
+  }
+
+  // 2. Discussion produit (questions sur caractéristiques)
+  if (isProductChat && hasProductKeyword) {
+    console.log("🎯 Décision: DISCUSSION PRODUIT");
+    return "product_chat";
+  }
+
+  // 3. Affichage produit (recherche concrète)
+  if (hasShowIntent && hasProductKeyword) {
+    console.log("🎯 Décision: AFFICHAGE PRODUIT");
+    return "product_show";
+  }
+
+  // 4. Fallback: si produit mentionné mais intention floue → discussion
+  if (hasProductKeyword) {
+    console.log("🎯 Décision: DISCUSSION PRODUIT (fallback)");
+    return "product_chat";
+  }
+
+  console.log("🎯 Décision: CHAT SIMPLE (fallback)");
+  return "simple_chat";
+}
+
+//
+// ⚙️ APPEL DEEPSEEK
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<string> {
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
   
   if (!supabaseUrl) {
-    return "Bonjour ! Je suis OmnIA, votre assistant shopping. Comment puis-je vous aider ?";
+    return "Bonjour ! Je suis OmnIA. Comment puis-je vous aider ?";
   }
 
   try {
@@ -67,7 +145,7 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<s
     return "Je suis OmnIA. Comment puis-je vous aider ?";
 
   } catch (err) {
-    console.error("Erreur callDeepSeek:", err);
+    console.error("❌ Erreur callDeepSeek:", err);
     
     const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || "";
     
@@ -80,117 +158,107 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<s
 }
 
 //
-// 🧠 2. DÉTECTION D'INTENTION
+// 💬 GESTIONNAIRE CHAT SIMPLE
 //
-async function detectIntent(userMessage: string): Promise<"chat" | "product_search"> {
-  const msg = userMessage.toLowerCase().trim();
-  
-  const searchKeywords = [
-    "cherche", "trouve", "trouver", "acheter", "voir", "recherche", 
-    "disponible", "propose", "conseille", "recommande", "suggère",
-    "montre", "présente", "affiche", "donne", "veux", "voudrais"
-  ];
-  
-  const productKeywords = [
-    "table", "chaise", "canapé", "canape", "montre", "robe", "bureau",
-    "armoire", "lit", "fauteuil", "meuble", "décor", "décoration",
-    "accessoire", "bijou", "vêtement", "vetement", "mobilier", "chemise",
-    "pantalon", "jupe", "sac", "bijoux", "horloge", "lampe", "coussin"
+async function handleSimpleChat(userMessage: string): Promise<ChatResponse> {
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: `Tu es OmnIA, assistant e-commerce friendly. 
+Réponds de manière concise et chaleureuse en français.
+Max 50 mots. Sois naturel et engageant.`
+    },
+    { role: "user", content: userMessage },
   ];
 
-  const hasSearchIntent = searchKeywords.some(word => msg.includes(word));
-  const hasProductKeyword = productKeywords.some(word => msg.includes(word));
-  
-  if (hasSearchIntent && hasProductKeyword) {
-    return "product_search";
-  }
-  
-  if (hasProductKeyword && !msg.includes('?')) {
-    return "product_search";
-  }
-  
-  return "chat";
-}
+  const response = await callDeepSeek(messages, 80);
 
-async function searchProductsForChat(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
-  console.log("🔍 Recherche produits avec:", filters);
-
-  try {
-    const searchFilters: ProductSearchFilters = {
-      status: 'active',
-      limit: 12,
-      sortBy: 'relevance'
-    };
-
-    if (filters.type) {
-      searchFilters.query = filters.type;
-    }
-
-    if (filters.color) {
-      searchFilters.color = filters.color;
-    }
-
-    if (filters.material) {
-      searchFilters.material = filters.material;
-    }
-
-    if (filters.maxPrice) {
-      searchFilters.maxPrice = filters.maxPrice;
-    }
-
-    if (filters.searchPromo) {
-      searchFilters.hasPromo = true;
-    }
-
-    const result = await searchProducts(searchFilters, storeId);
-
-    console.log(`📦 ${result.products.length} produits trouvés`);
-    return result.products;
-
-  } catch (error) {
-    console.error("❌ Erreur searchProducts:", error);
-    return [];
-  }
+  return {
+    role: "assistant",
+    content: response,
+    intent: "simple_chat",
+    products: [],
+    mode: "conversation",
+    sector: "meubles"
+  };
 }
 
 //
-// ✨ 4. GÉNÉRATION RÉPONSE POUR PRODUITS
+// 🛍️ GESTIONNAIRE DISCUSSION PRODUIT
 //
-async function generateProductPresentation(
-  products: Product[],
-  userMessage: string,
-  sector: string
-): Promise<string> {
-  if (!products.length) {
-    return `Je n'ai pas trouvé de produits correspondant à "${userMessage}". 
+async function handleProductChat(userMessage: string, sector: string): Promise<ChatResponse> {
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: `Tu es OmnIA, expert e-commerce spécialisé en ${sector}.
+Réponds aux questions sur les produits de manière informative et utile.
+Donne des conseils pratiques. Max 100 mots.`
+    },
+    { role: "user", content: userMessage },
+  ];
+
+  const response = await callDeepSeek(messages, 120);
+
+  return {
+    role: "assistant",
+    content: response,
+    intent: "product_chat",
+    products: [], // Pas de produits à afficher
+    mode: "conversation",
+    sector: sector
+  };
+}
+
+//
+// 🎯 GESTIONNAIRE AFFICHAGE PRODUIT
+//
+async function handleProductShow(userMessage: string, searchFilters: ProductSearchFilters, storeId?: string): Promise<ChatResponse> {
+  console.log("🛍️ Recherche produits pour affichage...");
+  
+  const result = await searchProducts(searchFilters, storeId);
+  const products = result.products;
+  
+  let response = "";
+  
+  if (products.length === 0) {
+    response = `Je n'ai pas trouvé de produits correspondant à "${userMessage}". 
 
 Pour affiner la recherche :
 • Précisez la couleur, le style ou le matériau
-• Indiquez votre budget maximum
+• Indiquez votre budget maximum  
 • Décrivez le type de produit recherché
 
 Je suis là pour vous aider !`;
-  }
-
-  // Réponse simple avec les produits trouvés
-  const productCount = products.length;
-  const promoCount = products.filter(p => 
-    p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
-  ).length;
-
-  if (productCount === 1) {
-    return `J'ai trouvé 1 produit correspondant à votre recherche : "${products[0].title}". ${
-      promoCount > 0 ? '📢 Il est en promotion ! ' : ''
-    }Souhaitez-vous en savoir plus ?`;
   } else {
-    return `J'ai trouvé ${productCount} produits correspondant à "${userMessage}". ${
-      promoCount > 0 ? `📢 ${promoCount} sont en promotion ! ` : ''
-    }Je vous présente les meilleures options ci-dessous.`;
+    const productCount = products.length;
+    const promoCount = products.filter(p => 
+      p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
+    ).length;
+
+    if (productCount <= 3) {
+      const productNames = products.map(p => p.title).join(", ");
+      response = `J'ai trouvé ${productCount} produit(s) correspondant à votre recherche : ${productNames}. ${
+        promoCount > 0 ? `📢 ${promoCount} en promotion ! ` : ''
+      }Que pensez-vous de ces options ?`;
+    } else {
+      response = `J'ai trouvé ${productCount} produits correspondant à "${userMessage}". ${
+        promoCount > 0 ? `📢 ${promoCount} sont en promotion ! ` : ''
+      }Je vous présente les meilleures options ci-dessous.`;
+    }
   }
+
+  return {
+    role: "assistant",
+    content: response,
+    intent: "product_show",
+    products: products,
+    mode: "product_show",
+    sector: "meubles"
+  };
 }
 
 //
-// 🧩 5. FONCTION PRINCIPALE OMNIA - VERSION COMPLÈTE
+// 🧩 FONCTION PRINCIPALE OMNIA
 //
 export async function OmnIAChat(
   userMessage: string,
@@ -202,126 +270,47 @@ export async function OmnIAChat(
 
   const msg = userMessage.toLowerCase().trim();
 
-  // ✅ RÉPONSES IMMÉDIATES
-  if (["bonjour", "salut", "hello", "coucou", "hey"].some(greet => msg.includes(greet))) {
-    return {
-      role: "assistant",
-      content: "Bonjour ! 👋 Je suis OmnIA, votre assistant shopping. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?",
-      intent: "conversation",
-      products: [],
-      mode: "conversation",
-      sector: "meubles"
-    };
-  }
-
-  if (["merci", "thanks"].some(thank => msg.includes(thank))) {
-    return {
-      role: "assistant",
-      content: "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions.",
-      intent: "conversation",
-      products: [],
-      mode: "conversation",
-      sector: "meubles"
-    };
-  }
-
   try {
+    // 🔥 DÉTECTION INTENTION
     const intent = await detectIntent(userMessage);
-    console.log("🎯 Intention:", intent);
-
-    // Configuration des filtres
-    const filters: ProductAttributes = { 
-      intent: "product_search", 
-      sector: "meubles" 
-    };
-
-    // 🔥 DÉTECTION DU TYPE DE PRODUIT
-    const productTypes = [
-      "table", "chaise", "canapé", "canape", "lit", "armoire", "bureau",
-      "fauteuil", "commode", "étagère", "etagere", "buffet", "console",
-      "lampe", "coussin", "miroir", "tabouret", "meuble"
-    ];
-    
-    // Trouver le type de produit dans le message
-    const foundType = productTypes.find(t => msg.includes(t));
-    if (foundType) {
-      filters.type = foundType;
-      console.log("🎯 Type détecté:", foundType);
-    }
+    console.log("🎯 Intention finale:", intent);
 
     // Détection secteur
-    if (["montre", "bracelet", "bijou", "horlogerie"].some(x => msg.includes(x))) {
-      filters.sector = "montres";
-    } else if (["robe", "chemise", "pantalon", "vêtement", "vetement", "mode"].some(x => msg.includes(x))) {
-      filters.sector = "pret_a_porter";
+    let sector = "meubles";
+    if (["montre", "bracelet", "bijou"].some(x => msg.includes(x))) {
+      sector = "montres";
+    } else if (["robe", "chemise", "vêtement"].some(x => msg.includes(x))) {
+      sector = "pret_a_porter";
     }
 
-    // Détection couleurs
-    const colors = ["blanc", "noir", "gris", "beige", "bois", "marron", "bleu", "vert", "rouge"];
-    const foundColor = colors.find(c => msg.includes(c));
-    if (foundColor) filters.color = foundColor;
+    // 🔥 ROUTAGE PAR TYPE D'INTENTION
+    switch (intent) {
+      case "simple_chat":
+        return await handleSimpleChat(userMessage);
 
-    // Détection matériaux
-    const materials = ["bois", "metal", "métal", "verre", "marbre", "cuir", "tissu"];
-    const foundMaterial = materials.find(m => msg.includes(m));
-    if (foundMaterial) filters.material = foundMaterial;
+      case "product_chat":
+        return await handleProductChat(userMessage, sector);
 
-    // Promotions
-    if (["promo", "réduction", "solde", "soldé"].some(p => msg.includes(p))) {
-      filters.searchPromo = true;
+      case "product_show":
+        // Utiliser la nouvelle lib de recherche
+        const searchFilters = extractFiltersFromQuery(userMessage);
+        searchFilters.query = userMessage; // Garder la requête originale
+        searchFilters.limit = 9;
+        searchFilters.sortBy = 'relevance';
+        
+        return await handleProductShow(userMessage, searchFilters, storeId);
+
+      default:
+        return await handleSimpleChat(userMessage);
     }
-
-    // Prix
-    const priceMatch = msg.match(/(\d+)\s*(€|euros|euro)/);
-    if (priceMatch) {
-      filters.maxPrice = Number(priceMatch[1]);
-    }
-
-    // 🔥 MODE CONVERSATION
-    if (intent === "chat") {
-      const messages: ChatMessage[] = [
-        {
-          role: "system",
-          content: `Tu es OmnIA, assistant e-commerce. Réponds brièvement en français.`
-        },
-        { role: "user", content: userMessage },
-      ];
-
-      const chatResponse = await callDeepSeek(messages, 100);
-      
-      return {
-        role: "assistant",
-        content: chatResponse,
-        intent: "conversation",
-        products: [],
-        mode: "conversation",
-        sector: filters.sector || "meubles",
-      };
-    }
-
-    // 🔥 MODE RECHERCHE PRODUIT
-    console.log("🔍 Lancement recherche avec filtres:", filters);
-    const products = await searchProductsForChat(filters, storeId);
-    console.log(`📦 ${products.length} produits trouvés`);
-
-    const aiResponse = await generateProductPresentation(products, userMessage, filters.sector || "meubles");
-
-    return {
-      role: "assistant",
-      content: aiResponse,
-      intent: "product_show",
-      products,
-      mode: "product_show",
-      sector: filters.sector || "meubles",
-    };
 
   } catch (error) {
-    console.error("❌ [OMNIA] Erreur:", error);
+    console.error("❌ [OMNIA] Erreur globale:", error);
     
     return {
       role: "assistant",
-      content: "Je suis OmnIA, votre assistant shopping. Décrivez-moi ce que vous cherchez (ex: table en bois, montre élégante, robe d'été) et je vous aiderai !",
-      intent: "conversation",
+      content: "Bonjour ! Je suis OmnIA. Comment puis-je vous aider aujourd'hui ?",
+      intent: "simple_chat",
       products: [],
       mode: "conversation",
       sector: "meubles"
