@@ -10,10 +10,23 @@ import {
   Home,
   Watch,
   Shirt,
+  History,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { formatPrice } from "../lib/currency";
 import { OmnIAChat } from "../lib/omniaChat";
 import { ProductLandingPage } from "./ProductLandingPage";
+import { ChatHistory } from "./ChatHistory";
+import { ChatSettings } from "./ChatSettings";
+import {
+  createConversation,
+  saveMessage,
+  getConversation,
+  getCurrentConversationId,
+  getChatSettings,
+  type ChatConversation,
+  type ChatMessage as HistoryChatMessage
+} from "../lib/chatHistory";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -26,6 +39,7 @@ interface ChatMessage {
 }
 
 type SectorType = "meubles" | "montres" | "pret_a_porter";
+type TabType = "chat" | "history" | "settings";
 
 export function AiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -34,6 +48,9 @@ export function AiChat() {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [showProductLanding, setShowProductLanding] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("chat");
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [autoSave, setAutoSave] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +60,7 @@ export function AiChat() {
     pret_a_porter: Shirt,
   };
 
-  // Charger les paramètres du store
+  // Charger les paramètres du store et l'historique
   useEffect(() => {
     const loadStoreSettings = async () => {
       try {
@@ -52,20 +69,42 @@ export function AiChat() {
           .select("id")
           .limit(1)
           .maybeSingle();
-        
+
         if (error) throw error;
-        
+
         if (data?.id) {
           setStoreId(data.id);
-          setMessages([
-            {
-              role: "assistant",
-              content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
-              timestamp: new Date().toISOString(),
-              intent: "simple_chat"
-            },
-          ]);
         }
+
+        const settings = getChatSettings();
+        setAutoSave(settings.autoSave ?? true);
+
+        const savedConvId = getCurrentConversationId();
+        if (savedConvId) {
+          const conversation = await getConversation(savedConvId);
+          if (conversation && conversation.messages.length > 0) {
+            setCurrentConversationId(savedConvId);
+            setMessages(conversation.messages.map(m => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp,
+              products: m.products,
+              mode: undefined,
+              sector: undefined,
+              intent: undefined
+            })));
+            return;
+          }
+        }
+
+        setMessages([
+          {
+            role: "assistant",
+            content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
+            timestamp: new Date().toISOString(),
+            intent: "simple_chat"
+          },
+        ]);
       } catch (error) {
         console.error("Erreur chargement store:", error);
       }
@@ -82,6 +121,33 @@ export function AiChat() {
     });
   }, [messages]);
 
+  const saveMessageToHistory = async (message: ChatMessage) => {
+    if (!autoSave) return;
+
+    try {
+      if (!currentConversationId) {
+        const conversation = await createConversation(storeId || undefined, {
+          role: message.role,
+          content: message.content,
+          timestamp: message.timestamp,
+          products: message.products
+        });
+        if (conversation) {
+          setCurrentConversationId(conversation.id);
+        }
+      } else {
+        await saveMessage(currentConversationId, {
+          role: message.role,
+          content: message.content,
+          timestamp: message.timestamp,
+          products: message.products
+        });
+      }
+    } catch (error) {
+      console.error("Error saving message:", error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || loading) return;
 
@@ -92,6 +158,8 @@ export function AiChat() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    await saveMessageToHistory(userMessage);
+
     const currentMessage = inputMessage;
     setInputMessage("");
     setLoading(true);
@@ -110,17 +178,17 @@ export function AiChat() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      await saveMessageToHistory(assistantMessage);
     } catch (err) {
       console.error("Chat Error:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Désolé, une erreur technique est survenue. Pouvez-vous reformuler votre question ?",
-          timestamp: new Date().toISOString(),
-          intent: "simple_chat"
-        },
-      ]);
+      const errorMessage = {
+        role: "assistant" as const,
+        content: "Désolé, une erreur technique est survenue. Pouvez-vous reformuler votre question ?",
+        timestamp: new Date().toISOString(),
+        intent: "simple_chat" as const
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      await saveMessageToHistory(errorMessage);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -135,6 +203,7 @@ export function AiChat() {
   };
 
   const handleResetChat = () => {
+    setCurrentConversationId(null);
     setMessages([
       {
         role: "assistant",
@@ -143,6 +212,21 @@ export function AiChat() {
         intent: "simple_chat"
       },
     ]);
+    setActiveTab("chat");
+  };
+
+  const handleSelectConversation = (conversation: ChatConversation) => {
+    setCurrentConversationId(conversation.id);
+    setMessages(conversation.messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+      products: m.products,
+      mode: undefined,
+      sector: undefined,
+      intent: undefined
+    })));
+    setActiveTab("chat");
   };
 
   const getIntentBadge = (intent?: string) => {
@@ -162,7 +246,7 @@ export function AiChat() {
     <div className="h-[calc(100vh-150px)] flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg overflow-hidden border border-gray-200">
       {/* HEADER */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 shadow-md">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
@@ -182,10 +266,59 @@ export function AiChat() {
             Nouvelle discussion
           </button>
         </div>
+
+        {/* ONGLETS */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("chat")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+              activeTab === "chat"
+                ? "bg-white text-blue-600 font-semibold"
+                : "bg-white/10 hover:bg-white/20 text-white"
+            }`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            Chat
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+              activeTab === "history"
+                ? "bg-white text-blue-600 font-semibold"
+                : "bg-white/10 hover:bg-white/20 text-white"
+            }`}
+          >
+            <History className="w-4 h-4" />
+            Historique
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+              activeTab === "settings"
+                ? "bg-white text-blue-600 font-semibold"
+                : "bg-white/10 hover:bg-white/20 text-white"
+            }`}
+          >
+            <SettingsIcon className="w-4 h-4" />
+            Paramètres
+          </button>
+        </div>
       </div>
 
-      {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      {/* CONTENU DES ONGLETS */}
+      {activeTab === "history" && (
+        <ChatHistory
+          onSelectConversation={handleSelectConversation}
+          currentConversationId={currentConversationId || undefined}
+        />
+      )}
+
+      {activeTab === "settings" && <ChatSettings />}
+
+      {activeTab === "chat" && (
+        <>
+          {/* MESSAGES */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, i) => {
           const SectorIcon = msg.sector ? sectorIcons[msg.sector as SectorType] : null;
           const intentBadge = getIntentBadge(msg.intent);
@@ -294,6 +427,8 @@ export function AiChat() {
           Exemples: "table basse bois", "montre élégante", "robe été promotion"
         </p>
       </div>
+        </>
+      )}
 
       {/* MODAL PRODUIT */}
       {showProductLanding && selectedProduct && (
