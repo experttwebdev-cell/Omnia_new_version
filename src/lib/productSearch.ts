@@ -400,3 +400,32 @@ export function extractFiltersFromQuery(query: string): Partial<ProductSearchFil
 
   return filters;
 }
+
+export async function getProductSuggestions(
+  query: string,
+  limit: number = 5
+): Promise<string[]> {
+  if (!query || query.length < 2) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('shopify_products')
+      .select('title')
+      .eq('status', 'active')
+      .ilike('title', `%${query}%`)
+      .order('title', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error('❌ Error getting product suggestions:', error);
+      return [];
+    }
+
+    return (data || []).map(p => p.title).filter((title): title is string => !!title);
+  } catch (error) {
+    console.error('❌ Error in getProductSuggestions:', error);
+    return [];
+  }
+}
