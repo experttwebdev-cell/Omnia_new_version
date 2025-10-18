@@ -284,6 +284,7 @@
     </div>
 
     <div class="controls">
+        <button class="btn" onclick="testConnection()">0️⃣ Test Connexion DB</button>
         <button class="btn" onclick="testFetchProducts()">1️⃣ Charger les Produits</button>
         <button class="btn" onclick="testGenerateOpportunities()" id="generateBtn" disabled>2️⃣ Générer 5 Opportunités</button>
         <button class="btn" onclick="clearResults()">🗑️ Effacer</button>
@@ -322,6 +323,43 @@
                     <p>${message}</p>
                 </div>
             `;
+        }
+
+        async function testConnection() {
+            showLoading('🔌 Test de connexion à la base de données...');
+
+            try {
+                // Test 1: Connexion Supabase
+                const { data: storesData, error: storesError } = await supabase
+                    .from('shopify_stores')
+                    .select('id, store_name')
+                    .limit(1);
+
+                if (storesError) throw new Error(`Stores: ${storesError.message}`);
+
+                // Test 2: Compter les produits
+                const { count: productsCount, error: productsError } = await supabase
+                    .from('shopify_products')
+                    .select('*', { count: 'exact', head: true });
+
+                if (productsError) throw new Error(`Products: ${productsError.message}`);
+
+                // Test 3: Compter les opportunités
+                const { count: opportunitiesCount, error: opportunitiesError } = await supabase
+                    .from('blog_opportunities')
+                    .select('*', { count: 'exact', head: true });
+
+                if (opportunitiesError) throw new Error(`Opportunities: ${opportunitiesError.message}`);
+
+                showStatus(`✅ Connexion réussie!<br>
+                    - Stores: ${storesData?.length || 0}<br>
+                    - Produits: ${productsCount || 0}<br>
+                    - Opportunités: ${opportunitiesCount || 0}`, 'success');
+
+            } catch (error) {
+                showStatus(`❌ Erreur de connexion: ${error.message}`, 'error');
+                console.error('Connection test error:', error);
+            }
         }
 
         async function testFetchProducts() {
@@ -444,7 +482,8 @@
 
                 opportunities = result.opportunities || [];
 
-                showStatus(`✅ ${opportunities.length} opportunités générées avec succès!`, 'success');
+                showStatus(`✅ ${opportunities.length} opportunités générées avec succès!<br>
+                    Message: ${result.message || 'OK'}`, 'success');
 
                 // Display opportunities
                 displayOpportunities();
@@ -489,7 +528,8 @@
                 <div class="opportunities-section">
                     <h2>🎯 Opportunités Générées (${opportunities.length})</h2>
                     ${opportunities.map((opp, index) => {
-                        const featuredProducts = opp.featured_products || [];
+                        const opportunity = opp.opportunity || opp;
+                        const featuredProducts = opportunity.featured_products || [];
                         const productsWithImages = featuredProducts.map(fp => {
                             const product = products.find(p => p.id === fp.id);
                             return { ...fp, image_url: product?.image_url };
@@ -497,19 +537,19 @@
 
                         return `
                             <div class="opportunity-card">
-                                <span class="opportunity-type ${typeClasses[opp.type] || ''}">${typeLabels[opp.type] || opp.type}</span>
-                                <h3>${index + 1}. ${opp.article_title}</h3>
+                                <span class="opportunity-type ${typeClasses[opportunity.type] || ''}">${typeLabels[opportunity.type] || opportunity.type}</span>
+                                <h3>${index + 1}. ${opportunity.title || opportunity.article_title}</h3>
                                 <div class="meta">
-                                    <strong>Description:</strong> ${opp.meta_description || opp.intro_excerpt || ''}
+                                    <strong>Description:</strong> ${opportunity.meta_description || opportunity.intro_excerpt || ''}
                                 </div>
                                 <div class="meta">
-                                    <strong>Difficulté:</strong> ${opp.difficulty} |
-                                    <strong>Score SEO:</strong> ${opp.seo_opportunity_score}/100 |
-                                    <strong>Mots estimés:</strong> ${opp.estimated_word_count}
+                                    <strong>Difficulté:</strong> ${opportunity.difficulty} |
+                                    <strong>Score SEO:</strong> ${opportunity.seo_opportunity_score}/100 |
+                                    <strong>Mots estimés:</strong> ${opportunity.estimated_word_count}
                                 </div>
                                 <div class="keywords">
                                     <strong>Mots-clés principaux:</strong><br>
-                                    ${(opp.primary_keywords || []).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+                                    ${(opportunity.primary_keywords || []).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
                                 </div>
                                 ${productsWithImages.length > 0 ? `
                                     <div class="featured-products">
@@ -524,6 +564,7 @@
                                         </div>
                                     </div>
                                 ` : '<p style="color:#999;margin-top:15px;">⚠️ Aucun produit featured dans cette opportunité</p>'}
+                                ${opp.featured_products_count !== undefined ? `<p style="color:#667eea;margin-top:10px;font-weight:600;">✅ ${opp.featured_products_count} produits associés en DB</p>` : ''}
                             </div>
                         `;
                     }).join('')}
