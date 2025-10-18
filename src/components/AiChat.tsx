@@ -28,6 +28,9 @@ interface ChatMessage {
   sector?: string;
 }
 
+// ✅ Ajouter les types manquants
+type SectorType = "meubles" | "montres" | "pret_a_porter";
+
 export function AiChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -38,40 +41,58 @@ export function AiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const sectorIcons = {
+  // ✅ Corriger le typage des icônes
+  const sectorIcons: Record<SectorType, any> = {
     meubles: Home,
     montres: Watch,
     pret_a_porter: Shirt,
   };
 
-  // Charger les paramètres du store
+  // ✅ Améliorer le chargement du store
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("shopify_stores").select("id").limit(1).maybeSingle();
-      if (data?.id) {
-        setStoreId(data.id);
-        setMessages([
-          {
-            role: "assistant",
-            content:
-              "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd’hui ?",
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+    const loadStoreSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("shopify_stores")
+          .select("id")
+          .limit(1)
+          .maybeSingle();
+        
+        if (error) throw error;
+        
+        if (data?.id) {
+          setStoreId(data.id);
+          setMessages([
+            {
+              role: "assistant",
+              content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error("Erreur chargement store:", error);
       }
-    })();
+    };
+
+    loadStoreSettings();
   }, []);
 
+  // ✅ Améliorer le scroll automatique
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ 
+      behavior: "smooth",
+      block: "nearest"
+    });
   }, [messages]);
 
+  // ✅ Améliorer l'envoi des messages avec gestion d'erreur
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || loading) return;
 
     const userMessage: ChatMessage = {
       role: "user",
-      content: inputMessage,
+      content: inputMessage.trim(),
       timestamp: new Date().toISOString(),
     };
 
@@ -81,37 +102,54 @@ export function AiChat() {
     setLoading(true);
 
     try {
-      console.log("🚀 [CHAT] Starting OmnIAChat with message:", currentMessage);
-      const response = await OmnIAChat(currentMessage, [], storeId || undefined);
-      console.log("✅ [CHAT] OmnIAChat response received:", response);
+      // ✅ Ajouter le callback pour le streaming
+      let streamedContent = "";
+      
+      const response = await OmnIAChat(
+        currentMessage, 
+        [], 
+        storeId || undefined,
+        (chunk) => {
+          streamedContent += chunk;
+          // Mettre à jour le dernier message en temps réel
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const lastMsg = newMessages[newMessages.length - 1];
+            if (lastMsg?.role === "assistant") {
+              lastMsg.content = streamedContent;
+            }
+            return newMessages;
+          });
+        }
+      );
 
-      const assistantMessage: ChatMessage = {
-        role: "assistant",
-        content: response.content || "J'analyse votre demande...",
-        products: response.products || [],
-        summary: response.summary || null,
-        timestamp: new Date().toISOString(),
-        mode: response.intent === "product_show" ? "product_show" : "conversation",
-        sector: response.sector || "meubles",
-      };
+      // Si pas de streaming, utiliser la réponse normale
+      if (!streamedContent) {
+        const assistantMessage: ChatMessage = {
+          role: "assistant",
+          content: response.response || response.content || "J'analyse votre demande...",
+          products: response.products || [],
+          summary: response.summary || null,
+          timestamp: new Date().toISOString(),
+          mode: response.intent === "product_show" ? "product_show" : "conversation",
+          sector: response.sector as SectorType || "meubles",
+        };
 
-      console.log("📝 [CHAT] Adding assistant message:", assistantMessage);
-      setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
     } catch (err) {
-      console.error("❌ [CHAT] Error:", err);
+      console.error("Chat Error:", err);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content:
-            "Désolé, une erreur technique est survenue. Pouvez-vous reformuler votre question ?",
+          content: "Désolé, une erreur technique est survenue. Pouvez-vous reformuler votre question ?",
           timestamp: new Date().toISOString(),
         },
       ]);
     } finally {
-      console.log("🏁 [CHAT] Request completed");
       setLoading(false);
-      inputRef.current?.focus();
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
@@ -122,28 +160,47 @@ export function AiChat() {
     }
   };
 
+  // ✅ Ajouter une fonction pour réinitialiser la conversation
+  const handleResetChat = () => {
+    setMessages([
+      {
+        role: "assistant",
+        content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  };
+
   return (
     <div className="h-[calc(100vh-150px)] flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg overflow-hidden border border-gray-200">
-      {/* HEADER */}
+      {/* HEADER avec bouton reset */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
-              <Bot className="w-7 h-7 text-blue-600" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">
+                <Bot className="w-7 h-7 text-blue-600" />
+              </div>
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full" />
             </div>
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full" />
+            <div>
+              <h2 className="text-xl font-bold">OmnIA Shopping</h2>
+              <p className="text-sm text-blue-100">Assistant IA intelligent</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold">OmnIA Shopping</h2>
-            <p className="text-sm text-blue-100">Assistant IA intelligent</p>
-          </div>
+          <button
+            onClick={handleResetChat}
+            className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition"
+          >
+            Nouvelle discussion
+          </button>
         </div>
       </div>
 
-      {/* MESSAGES */}
+      {/* MESSAGES - Améliorations d'affichage */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, i) => {
-          const SectorIcon = msg.sector ? sectorIcons[msg.sector] : null;
+          const SectorIcon = msg.sector ? sectorIcons[msg.sector as SectorType] : null;
           return (
             <div key={i}>
               <div
@@ -202,7 +259,7 @@ export function AiChat() {
                 )}
               </div>
 
-              {msg.products?.length > 0 && (
+              {msg.products && msg.products.length > 0 && (
                 <div className="ml-12 mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {msg.products.map((p) => (
                     <ProductCard
@@ -223,13 +280,13 @@ export function AiChat() {
         {loading && (
           <div className="flex gap-3 items-center text-gray-500 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
-            L’assistant réfléchit...
+            L'assistant réfléchit...
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* INPUT */}
+      {/* INPUT - Améliorations UX */}
       <div className="border-t bg-white px-6 py-4">
         <div className="flex gap-3 items-end">
           <input
@@ -238,26 +295,34 @@ export function AiChat() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Décrivez ce que vous cherchez..."
+            placeholder="Décrivez ce que vous cherchez (ex: canapé bleu en promotion)..."
             disabled={loading}
-            className="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100"
+            className="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 transition"
+            autoFocus
           />
           <button
             onClick={handleSendMessage}
             disabled={loading || !inputMessage.trim()}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            <span>Envoyer</span>
+            <span className="hidden sm:inline">Envoyer</span>
           </button>
         </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          Exemples: "table basse bois", "montre élégante", "robe été promotion"
+        </p>
       </div>
 
+      {/* MODAL PRODUIT */}
       {showProductLanding && selectedProduct && (
         <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
           <ProductLandingPage
             product={selectedProduct}
-            onClose={() => setShowProductLanding(false)}
+            onClose={() => {
+              setShowProductLanding(false);
+              setSelectedProduct(null);
+            }}
           />
         </div>
       )}
@@ -265,38 +330,48 @@ export function AiChat() {
   );
 }
 
-// ✅ Product Card propre et claire
+// ✅ Product Card améliorée
 function ProductCard({ product, onViewDetails }: any) {
+  const hasPromo = product.compare_at_price && 
+                  Number(product.compare_at_price) > Number(product.price);
+
   return (
     <div
       onClick={onViewDetails}
-      className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md cursor-pointer transition"
+      className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 hover:scale-[1.02] group"
     >
-      <div className="w-full h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+      <div className="relative w-full h-40 bg-gray-100 flex items-center justify-center overflow-hidden rounded-t-xl">
         <img
-          src={product.image_url}
+          src={product.image_url || "/placeholder-product.jpg"}
           alt={product.title}
-          className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/placeholder-product.jpg";
+          }}
         />
+        {hasPromo && (
+          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+            -{Math.round(100 - (Number(product.price) / Number(product.compare_at_price)) * 100)}%
+          </div>
+        )}
       </div>
       <div className="p-3">
-        <h5 className="font-semibold text-sm text-gray-800 line-clamp-2">
+        <h5 className="font-semibold text-sm text-gray-800 line-clamp-2 mb-2">
           {product.title}
         </h5>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-blue-600">
             {formatPrice(Number(product.price), product.currency || "EUR")}
           </span>
-          {product.compare_at_price &&
-            Number(product.compare_at_price) > Number(product.price) && (
-              <span className="text-sm text-gray-400 line-through">
-                {formatPrice(
-                  Number(product.compare_at_price),
-                  product.currency || "EUR"
-                )}
-              </span>
-            )}
+          {hasPromo && (
+            <span className="text-sm text-gray-400 line-through">
+              {formatPrice(Number(product.compare_at_price), product.currency || "EUR")}
+            </span>
+          )}
         </div>
+        <button className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition">
+          Voir détails
+        </button>
       </div>
     </div>
   );
