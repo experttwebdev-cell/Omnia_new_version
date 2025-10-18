@@ -121,46 +121,44 @@ export async function searchProducts(
       query = query.or(`ai_craftsmanship_level.ilike.%${filters.craftsmanship}%`);
     }
 
-    // ✅ CORRECTION CRITIQUE : Recherche améliorée avec TOUS vos champs
+    // ✅ RECHERCHE INTELLIGENTE : Priorité aux correspondances exactes et multiples
     if (filters.query && filters.query.trim().length > 0) {
-      const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
+      const fullQuery = filters.query.toLowerCase().trim();
+      const searchTerms = fullQuery.split(' ').filter(term => term.length > 2);
 
       if (searchTerms.length > 0) {
-        const orConditions = searchTerms.flatMap(term => [
-          `title.ilike.%${term}%`,
-          `description.ilike.%${term}%`,
-          `tags.ilike.%${term}%`,
-          `category.ilike.%${term}%`,
-          `sub_category.ilike.%${term}%`,
-          `product_type.ilike.%${term}%`,
-          `vendor.ilike.%${term}%`,
-          `seo_title.ilike.%${term}%`,
-          `seo_description.ilike.%${term}%`,
-          `ai_vision_analysis.ilike.%${term}%`,
-          `ai_color.ilike.%${term}%`,
-          `ai_material.ilike.%${term}%`,
-          `ai_shape.ilike.%${term}%`,
-          `ai_texture.ilike.%${term}%`,
-          `ai_pattern.ilike.%${term}%`,
-          `ai_finish.ilike.%${term}%`,
-          `ai_design_elements.ilike.%${term}%`,
-          `ai_craftsmanship_level.ilike.%${term}%`,
-          `ai_condition_notes.ilike.%${term}%`,
-          `room.ilike.%${term}%`,
-          `style.ilike.%${term}%`,
-          `dimensions_text.ilike.%${term}%`,
-          `characteristics.ilike.%${term}%`,
-          `google_product_category.ilike.%${term}%`,
-          `google_brand.ilike.%${term}%`,
-          `google_custom_label_0.ilike.%${term}%`,
-          `google_custom_label_1.ilike.%${term}%`,
-          `google_custom_label_2.ilike.%${term}%`,
-          `google_custom_label_3.ilike.%${term}%`,
-          `google_custom_label_4.ilike.%${term}%`,
-          `chat_text.ilike.%${term}%` // ✅ Votre champ de synthèse
-        ]).join(',');
+        // Construction d'une recherche intelligente avec priorité
+        const primaryFields = [
+          'title', 'category', 'sub_category', 'product_type',
+          'ai_material', 'chat_text', 'seo_title'
+        ];
 
-        query = query.or(orConditions);
+        const secondaryFields = [
+          'description', 'tags', 'vendor', 'seo_description',
+          'ai_vision_analysis', 'ai_color', 'ai_shape', 'ai_texture',
+          'ai_pattern', 'ai_finish', 'ai_design_elements', 'room', 'style',
+          'dimensions_text', 'characteristics', 'google_product_category',
+          'google_brand', 'google_custom_label_0', 'google_custom_label_1',
+          'google_custom_label_2', 'google_custom_label_3', 'google_custom_label_4'
+        ];
+
+        // Recherche d'abord dans les champs prioritaires avec TOUS les mots
+        const primaryConditions: string[] = [];
+        const secondaryConditions: string[] = [];
+
+        // Pour chaque terme, créer des conditions dans les champs prioritaires
+        for (const term of searchTerms) {
+          for (const field of primaryFields) {
+            primaryConditions.push(`${field}.ilike.%${term}%`);
+          }
+          for (const field of secondaryFields) {
+            secondaryConditions.push(`${field}.ilike.%${term}%`);
+          }
+        }
+
+        // Combiner toutes les conditions
+        const allConditions = [...primaryConditions, ...secondaryConditions].join(',');
+        query = query.or(allConditions);
       }
     }
 
@@ -213,8 +211,16 @@ export async function searchProducts(
       );
     }
 
-    if (filters.sortBy === 'relevance' && filters.query) {
+    // ✅ TOUJOURS appliquer le scoring de pertinence si on a une query
+    if (filters.query && filters.query.trim().length > 0) {
       products = rankProductsByRelevance(products, filters.query);
+
+      // Filtrer les produits avec un score minimum si on a beaucoup de résultats
+      const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
+      if (products.length > limit && searchTerms.length > 1) {
+        const minScore = 20; // Au moins 2 correspondances
+        products = products.filter((p: any) => (p._relevance_score || 0) >= minScore);
+      }
     }
 
     const total = count || 0;
@@ -240,6 +246,7 @@ export async function searchProducts(
 
 function rankProductsByRelevance(products: Product[], query: string): Product[] {
   const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 2);
+  const normalizedQuery = query.toLowerCase();
 
   const scoredProducts = products.map(product => {
     let score = 0;
@@ -265,14 +272,36 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
     const craftsmanship = product.ai_craftsmanship_level?.toLowerCase() || '';
     const chatText = product.chat_text?.toLowerCase() || '';
 
+    // ✅ BONUS MASSIF : Si TOUS les termes sont présents dans le produit
+    let termsFound = 0;
+    const searchableText = [title, category, subCategory, aiMaterial, chatText, tags].join(' ');
+
+    for (const term of searchTerms) {
+      if (searchableText.includes(term)) {
+        termsFound++;
+      }
+    }
+
+    // Si TOUS les termes sont présents, gros bonus
+    if (searchTerms.length > 1 && termsFound === searchTerms.length) {
+      score += 100; // ✅ BONUS PRIORITAIRE pour correspondance complète
+    }
+
+    // Score pour chaque terme individuellement
     searchTerms.forEach(term => {
+      // Champs critiques (titre, catégorie)
       if (title.includes(term)) score += 10;
       if (title.startsWith(term)) score += 5;
       if (category.includes(term)) score += 8;
       if (subCategory.includes(term)) score += 7;
-      if (seoTitle.includes(term)) score += 6;
+
+      // Champs IA importants
+      if (aiMaterial.includes(term)) score += 8; // ✅ Matériau très important
       if (aiColor.includes(term)) score += 5;
-      if (aiMaterial.includes(term)) score += 5;
+      if (chatText.includes(term)) score += 6;
+
+      // Autres champs
+      if (seoTitle.includes(term)) score += 6;
       if (room.includes(term)) score += 5;
       if (style.includes(term)) score += 5;
       if (tags.includes(term)) score += 4;
@@ -287,10 +316,9 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
       if (seoDescription.includes(term)) score += 2;
       if (description.includes(term)) score += 1;
       if (visionAnalysis.includes(term)) score += 1;
-      if (chatText.includes(term)) score += 6; // ✅ Bonus pour chat_text
     });
 
-    return { product, score };
+    return { product: { ...product, _relevance_score: score }, score };
   });
 
   return scoredProducts
