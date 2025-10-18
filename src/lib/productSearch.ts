@@ -524,4 +524,4 @@ export async function getProductSuggestions(
     console.error('❌ Error in getProductSuggestions:', error);
     return [];
   }
-}
+} 
