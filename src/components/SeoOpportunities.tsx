@@ -21,7 +21,6 @@ import type { Database } from '../lib/database.types';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
-import { opportunityTemplates } from '../lib/language';
 import { BlogArticleModal } from './BlogArticleModal';
 import { ProductDiagnostics } from './ProductDiagnostics';
 import { ProgressModal } from './ProgressModal';

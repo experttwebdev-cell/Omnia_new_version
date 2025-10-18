@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Rapide Opportunités</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .opportunity {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .opportunity h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .meta {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ Test Rapide Opportunités</h1>
+        <p>Version optimisée avec GPT-3.5-turbo</p>
+    </div>
+
+    <button class="btn" onclick="testQuick()" id="testBtn">🚀 Générer 5 Opportunités (Rapide)</button>
+
+    <div id="status"></div>
+    <div id="result"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        let startTime;
+        let timerInterval;
+
+        function showStatus(message, type = 'info') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showLoading(message) {
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 100);
+
+            document.getElementById('status').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>${message}</p>
+                    <div class="timer" id="timer">0.0s</div>
+                </div>
+            `;
+        }
+
+        function updateTimer() {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const timerEl = document.getElementById('timer');
+            if (timerEl) {
+                timerEl.textContent = `${elapsed}s`;
+            }
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        }
+
+        async function testQuick() {
+            const btn = document.getElementById('testBtn');
+            btn.disabled = true;
+
+            showLoading('🚀 Génération en cours avec GPT-3.5-turbo...');
+            document.getElementById('result').innerHTML = '';
+
+            try {
+                // Produits de test minimalistes
+                const products = [
+                    { id: '1', title: 'Canapé Cuir 3 places', category: 'Canapés', ai_color: 'Noir', ai_material: 'Cuir' },
+                    { id: '2', title: 'Table Basse Bois', category: 'Tables', ai_color: 'Brun', ai_material: 'Chêne' },
+                    { id: '3', title: 'Fauteuil Design', category: 'Fauteuils', ai_color: 'Gris', ai_material: 'Tissu' },
+                    { id: '4', title: 'Étagère Murale', category: 'Rangement', ai_color: 'Blanc', ai_material: 'MDF' },
+                    { id: '5', title: 'Lampe Sur Pied', category: 'Luminaires', ai_color: 'Or', ai_material: 'Métal' }
+                ];
+
+                const apiUrl = `${SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        products: products,
+                        language: 'fr'
+                    })
+                });
+
+                stopTimer();
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+
+                showStatus(`✅ Succès en ${duration}s - ${result.opportunities?.length || 0} opportunités créées`, 'success');
+
+                if (result.opportunities && result.opportunities.length > 0) {
+                    let html = '<div class="result"><h2>📊 Opportunités Générées</h2>';
+
+                    result.opportunities.forEach((item, index) => {
+                        const opp = item.opportunity || item;
+                        html += `
+                            <div class="opportunity">
+                                <h3>${index + 1}. ${opp.title || opp.article_title}</h3>
+                                <div class="meta">📝 Type: ${opp.type}</div>
+                                <div class="meta">⭐ Score SEO: ${opp.seo_opportunity_score}/100</div>
+                                <div class="meta">📊 Difficulté: ${opp.difficulty}</div>
+                                <div class="meta">📄 Mots estimés: ${opp.estimated_word_count}</div>
+                                <div class="meta">🔑 Keywords: ${(opp.primary_keywords || []).join(', ')}</div>
+                                ${opp.featured_products ? `<div class="meta">🛍️ Produits: ${opp.featured_products.length}</div>` : ''}
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                    document.getElementById('result').innerHTML = html;
+                }
+
+            } catch (error) {
+                stopTimer();
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                showStatus(`❌ Erreur après ${duration}s: ${error.message}`, 'error');
+                console.error('Error:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        showStatus('✅ Prêt pour le test rapide', 'success');
+    </script>
+</body>
+</html>

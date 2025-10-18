@@ -149,73 +149,49 @@ async function generateOpportunities(products, language, apiKey, useDeepSeek = t
   const colors = [...new Set(products.map((p) => p.ai_color).filter(Boolean))];
   const materials = [...new Set(products.map((p) => p.ai_material).filter(Boolean))];
 
-  const productSummary = products.slice(0, 20).map((p) => ({
+  const productSummary = products.slice(0, 10).map((p) => ({
     id: p.id,
     title: p.title,
     category: p.category,
     sub_category: p.sub_category,
   }));
 
-  const prompt = `
-Tu es un expert SEO e-commerce francophone. Analyse les produits suivants pour identifier des opportunités d'articles de blog optimisés SEO.
+  const prompt = `Expert SEO: génère 5 opportunités d'articles de blog.
 
-📊 ANALYSE DU CATALOGUE:
-- ${products.length} produits disponibles
-- Catégories: ${categories.join(", ") || "Non spécifié"}
-- Sous-catégories: ${subCategories.slice(0, 10).join(", ") || "Non spécifié"}
-- Couleurs disponibles: ${colors.slice(0, 10).join(", ") || "Non spécifié"}
-- Matériaux: ${materials.slice(0, 10).join(", ") || "Non spécifié"}
+PRODUITS (${products.length} total):
+${productSummary.map((p) => `- [${p.id}] ${p.title}`).join("\n")}
 
-🎯 EXEMPLES DE PRODUITS:
-${productSummary.map((p) => `- ${p.title} (${p.category || "Sans catégorie"})`).join("\n")}
+Catégories: ${categories.slice(0, 5).join(", ")}
+Couleurs: ${colors.slice(0, 5).join(", ")}
+Matériaux: ${materials.slice(0, 5).join(", ")}
 
-📝 MISSION:
-Génère EXACTEMENT 5 idées structurées d'articles SEO optimisés. Pour chaque article:
-1. Identifie 3-5 produits pertinents à mettre en avant (utilise leurs IDs)
-2. Crée un titre accrocheur et optimisé SEO
-3. Définis une structure claire avec sections H2
-4. Choisis des mots-clés pertinents
-
-IMPORTANT: Pour featured_products, utilise UNIQUEMENT des IDs de produits existants dans la liste ci-dessus.
-
-Format de réponse (JSON STRICT):
+JSON requis (5 opportunités):
 {
   "opportunities": [
     {
-      "article_title": "Titre optimisé SEO avec mot-clé principal",
-      "meta_description": "Description SEO 150-160 caractères engageante",
-      "intro_excerpt": "Introduction captivante de 2-3 phrases pour attirer le lecteur",
-      "type": "store-guide|buying-guide|comparison|top-10|industry-topic",
-      "primary_keywords": ["mot-clé principal", "variante mot-clé"],
-      "secondary_keywords": ["mot-clé secondaire 1", "mot-clé secondaire 2"],
-      "structure": {
-        "h2_sections": ["Section 1: Introduction", "Section 2: Guide pratique", "Section 3: Conseils d'experts", "Section 4: Nos recommandations", "Section 5: Conclusion"]
-      },
+      "article_title": "Titre SEO optimisé",
+      "meta_description": "Description 150-160 caractères",
+      "intro_excerpt": "Introduction 2-3 phrases",
+      "type": "buying-guide",
+      "primary_keywords": ["mot-clé 1", "mot-clé 2"],
+      "secondary_keywords": ["mot-clé 3"],
+      "structure": {"h2_sections": ["Intro", "Guide", "Conseils", "Recommandations", "Conclusion"]},
       "seo_opportunity_score": 85,
-      "difficulty": "easy|medium|hard",
+      "difficulty": "easy",
       "estimated_word_count": 2000,
-      "featured_products": [
-        {"id": "product_id_1", "title": "Nom du produit 1", "relevance": "Pourquoi ce produit est pertinent"},
-        {"id": "product_id_2", "title": "Nom du produit 2", "relevance": "Pourquoi ce produit est pertinent"}
-      ]
+      "featured_products": [{"id": "product_id", "title": "Product", "relevance": "Pertinent car..."}]
     }
   ]
 }
 
-TYPES D'ARTICLES:
-- store-guide: Guide complet de la boutique/collection
-- buying-guide: Guide d'achat pratique
-- comparison: Comparaison de produits/styles
-- top-10: Liste des meilleurs produits
-- industry-topic: Tendances et actualités du secteur
-
-Réponds UNIQUEMENT avec le JSON, sans texte additionnel.`;
+Types: store-guide, buying-guide, comparison, top-10, industry-topic
+Difficulty: easy, medium, hard`;
 
   const apiUrl = useDeepSeek
     ? "https://api.deepseek.com/v1/chat/completions"
     : "https://api.openai.com/v1/chat/completions";
 
-  const model = useDeepSeek ? "deepseek-chat" : "gpt-4o";
+  const model = useDeepSeek ? "deepseek-chat" : "gpt-3.5-turbo";
 
   console.log(`📡 Calling ${model} at ${apiUrl}`);
   console.log(`📝 Prompt length: ${prompt.length} chars`);
@@ -225,7 +201,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte additionnel.`;
     messages: [
       {
         role: "system",
-        content: "Tu es un expert SEO e-commerce. Réponds UNIQUEMENT en JSON valide, sans markdown ni texte additionnel.",
+        content: "Expert SEO. Réponds en JSON strict.",
       },
       {
         role: "user",
@@ -233,7 +209,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte additionnel.`;
       },
     ],
     temperature: 0.7,
-    max_tokens: 3000,
+    max_tokens: 2000,
     response_format: useDeepSeek ? { type: "json_object" } : undefined,
   };
 
