@@ -43,9 +43,9 @@ async function detectIntent(userMessage: string): Promise<"simple_chat" | "produ
 
   // 1. PRODUCT_SHOW - Montrer des produits (mots forts)
   const strongShowKeywords = [
-    "montre", "affiche", "voir les", "liste", "catalogue",
-    "collection", "gamme", "modèles", "articles", "produits",
-    "choix", "options", "sélection"
+    "montre", "montrez", "montre-moi", "affiche", "voir les", "liste", "catalogue",
+    "collection", "gamme", "modèles", "modeles", "articles", "produits",
+    "choix", "options", "sélection", "selection", "vos"
   ];
 
   // 2. PRODUCT_CHAT - Discussion sur produits (questions, conseils)
@@ -106,10 +106,10 @@ async function detectIntent(userMessage: string): Promise<"simple_chat" | "produ
     return "product_chat";
   }
 
-  // 3. Product_chat par défaut si produit mentionné
+  // 3. Product_show par défaut si produit mentionné (changé de product_chat à product_show)
   if (hasProductKeyword) {
-    console.log("🎯 Décision: PRODUCT_CHAT (produit détecté - fallback)");
-    return "product_chat";
+    console.log("🎯 Décision: PRODUCT_SHOW (produit détecté - fallback)");
+    return "product_show";
   }
 
   // 4. Simple_chat (salutations sans produit)
@@ -118,9 +118,9 @@ async function detectIntent(userMessage: string): Promise<"simple_chat" | "produ
     return "simple_chat";
   }
 
-  // 5. Fallback vers product_chat si ambigu
-  console.log("🎯 Décision: PRODUCT_CHAT (fallback ambigu)");
-  return "product_chat";
+  // 5. Fallback vers product_show si ambigu (changé de product_chat)
+  console.log("🎯 Décision: PRODUCT_SHOW (fallback ambigu)");
+  return "product_show";
 }
 
 //
