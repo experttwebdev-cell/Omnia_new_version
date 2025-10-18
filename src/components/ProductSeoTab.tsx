@@ -184,7 +184,7 @@ export function ProductSeoTab({ product, onProductUpdate }: ProductSeoTabProps) 
       </div>
     );
   };
-
+ 
   const getConfidenceColor = (score: number) => {
     if (score >= 80) return 'bg-green-500';
     if (score >= 50) return 'bg-yellow-500';
