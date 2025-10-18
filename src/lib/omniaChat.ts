@@ -38,89 +38,89 @@ interface ChatResponse {
 //
 async function detectIntent(userMessage: string): Promise<"simple_chat" | "product_chat" | "product_show"> {
   const msg = userMessage.toLowerCase().trim();
-  
+
   console.log("🧠 Analyse intention pour:", msg);
 
-  // 1. PRODUCT_SHOW - Montrer des produits (mots forts)
-  const strongShowKeywords = [
-    "montre", "montrez", "montre-moi", "affiche", "voir les", "liste", "catalogue",
-    "collection", "gamme", "modèles", "modeles", "articles", "produits",
-    "choix", "options", "sélection", "selection", "vos"
-  ];
-
-  // 2. PRODUCT_CHAT - Discussion sur produits (questions, conseils)
-  const productChatKeywords = [
-    "avez-vous", "est-ce que vous avez", "proposez-vous", "vendez-vous",
-    "disponible", "disponibilité", "en stock", "livraison", "délai",
-    "caractéristique", "spécification", "description", "matériau", "couleur",
-    "dimension", "taille", "poids", "qualité", "avantage", "inconvénient",
-    "durable", "résistant", "entretien", "garantie", "fonctionnement",
-    "comment est", "est-ce que", "quelle est", "quelles sont", "c'est quoi",
-    "fonctionne", "utilisation", "conseil", "avis", "recommandation",
-    "différence entre", "comparer", "meilleur", "top", "quelle marque",
-    "étanche", "résiste", "adapté pour", "convient pour", "conseillez-moi",
-    "que pensez-vous", "pourriez-vous me dire"
-  ];
-
-  // 3. SIMPLE_CHAT - Salutations basiques
+  // 1. SIMPLE_CHAT - Salutations, remerciements, questions générales (PAS de produits)
   const simpleChatKeywords = [
-    "bonjour", "salut", "hello", "coucou", "hey", "hi", 
+    "bonjour", "salut", "hello", "coucou", "hey", "hi",
     "comment ça va", "ça va", "how are you", "bien et toi",
     "merci", "thanks", "thank you", "de rien", "au revoir", "bye",
-    "ok", "d'accord", "parfait", "super", "génial", "parfait"
+    "ok", "d'accord", "parfait", "super", "génial",
+    "qui es-tu", "ton nom", "tu fais quoi", "comment tu t'appelles"
+  ];
+
+  // 2. PRODUCT_SHOW - Le client veut VOIR et ACHETER des produits (intention forte d'affichage)
+  const productShowKeywords = [
+    "montre", "montrez", "montre-moi", "affiche", "voir", "regarder",
+    "liste", "catalogue", "collection", "gamme", "sélection", "selection",
+    "produits", "articles", "modèles", "modeles", "vos", "tes",
+    "je veux", "je cherche", "acheter", "trouver", "panier"
+  ];
+
+  // 3. PRODUCT_CHAT - Discussion sur produits (conseils, info, promo, tendances - SANS affichage)
+  const productChatKeywords = [
+    // Questions d'information
+    "avez-vous", "proposez-vous", "vendez-vous", "est-ce que vous avez",
+    "parle-moi", "raconte", "dis-moi", "explique",
+    // Promotions et tendances
+    "promo", "promotion", "solde", "réduction", "reduction", "offre", "bon plan",
+    "tendance", "nouveau", "nouveauté", "nouveaute", "actualité", "actualite", "quoi de neuf",
+    "populaire", "best-seller", "plus vendu", "en vogue",
+    // Questions de conseil
+    "conseil", "avis", "recommandation", "suggestion", "guide",
+    "comment choisir", "lequel", "laquelle", "quelle", "quel est le meilleur",
+    "différence", "difference", "comparer", "comparaison",
+    // Caractéristiques
+    "caractéristique", "caracteristique", "qualité", "qualite", "matériau", "materiau", "dimension",
+    "comment est", "c'est comment", "fonctionnement",
+    "avantage", "inconvénient", "inconvenient", "durable", "résistant", "resistant"
   ];
 
   // Mots-clés produits (multi-secteurs)
   const productKeywords = [
     // Meubles
     "table", "chaise", "canapé", "canape", "fauteuil", "meuble", "armoire", "lit", "bureau",
-    "décor", "décoration", "mobilier", "lampe", "miroir", "coussin", "tapisserie", "tabouret",
+    "décor", "decor", "décoration", "decoration", "mobilier", "lampe", "miroir", "coussin", "tapisserie", "tabouret",
     "buffet", "console", "étagère", "etagere", "commode", "coiffeuse", "paravent",
     // Mode
-    "montre", "robe", "chemise", "pantalon", "jupe", "sac", "bijou", "bijoux", "vêtement", "vetement",
+    "robe", "chemise", "pantalon", "jupe", "sac", "bijou", "bijoux", "vêtement", "vetement",
     "chaussure", "accessoire", "ceinture", "cravate", "lunettes", "sweat", "pull", "t-shirt",
     // Électronique
-    "téléphone", "telephone", "smartphone", "ordinateur", "pc", "tablette", "casque", "écouteurs",
-    "appareil photo", "camera", "tv", "télévision", "console", "jeu vidéo", "écran", "clavier",
-    // Maison
-    "électroménager", "electromenager", "cuisine", "salle de bain", "jardin", "bricolage",
-    "machine à laver", "lave-vaisselle", "réfrigérateur", "four", "cuisinière"
+    "téléphone", "telephone", "smartphone", "ordinateur", "pc", "tablette", "casque", "écouteurs", "ecouteurs",
+    "appareil photo", "camera", "tv", "télévision", "television", "console", "jeu vidéo", "jeu video", "écran", "ecran", "clavier"
   ];
 
-  const hasProductKeyword = productKeywords.some(word => msg.includes(word));
-  const hasStrongShowIntent = strongShowKeywords.some(word => msg.includes(word));
-  const hasChatIntent = productChatKeywords.some(word => msg.includes(word));
   const isSimpleChat = simpleChatKeywords.some(word => msg.includes(word));
+  const hasProductShowIntent = productShowKeywords.some(word => msg.includes(word));
+  const hasProductChatIntent = productChatKeywords.some(word => msg.includes(word));
+  const hasProductKeyword = productKeywords.some(word => msg.includes(word));
 
-  console.log("🔍 Intent - Product:", hasProductKeyword, "Chat:", hasChatIntent, "Show:", hasStrongShowIntent, "Simple:", isSimpleChat);
+  console.log("🔍 Intent - Simple:", isSimpleChat, "Show:", hasProductShowIntent, "Chat:", hasProductChatIntent, "HasProduct:", hasProductKeyword);
 
-  // 1. Product_show prioritaire (intention forte de montrer)
-  if (hasProductKeyword && hasStrongShowIntent) {
-    console.log("🎯 Décision: PRODUCT_SHOW (intention forte de montrer)");
-    return "product_show";
-  }
+  // LOGIQUE DE DÉCISION (par priorité)
 
-  // 2. Product_chat (discussion sur produits - questions, conseils)
-  if (hasProductKeyword && hasChatIntent) {
-    console.log("🎯 Décision: PRODUCT_CHAT (discussion produits)");
-    return "product_chat";
-  }
-
-  // 3. Product_show par défaut si produit mentionné (changé de product_chat à product_show)
-  if (hasProductKeyword) {
-    console.log("🎯 Décision: PRODUCT_SHOW (produit détecté - fallback)");
-    return "product_show";
-  }
-
-  // 4. Simple_chat (salutations sans produit)
-  if (isSimpleChat) {
-    console.log("🎯 Décision: SIMPLE_CHAT (salutation)");
+  // 1. Simple chat (pas de mention de produit)
+  if (isSimpleChat && !hasProductKeyword && !hasProductShowIntent && !hasProductChatIntent) {
+    console.log("🎯 Décision: SIMPLE_CHAT (salutation/général sans produit)");
     return "simple_chat";
   }
 
-  // 5. Fallback vers product_show si ambigu (changé de product_chat)
-  console.log("🎯 Décision: PRODUCT_SHOW (fallback ambigu)");
-  return "product_show";
+  // 2. Product show (intention forte de voir/acheter des produits)
+  if (hasProductShowIntent) {
+    console.log("🎯 Décision: PRODUCT_SHOW (veut voir/acheter produits)");
+    return "product_show";
+  }
+
+  // 3. Product chat (discussion sur produits, promo, tendances, conseils)
+  if (hasProductChatIntent || hasProductKeyword) {
+    console.log("🎯 Décision: PRODUCT_CHAT (discussion produits/conseils)");
+    return "product_chat";
+  }
+
+  // 4. Fallback: simple chat
+  console.log("🎯 Décision: SIMPLE_CHAT (fallback)");
+  return "simple_chat";
 }
 
 //
