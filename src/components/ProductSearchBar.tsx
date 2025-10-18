@@ -492,4 +492,4 @@ export function extractFiltersFromQuery(query: string): Partial<ProductSearchFil
 
   console.log("🔍 Filtres extraits:", filters);
   return filters;
-}
+} 
