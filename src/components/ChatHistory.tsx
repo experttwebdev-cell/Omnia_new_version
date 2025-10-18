@@ -126,6 +126,50 @@ export function ChatHistory({ onSelectConversation, currentConversationId }: Cha
     }
   };
 
+  const getSessionLabel = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    if (date >= todayStart) {
+      return "Aujourd'hui";
+    } else if (date >= yesterdayStart) {
+      return "Hier";
+    } else if (date >= weekStart) {
+      return "Cette semaine";
+    } else if (date >= monthStart) {
+      return "Ce mois-ci";
+    } else if (date >= lastMonthStart) {
+      return "Le mois dernier";
+    } else {
+      return "Plus ancien";
+    }
+  };
+
+  const groupConversationsBySession = (convs: ChatConversation[]) => {
+    const groups: { [key: string]: ChatConversation[] } = {};
+    const order = ["Aujourd'hui", "Hier", "Cette semaine", "Ce mois-ci", "Le mois dernier", "Plus ancien"];
+
+    convs.forEach(conv => {
+      const label = getSessionLabel(conv.last_message_at);
+      if (!groups[label]) {
+        groups[label] = [];
+      }
+      groups[label].push(conv);
+    });
+
+    return order.filter(label => groups[label]).map(label => ({
+      label,
+      conversations: groups[label]
+    }));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -158,8 +202,16 @@ export function ChatHistory({ onSelectConversation, currentConversationId }: Cha
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {conversations.map((conv) => (
+          <div className="space-y-6">
+            {groupConversationsBySession(conversations).map((group) => (
+              <div key={group.label}>
+                <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200 z-10">
+                  <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    {group.label}
+                  </h3>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {group.conversations.map((conv) => (
               <div
                 key={conv.id}
                 onClick={() => handleSelect(conv)}
@@ -255,6 +307,9 @@ export function ChatHistory({ onSelectConversation, currentConversationId }: Cha
                     ))}
                   </div>
                 )}
+              </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
