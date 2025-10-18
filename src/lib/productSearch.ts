@@ -215,10 +215,20 @@ export async function searchProducts(
     if (filters.query && filters.query.trim().length > 0) {
       products = rankProductsByRelevance(products, filters.query);
 
-      // Filtrer les produits avec un score minimum si on a beaucoup de résultats
+      // ✅ FILTRAGE AGRESSIF : Pour recherches multi-mots, garder seulement les produits pertinents
       const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
-      if (products.length > limit && searchTerms.length > 1) {
-        const minScore = 20; // Au moins 2 correspondances
+
+      if (searchTerms.length >= 2) {
+        // Pour recherche multi-mots (ex: "table basse travertin"), score minimum de 80
+        // Cela exige que plusieurs termes soient présents
+        const minScore = 80;
+        const originalCount = products.length;
+        products = products.filter((p: any) => (p._relevance_score || 0) >= minScore);
+
+        console.log(`🔍 Multi-word search: filtered from ${originalCount} to ${products.length} products (min score: ${minScore})`);
+      } else if (searchTerms.length === 1 && products.length > limit * 2) {
+        // Pour recherche simple, filtrage plus doux
+        const minScore = 15;
         products = products.filter((p: any) => (p._relevance_score || 0) >= minScore);
       }
     }
@@ -444,20 +454,72 @@ export async function getProductSuggestions(
   }
 
   try {
+    const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 2);
+
+    // ✅ SUGGESTIONS INTELLIGENTES : Recherche dans plusieurs champs
     const { data, error } = await supabase
       .from('shopify_products')
-      .select('title')
+      .select('title, category, sub_category, ai_material')
       .eq('status', 'active')
-      .ilike('title', `%${query}%`)
-      .order('title', { ascending: true })
-      .limit(limit);
+      .or(
+        searchTerms.flatMap(term => [
+          `title.ilike.%${term}%`,
+          `category.ilike.%${term}%`,
+          `sub_category.ilike.%${term}%`,
+          `ai_material.ilike.%${term}%`
+        ]).join(',')
+      )
+      .limit(limit * 3); // Récupérer plus pour filtrer après
 
     if (error) {
       console.error('❌ Error getting product suggestions:', error);
       return [];
     }
 
-    return (data || []).map(p => p.title).filter((title): title is string => !!title);
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // ✅ SCORER les suggestions comme pour la recherche
+    const scoredSuggestions = data.map(product => {
+      let score = 0;
+      const title = product.title?.toLowerCase() || '';
+      const category = product.category?.toLowerCase() || '';
+      const subCategory = product.sub_category?.toLowerCase() || '';
+      const material = product.ai_material?.toLowerCase() || '';
+
+      let termsFound = 0;
+      const searchableText = [title, category, subCategory, material].join(' ');
+
+      // Compter combien de termes de recherche sont présents
+      for (const term of searchTerms) {
+        if (searchableText.includes(term)) {
+          termsFound++;
+          if (title.includes(term)) score += 10;
+          if (category.includes(term)) score += 5;
+          if (material.includes(term)) score += 5;
+        }
+      }
+
+      // Bonus si tous les termes sont présents
+      if (searchTerms.length > 1 && termsFound === searchTerms.length) {
+        score += 50;
+      }
+
+      return { title: product.title, score };
+    });
+
+    // Trier par score et retourner les meilleurs titres uniques
+    const uniqueTitles = new Set<string>();
+    return scoredSuggestions
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.title)
+      .filter((title): title is string => {
+        if (!title || uniqueTitles.has(title)) return false;
+        uniqueTitles.add(title);
+        return true;
+      })
+      .slice(0, limit);
   } catch (error) {
     console.error('❌ Error in getProductSuggestions:', error);
     return [];
