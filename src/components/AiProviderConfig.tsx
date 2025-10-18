@@ -21,14 +21,11 @@ export function AiProviderConfig() {
   }, []);
 
   const checkProviders = () => {
-    const openaiKey = getEnvVar('VITE_OPENAI_API_KEY');
-    const deepseekKey = getEnvVar('DEEPSEEK_API_KEY') || getEnvVar('VITE_DEEPSEEK_API_KEY');
-
     const providerList: ProviderStatus[] = [
       {
         name: 'DeepSeek',
         model: 'deepseek-chat',
-        configured: !!deepseekKey,
+        configured: true,
         costPerMillion: { input: 0.014, output: 0.028 },
         priority: 1,
         description: 'Most cost-effective (95% cheaper than GPT-4o-mini)',
@@ -36,7 +33,7 @@ export function AiProviderConfig() {
       {
         name: 'OpenAI GPT-3.5-turbo',
         model: 'gpt-3.5-turbo',
-        configured: !!openaiKey,
+        configured: true,
         costPerMillion: { input: 0.050, output: 0.150 },
         priority: 2,
         description: 'Reliable fallback (73% cheaper than GPT-4o-mini)',
@@ -44,7 +41,7 @@ export function AiProviderConfig() {
       {
         name: 'OpenAI GPT-4o-mini',
         model: 'gpt-4o-mini',
-        configured: !!openaiKey,
+        configured: true,
         costPerMillion: { input: 0.150, output: 0.600 },
         priority: 3,
         description: 'Last resort fallback',
@@ -194,12 +191,8 @@ export function AiProviderConfig() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Status</p>
-                    <span
-                      className={`inline-flex items-center gap-1 text-xs font-medium ${
-                        provider.configured ? 'text-green-600' : 'text-gray-500'
-                      }`}
-                    >
-                      {provider.configured ? '✓ Configured' : '✗ Not configured'}
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600">
+                      ✓ Ready to test
                     </span>
                   </div>
                 </div>
@@ -273,21 +266,30 @@ export function AiProviderConfig() {
           })}
         </div>
 
-        <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-            <div className="flex-1 text-sm text-yellow-800">
-              <p className="font-medium mb-1">Cost Savings Tip</p>
-              <p>
-                Configure DeepSeek to save up to 95% on AI costs compared to GPT-4o-mini. Get your free API key at{' '}
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div className="flex-1 text-sm text-blue-800">
+              <p className="font-medium mb-2">🔑 API Keys Configuration</p>
+              <p className="mb-2">
+                API keys must be configured in <strong>Supabase Dashboard</strong>, not in local .env files:
+              </p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Go to Supabase Dashboard → Project Settings → Edge Functions → Secrets</li>
+                <li>Add <code className="bg-blue-100 px-1 rounded">DEEPSEEK_API_KEY</code> and <code className="bg-blue-100 px-1 rounded">OPENAI_API_KEY</code></li>
+                <li>Click "Test" button above to verify the configuration</li>
+              </ol>
+              <p className="mt-2">
+                💡 <strong>Tip:</strong> Get free DeepSeek API key at{' '}
                 <a
                   href="https://platform.deepseek.com/api_keys"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline hover:text-yellow-900"
+                  className="underline hover:text-blue-900 font-medium"
                 >
                   platform.deepseek.com
                 </a>
+                {' '}(saves up to 95% on costs!)
               </p>
             </div>
           </div>
