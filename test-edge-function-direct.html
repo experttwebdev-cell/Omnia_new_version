@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Edge Function Direct</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .log-entry {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid #667eea;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .log-error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .log-success {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Test Edge Function Direct</h1>
+        <p>Diagnostic détaillé de l'appel à generate-seo-opportunities</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="testWithSmallPayload()">1️⃣ Test Petit Payload (2 produits)</button>
+        <button class="btn" onclick="testWithMediumPayload()">2️⃣ Test Moyen Payload (5 produits)</button>
+        <button class="btn" onclick="testWithLargePayload()">3️⃣ Test Large Payload (20 produits)</button>
+        <button class="btn" onclick="testWithoutProducts()">4️⃣ Test Sans Produits (DB)</button>
+        <button class="btn" onclick="clearLogs()">🗑️ Effacer</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="logs"></div>
+    <div id="result"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ timestamp, message, type });
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = `
+                <div class="result-section">
+                    <h2>📋 Logs de Diagnostic</h2>
+                    ${logs.map(log => `
+                        <div class="log-entry ${log.type === 'error' ? 'log-error' : log.type === 'success' ? 'log-success' : ''}">
+                            [${log.timestamp}] ${log.message}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function showStatus(message, type = 'info') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showLoading(message) {
+            document.getElementById('status').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function displayResult(data) {
+            document.getElementById('result').innerHTML = `
+                <div class="result-section">
+                    <h2>📦 Résultat de l'API</h2>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        async function callEdgeFunction(products, description) {
+            const startTime = Date.now();
+            addLog(`🚀 Début de l'appel: ${description}`);
+            showLoading(`En cours: ${description}...`);
+
+            try {
+                const apiUrl = `${SUPABASE_URL}/functions/v1/generate-seo-opportunities`;
+
+                addLog(`📍 URL: ${apiUrl}`);
+                addLog(`📦 Produits envoyés: ${products.length}`);
+
+                const payload = {
+                    products: products,
+                    language: 'fr'
+                };
+
+                addLog(`📤 Envoi de la requête...`);
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    addLog('⏱️ Timeout après 60 secondes', 'error');
+                }, 60000);
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                addLog(`⏱️ Durée: ${duration}s`);
+                addLog(`📥 Status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addLog(`❌ Erreur HTTP: ${errorText}`, 'error');
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                addLog(`✅ Réponse reçue`, 'success');
+                addLog(`📊 Opportunités créées: ${result.opportunities?.length || 0}`, 'success');
+
+                displayResult(result);
+                showStatus(`✅ Succès en ${duration}s - ${result.opportunities?.length || 0} opportunités`, 'success');
+
+                return result;
+
+            } catch (error) {
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                addLog(`❌ Erreur après ${duration}s: ${error.message}`, 'error');
+                showStatus(`❌ Erreur: ${error.message}`, 'error');
+                console.error('Error:', error);
+                throw error;
+            }
+        }
+
+        async function testWithSmallPayload() {
+            const products = [
+                {
+                    id: 'test-1',
+                    title: 'Canapé 3 places en cuir',
+                    category: 'Canapés',
+                    sub_category: 'Canapés en cuir',
+                    product_type: 'Mobilier salon',
+                    tags: ['cuir', 'moderne', '3 places'],
+                    ai_color: 'Noir',
+                    ai_material: 'Cuir véritable'
+                },
+                {
+                    id: 'test-2',
+                    title: 'Table basse en bois massif',
+                    category: 'Tables',
+                    sub_category: 'Tables basses',
+                    product_type: 'Mobilier salon',
+                    tags: ['bois', 'rustique', 'massif'],
+                    ai_color: 'Brun',
+                    ai_material: 'Chêne massif'
+                }
+            ];
+
+            await callEdgeFunction(products, 'Test avec 2 produits');
+        }
+
+        async function testWithMediumPayload() {
+            const products = Array.from({ length: 5 }, (_, i) => ({
+                id: `test-${i + 1}`,
+                title: `Produit Test ${i + 1}`,
+                category: 'Test Category',
+                sub_category: 'Test Sub',
+                product_type: 'Test Type',
+                tags: ['tag1', 'tag2'],
+                ai_color: 'Test Color',
+                ai_material: 'Test Material'
+            }));
+
+            await callEdgeFunction(products, 'Test avec 5 produits');
+        }
+
+        async function testWithLargePayload() {
+            const products = Array.from({ length: 20 }, (_, i) => ({
+                id: `test-${i + 1}`,
+                title: `Produit Test ${i + 1}`,
+                category: 'Test Category',
+                sub_category: 'Test Sub',
+                product_type: 'Test Type',
+                tags: ['tag1', 'tag2'],
+                ai_color: 'Test Color',
+                ai_material: 'Test Material'
+            }));
+
+            await callEdgeFunction(products, 'Test avec 20 produits');
+        }
+
+        async function testWithoutProducts() {
+            await callEdgeFunction([], 'Test sans produits (récupération depuis DB)');
+        }
+
+        function clearLogs() {
+            logs = [];
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+            showStatus('🗑️ Logs effacés', 'info');
+        }
+
+        // Initialize
+        showStatus('✅ Prêt pour les tests', 'success');
+        addLog('🎯 Système de diagnostic initialisé');
+    </script>
+</body>
+</html>

@@ -16,10 +16,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log("🎯 Edge Function called");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
+
+    console.log("🔑 Keys check:", {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey,
+      hasDeepseek: !!deepseekKey,
+      hasOpenAI: !!openaiKey,
+    });
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Missing Supabase credentials");
@@ -32,9 +40,11 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse request body
+    console.log("📥 Parsing request body...");
     const requestBody = await req.json();
     const language = requestBody.language || "fr";
     let products = requestBody.products || [];
+    console.log(`📦 Products received: ${products.length}`);
 
     // 🔍 Si pas de produits dans la requête, récupérer depuis la DB
     if (!products || products.length === 0) {
@@ -62,7 +72,12 @@ Deno.serve(async (req) => {
     const aiKey = deepseekKey || openaiKey;
     const useDeepSeek = !!deepseekKey;
 
+    console.log(`🤖 Using AI provider: ${useDeepSeek ? 'DeepSeek' : 'OpenAI'}`);
+    console.log("🚀 Calling AI API...");
+
     const opportunities = await generateOpportunities(products, language, aiKey, useDeepSeek);
+
+    console.log(`✅ AI responded with ${opportunities.length} opportunities`);
 
     if (!opportunities.length) {
       return respond(200, {
@@ -202,43 +217,61 @@ Réponds UNIQUEMENT avec le JSON, sans texte additionnel.`;
 
   const model = useDeepSeek ? "deepseek-chat" : "gpt-4o";
 
+  console.log(`📡 Calling ${model} at ${apiUrl}`);
+  console.log(`📝 Prompt length: ${prompt.length} chars`);
+
+  const requestBody = {
+    model: model,
+    messages: [
+      {
+        role: "system",
+        content: "Tu es un expert SEO e-commerce. Réponds UNIQUEMENT en JSON valide, sans markdown ni texte additionnel.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 3000,
+    response_format: useDeepSeek ? { type: "json_object" } : undefined,
+  };
+
+  const startTime = Date.now();
+
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        {
-          role: "system",
-          content: "Tu es un expert SEO e-commerce. Réponds UNIQUEMENT en JSON valide, sans markdown ni texte additionnel.",
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 3000,
-      response_format: useDeepSeek ? { type: "json_object" } : undefined,
-    }),
+    body: JSON.stringify(requestBody),
   });
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+  console.log(`⏱️ API response time: ${duration}s`);
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`❌ API error: ${response.status} - ${errorText}`);
     throw new Error(`AI API error: ${response.status} - ${errorText}`);
   }
 
+  console.log("📥 Parsing AI response...");
   const data = await response.json();
   let content = data.choices[0].message.content.trim();
+
+  console.log(`📄 Response content length: ${content.length} chars`);
 
   // Nettoyer le contenu si nécessaire
   content = content.replace(/^```json\n?/, "").replace(/```$/, "").trim();
 
+  console.log("🔍 Parsing JSON...");
   const json = JSON.parse(content);
-  return json.opportunities || [];
+  const opportunities = json.opportunities || [];
+
+  console.log(`✅ Parsed ${opportunities.length} opportunities`);
+  return opportunities;
 }
 
 // ===========================================================
