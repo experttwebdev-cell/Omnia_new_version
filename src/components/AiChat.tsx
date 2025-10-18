@@ -85,7 +85,7 @@ export function AiChat() {
 
       const assistantMessage: ChatMessage = {
         role: "assistant",
-        content: response.response || "J’analyse votre demande...",
+        content: response.content || "J'analyse votre demande...",
         products: response.products || [],
         summary: response.summary || null,
         timestamp: new Date().toISOString(),
