@@ -47,19 +47,16 @@ interface ChatResponse {
 }
 
 //
-// ⚙️ 1. APPEL DEEPSEEK SIMPLE (SANS STREAMING)
+// ⚙️ 1. APPEL DEEPSEEK SIMPLE
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<string> {
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
   
   if (!supabaseUrl) {
-    console.error("❌ VITE_SUPABASE_URL manquante");
     return "Bonjour ! Je suis OmnIA, votre assistant shopping. Comment puis-je vous aider ?";
   }
 
   try {
-    console.log("📤 Appel DeepSeek avec", messages.length, "messages");
-    
     const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
       method: "POST",
       headers: { 
@@ -70,61 +67,47 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<s
         model: "deepseek-chat",
         temperature: 0.7,
         max_tokens: maxTokens,
-        stream: false // ⚠️ IMPORTANT: mode JSON normal
+        stream: false
       }),
     });
 
-    console.log("📥 Status réponse:", response.status);
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Erreur HTTP:", response.status, errorText);
-      throw new Error(`Erreur ${response.status}`);
+      throw new Error(`HTTP error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("✅ Réponse DeepSeek reçue");
-
-    // 🔥 Extraction du contenu de la réponse
-    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-      return data.choices[0].message.content.trim();
+    
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
     }
 
-    // Fallback si structure différente
-    return "Je suis OmnIA. Comment puis-je vous aider dans vos recherches shopping ?";
+    return "Je suis OmnIA. Comment puis-je vous aider ?";
 
   } catch (err) {
-    console.error("❌ Erreur callDeepSeek:", err);
+    console.error("Erreur callDeepSeek:", err);
     
-    // ✅ Réponses de fallback intelligentes
-    const lastUserMessage = messages[messages.length - 1]?.content.toLowerCase() || "";
+    const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || "";
     
-    if (lastUserMessage.includes("bonjour") || lastUserMessage.includes("salut") || lastUserMessage.includes("hello")) {
-      return "Bonjour ! 👋 Je suis OmnIA, votre assistant shopping. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?";
+    if (lastMessage.includes("bonjour")) {
+      return "Bonjour ! 👋 Je suis OmnIA, votre assistant shopping. Que recherchez-vous aujourd'hui ?";
     }
     
-    if (lastUserMessage.includes("merci")) {
-      return "Avec plaisir ! N'hésitez pas si vous avez d'autres questions. Bonne journée !";
-    }
-    
-    return "Je suis OmnIA, votre assistant shopping. Décrivez-moi ce que vous cherchez et je vous trouverai les meilleurs produits !";
+    return "Je suis OmnIA, votre assistant shopping. Décrivez-moi ce que vous cherchez !";
   }
 }
 
 //
-// 🧠 2. DÉTECTION D'INTENTION SIMPLIFIÉE
+// 🧠 2. DÉTECTION D'INTENTION
 //
 async function detectIntent(userMessage: string): Promise<"chat" | "product_search"> {
   const msg = userMessage.toLowerCase().trim();
   
-  // Mots-clés de recherche produit
   const searchKeywords = [
     "cherche", "trouve", "trouver", "acheter", "voir", "recherche", 
     "disponible", "propose", "conseille", "recommande", "suggère",
     "montre", "présente", "affiche", "donne", "veux", "voudrais"
   ];
   
-  // Mots-clés de produits
   const productKeywords = [
     "table", "chaise", "canapé", "canape", "montre", "robe", "bureau",
     "armoire", "lit", "fauteuil", "meuble", "décor", "décoration",
@@ -135,12 +118,10 @@ async function detectIntent(userMessage: string): Promise<"chat" | "product_sear
   const hasSearchIntent = searchKeywords.some(word => msg.includes(word));
   const hasProductKeyword = productKeywords.some(word => msg.includes(word));
   
-  // Logique simple : si produit + recherche → recherche produit
   if (hasSearchIntent && hasProductKeyword) {
     return "product_search";
   }
   
-  // Si mention produit sans question → recherche
   if (hasProductKeyword && !msg.includes('?')) {
     return "product_search";
   }
@@ -149,12 +130,13 @@ async function detectIntent(userMessage: string): Promise<"chat" | "product_sear
 }
 
 //
-// 🔍 3. RECHERCHE PRODUIT OPTIMISÉE
+// 🔍 3. FONCTION SEARCHPRODUCTS MANQUANTE - AJOUTEZ-LA !
 //
 async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
-  console.log("🔍 Recherche produits avec filtres:", filters);
+  console.log("🔍 Recherche produits avec:", filters);
 
   try {
+    // 🔥 RECHERCHE DE BASE - sans filtres complexes d'abord
     let query = supabase
       .from("shopify_products")
       .select(`
@@ -164,83 +146,82 @@ async function searchProducts(filters: ProductAttributes, storeId?: string): Pro
       `)
       .eq("status", "active")
       .eq("item_type", "product")
-      .limit(20);
+      .limit(12);
 
-    // Filtres de base
-    if (storeId) query = query.eq("store_id", storeId);
+    // Filtre store
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    }
+
+    // 🔥 RECHERCHE PAR MOT-CLÉ PRINCIPAL
+    const searchTerms = [];
     
-    // Filtre par type/catégorie
+    // Si un type est spécifié (ex: "table")
     if (filters.type) {
-      query = query.or(`title.ilike.%${filters.type}%,category.ilike.%${filters.type}%,tags.ilike.%${filters.type}%`);
+      searchTerms.push(filters.type);
+    }
+    
+    // Recherche dans tous les champs texte
+    if (searchTerms.length > 0) {
+      const searchQuery = searchTerms.map(term => 
+        `title.ilike.%${term}%,category.ilike.%${term}%,tags.ilike.%${term}%,sub_category.ilike.%${term}%`
+      ).join(',');
+      
+      query = query.or(searchQuery);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error("❌ Erreur Supabase:", error);
+      console.error("❌ Erreur recherche:", error);
       return [];
     }
 
+    console.log(`📦 ${data?.length} produits trouvés`);
+
     let results = data || [];
-    console.log(`📦 ${results.length} produits trouvés avant filtrage`);
 
-    // Fonction de matching
-    const match = (fieldValue?: string, searchValue?: string) => 
-      fieldValue?.toLowerCase().includes(searchValue?.toLowerCase() || "");
-
-    // Filtrage avancé
-    if (filters.color) {
+    // 🔥 FILTRES SUPPLÉMENTAIRES
+    if (filters.color && results.length > 0) {
       results = results.filter(p => 
-        match(p.ai_color, filters.color) || 
-        match(p.title, filters.color) ||
-        match(p.tags, filters.color)
+        p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
+        p.title?.toLowerCase().includes(filters.color!.toLowerCase()) ||
+        p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
       );
     }
     
-    if (filters.material) {
+    if (filters.material && results.length > 0) {
       results = results.filter(p => 
-        match(p.ai_material, filters.material) || 
-        match(p.title, filters.material) ||
-        match(p.tags, filters.material)
+        p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+        p.title?.toLowerCase().includes(filters.material!.toLowerCase()) ||
+        p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
       );
     }
     
-    if (filters.maxPrice) {
+    if (filters.maxPrice && results.length > 0) {
       results = results.filter(p => {
         const price = Number(p.price) || 0;
         return price > 0 && price <= filters.maxPrice!;
       });
     }
     
-    if (filters.searchPromo) {
+    if (filters.searchPromo && results.length > 0) {
       results = results.filter(p => 
         p.compare_at_price && 
         Number(p.compare_at_price) > Number(p.price)
       );
     }
 
-    // Tri par pertinence (promo d'abord, puis prix)
-    results.sort((a, b) => {
-      const aHasPromo = a.compare_at_price && Number(a.compare_at_price) > Number(a.price);
-      const bHasPromo = b.compare_at_price && Number(b.compare_at_price) > Number(b.price);
-      
-      if (aHasPromo && !bHasPromo) return -1;
-      if (!aHasPromo && bHasPromo) return 1;
-      
-      return (Number(a.price) || 0) - (Number(b.price) || 0);
-    });
-
-    console.log(`✅ ${results.length} produits après filtrage`);
-    return results.slice(0, 9); // Limiter à 9 produits
+    return results;
 
   } catch (error) {
-    console.error("❌ Erreur recherche produits:", error);
+    console.error("❌ Erreur searchProducts:", error);
     return [];
   }
 }
 
 //
-// ✨ 4. GÉNÉRATION RÉPONSE IA POUR PRODUITS
+// ✨ 4. GÉNÉRATION RÉPONSE POUR PRODUITS
 //
 async function generateProductPresentation(
   products: Product[],
@@ -250,35 +231,33 @@ async function generateProductPresentation(
   if (!products.length) {
     return `Je n'ai pas trouvé de produits correspondant à "${userMessage}". 
 
-Pour affiner la recherche, vous pouvez préciser :
-• Une couleur spécifique
-• Un style (moderne, classique, industriel)
-• Votre budget maximum
-• Des matériaux particuliers
+Pour affiner la recherche :
+• Précisez la couleur, le style ou le matériau
+• Indiquez votre budget maximum
+• Décrivez le type de produit recherché
 
 Je suis là pour vous aider !`;
   }
 
-  // ✅ Réponse simple et efficace sans appel IA
+  // Réponse simple avec les produits trouvés
   const productCount = products.length;
   const promoCount = products.filter(p => 
     p.compare_at_price && Number(p.compare_at_price) > Number(p.price)
   ).length;
 
-  if (productCount <= 3) {
-    const productNames = products.map(p => p.title).join(", ");
-    return `J'ai trouvé ${productCount} produit(s) correspondant à votre recherche : ${productNames}. ${
-      promoCount > 0 ? `📢 ${promoCount} en promotion ! ` : ''
-    }Que pensez-vous de ces options ?`;
+  if (productCount === 1) {
+    return `J'ai trouvé 1 produit correspondant à votre recherche : "${products[0].title}". ${
+      promoCount > 0 ? '📢 Il est en promotion ! ' : ''
+    }Souhaitez-vous en savoir plus ?`;
   } else {
     return `J'ai trouvé ${productCount} produits correspondant à "${userMessage}". ${
       promoCount > 0 ? `📢 ${promoCount} sont en promotion ! ` : ''
-    }Je vous présente les meilleures options. Souhaitez-vous filtrer par couleur, prix ou style ?`;
+    }Je vous présente les meilleures options ci-dessous.`;
   }
 }
 
 //
-// 🧩 5. FONCTION PRINCIPALE OMNIA - VERSION STABLE
+// 🧩 5. FONCTION PRINCIPALE OMNIA - VERSION COMPLÈTE
 //
 export async function OmnIAChat(
   userMessage: string,
@@ -290,8 +269,8 @@ export async function OmnIAChat(
 
   const msg = userMessage.toLowerCase().trim();
 
-  // ✅ RÉPONSES IMMÉDIATES pour salutations
-  if (["bonjour", "salut", "hello", "coucou", "hey", "hi", "bonsoir"].some(greet => msg.includes(greet))) {
+  // ✅ RÉPONSES IMMÉDIATES
+  if (["bonjour", "salut", "hello", "coucou", "hey"].some(greet => msg.includes(greet))) {
     return {
       role: "assistant",
       content: "Bonjour ! 👋 Je suis OmnIA, votre assistant shopping. Je peux vous aider à trouver des meubles, montres ou vêtements. Que recherchez-vous aujourd'hui ?",
@@ -302,22 +281,20 @@ export async function OmnIAChat(
     };
   }
 
-  // ✅ RÉPONSES IMMÉDIATES pour remerciements
-  if (["merci", "thanks", "thank you"].some(thank => msg.includes(thank))) {
+  if (["merci", "thanks"].some(thank => msg.includes(thank))) {
     return {
       role: "assistant",
-      content: "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions. Bonne journée !",
+      content: "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions.",
       intent: "conversation",
       products: [],
-      mode: "conversation", 
+      mode: "conversation",
       sector: "meubles"
     };
   }
 
   try {
-    // Détection d'intention
     const intent = await detectIntent(userMessage);
-    console.log("🎯 Intention détectée:", intent);
+    console.log("🎯 Intention:", intent);
 
     // Configuration des filtres
     const filters: ProductAttributes = { 
@@ -325,64 +302,59 @@ export async function OmnIAChat(
       sector: "meubles" 
     };
 
-    // Détection du secteur
-    if (["montre", "bracelet", "bijou", "horlogerie", "chrono", "boitier"].some(x => msg.includes(x))) {
-      filters.sector = "montres";
-    } else if (["robe", "chemise", "pantalon", "vêtement", "vetement", "mode", "sac", "chaussure", "pull", "t-shirt"].some(x => msg.includes(x))) {
-      filters.sector = "pret_a_porter";
-    }
-
-    // Types de produits
+    // 🔥 DÉTECTION DU TYPE DE PRODUIT
     const productTypes = [
       "table", "chaise", "canapé", "canape", "lit", "armoire", "bureau",
       "fauteuil", "commode", "étagère", "etagere", "buffet", "console",
-      "lampe", "coussin", "tapisserie", "miroir", "tabouret"
+      "lampe", "coussin", "miroir", "tabouret", "meuble"
     ];
-    filters.type = productTypes.find(t => msg.includes(t)) || undefined;
+    
+    // Trouver le type de produit dans le message
+    const foundType = productTypes.find(t => msg.includes(t));
+    if (foundType) {
+      filters.type = foundType;
+      console.log("🎯 Type détecté:", foundType);
+    }
 
-    // Couleurs
-    const colors = [
-      "blanc", "noir", "gris", "beige", "bois", "doré", "doré", "marron",
-      "bleu", "vert", "rouge", "jaune", "argent", "cuivre", "naturel",
-      "rose", "violet", "orange", "turquoise", "bordeaux"
-    ];
-    filters.color = colors.find(c => msg.includes(c)) || undefined;
+    // Détection secteur
+    if (["montre", "bracelet", "bijou", "horlogerie"].some(x => msg.includes(x))) {
+      filters.sector = "montres";
+    } else if (["robe", "chemise", "pantalon", "vêtement", "vetement", "mode"].some(x => msg.includes(x))) {
+      filters.sector = "pret_a_porter";
+    }
 
-    // Matériaux
-    const materials = [
-      "bois", "metal", "métal", "verre", "marbre", "travertin", "cuir",
-      "tissu", "velours", "chenille", "acier", "fer", "rotin", "plastique",
-      "céramique", "pierre", "coton", "lin", "soie"
-    ];
-    filters.material = materials.find(m => msg.includes(m)) || undefined;
+    // Détection couleurs
+    const colors = ["blanc", "noir", "gris", "beige", "bois", "marron", "bleu", "vert", "rouge"];
+    const foundColor = colors.find(c => msg.includes(c));
+    if (foundColor) filters.color = foundColor;
+
+    // Détection matériaux
+    const materials = ["bois", "metal", "métal", "verre", "marbre", "cuir", "tissu"];
+    const foundMaterial = materials.find(m => msg.includes(m));
+    if (foundMaterial) filters.material = foundMaterial;
 
     // Promotions
-    const promoKeywords = ["promo", "réduction", "solde", "offre", "soldé", "solder", "discount"];
-    if (promoKeywords.some(p => msg.includes(p))) {
+    if (["promo", "réduction", "solde", "soldé"].some(p => msg.includes(p))) {
       filters.searchPromo = true;
     }
 
-    // Prix maximum
-    const priceMatch = msg.match(/(moins de|max|sous|budget|jusqu'à|jusqua|maximum)\s*(\d+)/);
+    // Prix
+    const priceMatch = msg.match(/(\d+)\s*(€|euros|euro)/);
     if (priceMatch) {
-      filters.maxPrice = Number(priceMatch[2]);
+      filters.maxPrice = Number(priceMatch[1]);
     }
 
-    // 🔥 MODE CONVERSATION SIMPLE
+    // 🔥 MODE CONVERSATION
     if (intent === "chat") {
-      console.log("💬 Mode conversation activé");
-      
       const messages: ChatMessage[] = [
         {
           role: "system",
-          content: `Tu es OmnIA, assistant e-commerce friendly et professionnel. 
-Réponds en français de manière concise et utile (60-100 mots max).
-Sois chaleureux et engageant.`
+          content: `Tu es OmnIA, assistant e-commerce. Réponds brièvement en français.`
         },
         { role: "user", content: userMessage },
       ];
 
-      const chatResponse = await callDeepSeek(messages, 150);
+      const chatResponse = await callDeepSeek(messages, 100);
       
       return {
         role: "assistant",
@@ -395,26 +367,27 @@ Sois chaleureux et engageant.`
     }
 
     // 🔥 MODE RECHERCHE PRODUIT
-    console.log("🛍️ Mode recherche produit activé");
+    console.log("🔍 Lancement recherche avec filtres:", filters);
     const products = await searchProducts(filters, storeId);
+    console.log(`📦 ${products.length} produits trouvés`);
+    
     const aiResponse = await generateProductPresentation(products, userMessage, filters.sector || "meubles");
 
     return {
       role: "assistant",
       content: aiResponse,
-      intent: "product_show", 
+      intent: "product_show",
       products,
       mode: "product_show",
       sector: filters.sector || "meubles",
     };
 
   } catch (error) {
-    console.error("❌ [OMNIA] Erreur globale:", error);
+    console.error("❌ [OMNIA] Erreur:", error);
     
-    // ✅ FALLBACK GARANTI - Jamais d'erreur utilisateur
     return {
-      role: "assistant", 
-      content: "Bonjour ! Je suis OmnIA. Décrivez-moi ce que vous cherchez (meuble, montre, vêtement) et je vous aiderai à trouver le produit parfait !",
+      role: "assistant",
+      content: "Je suis OmnIA, votre assistant shopping. Décrivez-moi ce que vous cherchez (ex: table en bois, montre élégante, robe d'été) et je vous aiderai !",
       intent: "conversation",
       products: [],
       mode: "conversation",
@@ -423,47 +396,18 @@ Sois chaleureux et engageant.`
   }
 }
 
-// 🆕 Fonction utilitaire pour les images produit
+// 🆕 Fonctions utilitaires
 export async function getProductImages(productExternalId: string): Promise<any[]> {
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("shopify_products")
       .select("url, alt_text, position")
       .eq("item_type", "image")
       .eq("parent_external_id", productExternalId)
       .order("position", { ascending: true });
 
-    if (error) {
-      console.error("❌ Erreur récupération images:", error);
-      return [];
-    }
-
     return data || [];
   } catch (error) {
-    console.error("❌ Erreur getProductImages:", error);
-    return [];
-  }
-}
-
-// 🆕 Fonction pour produits similaires
-export async function getSimilarProducts(productId: string, sector: string, limit = 4): Promise<Product[]> {
-  try {
-    const { data, error } = await supabase
-      .from("shopify_products")
-      .select("*")
-      .eq("status", "active")
-      .eq("item_type", "product")
-      .neq("id", productId)
-      .limit(limit);
-
-    if (error) {
-      console.error("❌ Erreur produits similaires:", error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error("❌ Erreur getSimilarProducts:", error);
     return [];
   }
 }
