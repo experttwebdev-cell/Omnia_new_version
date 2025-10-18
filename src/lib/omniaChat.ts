@@ -357,6 +357,7 @@ export async function OmnIAChat(
   console.log("🚀 [OMNIA] Message reçu:", userMessage);
 
   const intent = await detectIntent(userMessage);
+  console.log("🎯 [OMNIA] Intent détecté:", intent);
   const msg = userMessage.toLowerCase().trim();
 
   // Configuration des filtres améliorée
@@ -407,16 +408,18 @@ export async function OmnIAChat(
 
   // Mode conversation simple
   if (intent === "chat") {
+    console.log("💬 [OMNIA] Mode conversation activé");
     const messages: ChatMessage[] = [
       {
         role: "system",
-        content: `Tu es OmnIA, assistant e-commerce amical et professionnel. 
+        content: `Tu es OmnIA, assistant e-commerce amical et professionnel.
 Réponds de manière concise, naturelle et utile (80-120 mots maximum).`
       },
       { role: "user", content: userMessage },
     ];
 
     const chatResponse = await callDeepSeek(messages, 120);
+    console.log("✅ [OMNIA] Réponse conversation générée:", chatResponse.substring(0, 50) + "...");
 
     return {
       role: "assistant",
@@ -429,13 +432,17 @@ Réponds de manière concise, naturelle et utile (80-120 mots maximum).`
   }
 
   // 🔍 RECHERCHE PRODUIT
+  console.log("🔍 [OMNIA] Mode recherche produit activé, filters:", filters);
   const products = await searchProducts(filters, storeId);
+  console.log(`📦 [OMNIA] ${products.length} produits trouvés`);
+
   const aiResponse = await generateProductPresentation(
     products,
     userMessage,
     filters.sector || "meubles",
     onChunk
   );
+  console.log("✅ [OMNIA] Présentation produits générée:", aiResponse.substring(0, 50) + "...");
 
   return {
     role: "assistant",

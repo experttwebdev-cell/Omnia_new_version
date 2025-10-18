@@ -81,7 +81,9 @@ export function AiChat() {
     setLoading(true);
 
     try {
+      console.log("🚀 [CHAT] Starting OmnIAChat with message:", currentMessage);
       const response = await OmnIAChat(currentMessage, [], storeId || undefined);
+      console.log("✅ [CHAT] OmnIAChat response received:", response);
 
       const assistantMessage: ChatMessage = {
         role: "assistant",
@@ -93,9 +95,10 @@ export function AiChat() {
         sector: response.sector || "meubles",
       };
 
+      console.log("📝 [CHAT] Adding assistant message:", assistantMessage);
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      console.error("Chat Error:", err);
+      console.error("❌ [CHAT] Error:", err);
       setMessages((prev) => [
         ...prev,
         {
@@ -106,6 +109,7 @@ export function AiChat() {
         },
       ]);
     } finally {
+      console.log("🏁 [CHAT] Request completed");
       setLoading(false);
       inputRef.current?.focus();
     }
