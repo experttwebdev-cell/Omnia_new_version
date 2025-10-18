@@ -108,8 +108,13 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<s
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
   const anonKey = getEnvVar("VITE_SUPABASE_ANON_KEY");
 
+  console.log("🔧 [callDeepSeek] Starting request to ai-chat edge function");
+  console.log("🔧 [callDeepSeek] Supabase URL:", supabaseUrl);
+  console.log("🔧 [callDeepSeek] Anon Key:", anonKey ? "✓ Present" : "✗ Missing");
+
   try {
     const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
+    console.log("📤 [callDeepSeek] Sending message:", lastUserMessage);
 
     const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
       method: "POST",
@@ -126,18 +131,26 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<s
       }),
     });
 
+    console.log("📥 [callDeepSeek] Response status:", response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error("❌ [callDeepSeek] HTTP error:", response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
 
     const data = await response.json();
+    console.log("📦 [callDeepSeek] Response data:", data);
+
     const content = data?.reply || "Je n'ai pas pu générer de réponse pour le moment.";
 
     console.log(`✅ AI responded via ${data.provider} (${data.model}) in ${data.duration}`);
 
     return content.trim();
   } catch (err) {
-    console.error("❌ AI chat error:", err);
+    console.error("❌ [callDeepSeek] Full error:", err);
+    console.error("❌ [callDeepSeek] Error message:", err instanceof Error ? err.message : String(err));
+    console.error("❌ [callDeepSeek] Error stack:", err instanceof Error ? err.stack : "No stack trace");
     return "Je cherche encore la meilleure réponse pour vous…";
   }
 }
