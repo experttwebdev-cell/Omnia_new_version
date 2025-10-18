@@ -12,6 +12,12 @@ export interface ProductSearchFilters {
   color?: string;
   material?: string;
   shape?: string;
+  texture?: string;
+  pattern?: string;
+  finish?: string;
+  room?: string;
+  style?: string;
+  craftsmanship?: string;
   tags?: string[];
   vendor?: string;
   hasPromo?: boolean;
@@ -90,6 +96,30 @@ export async function searchProducts(
       query = query.or(`ai_shape.ilike.%${filters.shape}%,title.ilike.%${filters.shape}%,tags.ilike.%${filters.shape}%`);
     }
 
+    if (filters.texture) {
+      query = query.or(`ai_texture.ilike.%${filters.texture}%,title.ilike.%${filters.texture}%,description.ilike.%${filters.texture}%`);
+    }
+
+    if (filters.pattern) {
+      query = query.or(`ai_pattern.ilike.%${filters.pattern}%,title.ilike.%${filters.pattern}%,description.ilike.%${filters.pattern}%`);
+    }
+
+    if (filters.finish) {
+      query = query.or(`ai_finish.ilike.%${filters.finish}%,title.ilike.%${filters.finish}%,description.ilike.%${filters.finish}%`);
+    }
+
+    if (filters.room) {
+      query = query.or(`room.ilike.%${filters.room}%,title.ilike.%${filters.room}%,tags.ilike.%${filters.room}%`);
+    }
+
+    if (filters.style) {
+      query = query.or(`style.ilike.%${filters.style}%,title.ilike.%${filters.style}%,tags.ilike.%${filters.style}%`);
+    }
+
+    if (filters.craftsmanship) {
+      query = query.or(`ai_craftsmanship_level.ilike.%${filters.craftsmanship}%`);
+    }
+
     if (filters.query) {
       const searchTerms = filters.query.toLowerCase().split(' ').filter(term => term.length > 2);
 
@@ -101,9 +131,30 @@ export async function searchProducts(
           `category.ilike.%${term}%`,
           `sub_category.ilike.%${term}%`,
           `product_type.ilike.%${term}%`,
+          `vendor.ilike.%${term}%`,
+          `seo_title.ilike.%${term}%`,
+          `seo_description.ilike.%${term}%`,
+          `ai_vision_analysis.ilike.%${term}%`,
           `ai_color.ilike.%${term}%`,
           `ai_material.ilike.%${term}%`,
-          `ai_shape.ilike.%${term}%`
+          `ai_shape.ilike.%${term}%`,
+          `ai_texture.ilike.%${term}%`,
+          `ai_pattern.ilike.%${term}%`,
+          `ai_finish.ilike.%${term}%`,
+          `ai_design_elements.ilike.%${term}%`,
+          `ai_craftsmanship_level.ilike.%${term}%`,
+          `ai_condition_notes.ilike.%${term}%`,
+          `room.ilike.%${term}%`,
+          `style.ilike.%${term}%`,
+          `dimensions_text.ilike.%${term}%`,
+          `characteristics.ilike.%${term}%`,
+          `google_product_category.ilike.%${term}%`,
+          `google_brand.ilike.%${term}%`,
+          `google_custom_label_0.ilike.%${term}%`,
+          `google_custom_label_1.ilike.%${term}%`,
+          `google_custom_label_2.ilike.%${term}%`,
+          `google_custom_label_3.ilike.%${term}%`,
+          `google_custom_label_4.ilike.%${term}%`
         ]).join(',');
 
         query = query.or(orConditions);
@@ -193,14 +244,45 @@ function rankProductsByRelevance(products: Product[], query: string): Product[] 
     const description = product.description?.toLowerCase() || '';
     const tags = product.tags?.toLowerCase() || '';
     const category = product.category?.toLowerCase() || '';
+    const subCategory = product.sub_category?.toLowerCase() || '';
+    const aiColor = product.ai_color?.toLowerCase() || '';
+    const aiMaterial = product.ai_material?.toLowerCase() || '';
+    const aiShape = product.ai_shape?.toLowerCase() || '';
+    const aiTexture = (product as any).ai_texture?.toLowerCase() || '';
+    const aiPattern = (product as any).ai_pattern?.toLowerCase() || '';
+    const aiFinish = (product as any).ai_finish?.toLowerCase() || '';
+    const aiDesign = (product as any).ai_design_elements?.toLowerCase() || '';
+    const room = (product as any).room?.toLowerCase() || '';
+    const style = (product as any).style?.toLowerCase() || '';
+    const dimensions = (product as any).dimensions_text?.toLowerCase() || '';
+    const characteristics = (product as any).characteristics?.toLowerCase() || '';
+    const seoTitle = product.seo_title?.toLowerCase() || '';
+    const seoDescription = product.seo_description?.toLowerCase() || '';
+    const visionAnalysis = product.ai_vision_analysis?.toLowerCase() || '';
+    const craftsmanship = (product as any).ai_craftsmanship_level?.toLowerCase() || '';
 
     searchTerms.forEach(term => {
       if (title.includes(term)) score += 10;
-      if (category.includes(term)) score += 5;
-      if (tags.includes(term)) score += 3;
-      if (description.includes(term)) score += 1;
-
       if (title.startsWith(term)) score += 5;
+      if (category.includes(term)) score += 8;
+      if (subCategory.includes(term)) score += 7;
+      if (seoTitle.includes(term)) score += 6;
+      if (aiColor.includes(term)) score += 5;
+      if (aiMaterial.includes(term)) score += 5;
+      if (room.includes(term)) score += 5;
+      if (style.includes(term)) score += 5;
+      if (tags.includes(term)) score += 4;
+      if (aiShape.includes(term)) score += 3;
+      if (aiTexture.includes(term)) score += 3;
+      if (aiPattern.includes(term)) score += 3;
+      if (aiFinish.includes(term)) score += 3;
+      if (craftsmanship.includes(term)) score += 3;
+      if (characteristics.includes(term)) score += 2;
+      if (aiDesign.includes(term)) score += 2;
+      if (dimensions.includes(term)) score += 2;
+      if (seoDescription.includes(term)) score += 2;
+      if (description.includes(term)) score += 1;
+      if (visionAnalysis.includes(term)) score += 1;
     });
 
     return { product, score };

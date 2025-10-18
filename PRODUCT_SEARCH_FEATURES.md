@@ -11,15 +11,21 @@ Un système de recherche de produits centralisé, puissant et réutilisable a é
 
 #### Fonctions exportées:
 
-- **`searchProducts(filters, storeId?)`** - Fonction principale de recherche
+- **`searchProducts(filters, storeId?)`** - Fonction principale de recherche **RECHERCHE DANS 32 CHAMPS !** 🔥
   - Filtres disponibles:
-    - `query`: Recherche textuelle libre (titre, description, tags, catégorie)
+    - `query`: Recherche textuelle libre dans **32 champs** (titre, description, tags, catégorie, sous-catégorie, vendor, SEO, AI vision complète, texture, pattern, finish, design, craftsmanship, room, style, dimensions, characteristics, Google Shopping labels, etc.)
     - `category`: Filtrer par catégorie
     - `subCategory`: Filtrer par sous-catégorie
     - `minPrice` / `maxPrice`: Fourchette de prix
     - `color`: Couleur du produit (AI ou tags)
     - `material`: Matériau du produit (AI ou tags)
     - `shape`: Forme du produit (AI ou tags)
+    - `texture`: Texture du produit (AI) ✨ **NOUVEAU**
+    - `pattern`: Motif du produit (AI) ✨ **NOUVEAU**
+    - `finish`: Finition surface (AI) ✨ **NOUVEAU**
+    - `room`: Pièce/destination (salon, chambre) ✨ **NOUVEAU**
+    - `style`: Style (moderne, classique) ✨ **NOUVEAU**
+    - `craftsmanship`: Niveau qualité (premium, standard) ✨ **NOUVEAU**
     - `tags`: Liste de tags à filtrer
     - `vendor`: Filtrer par vendeur
     - `hasPromo`: Uniquement les produits en promotion
