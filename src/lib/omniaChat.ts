@@ -102,23 +102,27 @@ async function streamDeepSeek(
 }
 
 //
-// ⚙️ 2. Fallback classique amélioré
+// ⚙️ 2. Fallback classique avec nouveau système (DeepSeek → GPT-3.5 → GPT-4o-mini)
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<string> {
   const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
+  const anonKey = getEnvVar("VITE_SUPABASE_ANON_KEY");
+
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
+    const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
       method: "POST",
-      headers: { 
+      headers: {
+        "Authorization": `Bearer ${anonKey}`,
+        "apikey": anonKey,
         "Content-Type": "application/json",
         "Cache-Control": "no-cache"
       },
       body: JSON.stringify({
-        messages,
-        model: "deepseek-chat",
-        temperature: 0.7,
-        max_tokens: maxTokens,
-        stream: false
+        message: lastUserMessage,
+        conversationId: null,
+        storeId: null
       }),
     });
 
@@ -127,15 +131,13 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 150): Promise<s
     }
 
     const data = await response.json();
-    const content =
-      data?.choices?.[0]?.message?.content ||
-      data?.response ||
-      data?.content ||
-      "Je n'ai pas pu générer de réponse pour le moment.";
+    const content = data?.reply || "Je n'ai pas pu générer de réponse pour le moment.";
+
+    console.log(`✅ AI responded via ${data.provider} (${data.model}) in ${data.duration}`);
 
     return content.trim();
   } catch (err) {
-    console.error("❌ DeepSeek fallback error:", err);
+    console.error("❌ AI chat error:", err);
     return "Je cherche encore la meilleure réponse pour vous…";
   }
 }
