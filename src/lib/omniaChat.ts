@@ -1,6 +1,9 @@
 import { supabase, getEnvVar } from "./supabase";
+import { searchProducts, extractFiltersFromQuery, type ProductSearchFilters } from "./productSearch";
+import type { Database } from "./database.types";
 
-// ✅ Interfaces
+type Product = Database['public']['Tables']['shopify_products']['Row'];
+
 interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
@@ -15,26 +18,6 @@ interface ProductAttributes {
   maxPrice?: number;
   searchPromo?: boolean;
   sector?: "meubles" | "montres" | "pret_a_porter";
-}
-
-interface Product {
-  id: string;
-  title: string;
-  price: string;
-  compare_at_price?: string;
-  ai_color?: string;
-  ai_material?: string;
-  ai_shape?: string;
-  image_url?: string;
-  category?: string;
-  sub_category?: string;
-  tags?: string;
-  handle?: string;
-  vendor?: string;
-  currency?: string;
-  product_url?: string;
-  item_type?: string;
-  external_id?: string;
 }
 
 interface ChatResponse {
@@ -129,90 +112,40 @@ async function detectIntent(userMessage: string): Promise<"chat" | "product_sear
   return "chat";
 }
 
-//
-// 🔍 3. FONCTION SEARCHPRODUCTS MANQUANTE - AJOUTEZ-LA !
-//
-async function searchProducts(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
+async function searchProductsForChat(filters: ProductAttributes, storeId?: string): Promise<Product[]> {
   console.log("🔍 Recherche produits avec:", filters);
 
   try {
-    // 🔥 RECHERCHE DE BASE - sans filtres complexes d'abord
-    let query = supabase
-      .from("shopify_products")
-      .select(`
-        id, title, price, compare_at_price, ai_color, ai_material, 
-        ai_shape, image_url, handle, category, sub_category, tags, 
-        vendor, currency, product_url, item_type, external_id
-      `)
-      .eq("status", "active")
-      .eq("item_type", "product")
-      .limit(12);
+    const searchFilters: ProductSearchFilters = {
+      status: 'active',
+      limit: 12,
+      sortBy: 'relevance'
+    };
 
-    // Filtre store
-    if (storeId) {
-      query = query.eq("store_id", storeId);
-    }
-
-    // 🔥 RECHERCHE PAR MOT-CLÉ PRINCIPAL
-    const searchTerms = [];
-    
-    // Si un type est spécifié (ex: "table")
     if (filters.type) {
-      searchTerms.push(filters.type);
-    }
-    
-    // Recherche dans tous les champs texte
-    if (searchTerms.length > 0) {
-      const searchQuery = searchTerms.map(term => 
-        `title.ilike.%${term}%,category.ilike.%${term}%,tags.ilike.%${term}%,sub_category.ilike.%${term}%`
-      ).join(',');
-      
-      query = query.or(searchQuery);
+      searchFilters.query = filters.type;
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("❌ Erreur recherche:", error);
-      return [];
+    if (filters.color) {
+      searchFilters.color = filters.color;
     }
 
-    console.log(`📦 ${data?.length} produits trouvés`);
-
-    let results = data || [];
-
-    // 🔥 FILTRES SUPPLÉMENTAIRES
-    if (filters.color && results.length > 0) {
-      results = results.filter(p => 
-        p.ai_color?.toLowerCase().includes(filters.color!.toLowerCase()) ||
-        p.title?.toLowerCase().includes(filters.color!.toLowerCase()) ||
-        p.tags?.toLowerCase().includes(filters.color!.toLowerCase())
-      );
-    }
-    
-    if (filters.material && results.length > 0) {
-      results = results.filter(p => 
-        p.ai_material?.toLowerCase().includes(filters.material!.toLowerCase()) ||
-        p.title?.toLowerCase().includes(filters.material!.toLowerCase()) ||
-        p.tags?.toLowerCase().includes(filters.material!.toLowerCase())
-      );
-    }
-    
-    if (filters.maxPrice && results.length > 0) {
-      results = results.filter(p => {
-        const price = Number(p.price) || 0;
-        return price > 0 && price <= filters.maxPrice!;
-      });
-    }
-    
-    if (filters.searchPromo && results.length > 0) {
-      results = results.filter(p => 
-        p.compare_at_price && 
-        Number(p.compare_at_price) > Number(p.price)
-      );
+    if (filters.material) {
+      searchFilters.material = filters.material;
     }
 
-    return results;
+    if (filters.maxPrice) {
+      searchFilters.maxPrice = filters.maxPrice;
+    }
+
+    if (filters.searchPromo) {
+      searchFilters.hasPromo = true;
+    }
+
+    const result = await searchProducts(searchFilters, storeId);
+
+    console.log(`📦 ${result.products.length} produits trouvés`);
+    return result.products;
 
   } catch (error) {
     console.error("❌ Erreur searchProducts:", error);
@@ -368,9 +301,9 @@ export async function OmnIAChat(
 
     // 🔥 MODE RECHERCHE PRODUIT
     console.log("🔍 Lancement recherche avec filtres:", filters);
-    const products = await searchProducts(filters, storeId);
+    const products = await searchProductsForChat(filters, storeId);
     console.log(`📦 ${products.length} produits trouvés`);
-    
+
     const aiResponse = await generateProductPresentation(products, userMessage, filters.sector || "meubles");
 
     return {

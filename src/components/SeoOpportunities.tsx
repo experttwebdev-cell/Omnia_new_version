@@ -24,6 +24,7 @@ import { useLanguage } from '../App';
 import { BlogArticleModal } from './BlogArticleModal';
 import { ProductDiagnostics } from './ProductDiagnostics';
 import { ProgressModal } from './ProgressModal';
+import { searchProductsByCategory, searchProductsByIds } from '../lib/productSearch';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 

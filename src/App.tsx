@@ -13,6 +13,7 @@ import { AiCampaigns } from './components/AiCampaigns';
 import { GoogleShopping } from './components/GoogleShopping';
 import { Settings as SettingsComponent } from './components/Settings';
 import { AiChat } from './components/AiChat';
+import { ProductSearch } from './components/ProductSearch';
 import { CacheProvider } from './lib/cache';
 import { Language, getTranslation, type Translations } from './lib/translations';
 import { supabase, getEnvVar } from './lib/supabase';
@@ -36,7 +37,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -145,6 +146,7 @@ function App() {
   const navigation = [
     { id: 'dashboard' as ViewType, name: t.nav.dashboard, icon: LayoutDashboard },
     { id: 'products' as ViewType, name: t.nav.products, icon: Package },
+    { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
     { id: 'ai-chat' as ViewType, name: 'AI Chat', icon: MessageCircle },
@@ -310,6 +312,7 @@ function App() {
           {activeView === 'products' && (
             <EnhancedProductList key={refreshKey} onProductSelect={handleProductSelect} />
           )}
+          {activeView === 'product-search' && <ProductSearch />}
           {activeView === 'stores' && <StoreManager onImportStart={handleImportComplete} />}
           {activeView === 'google-shopping' && <GoogleShopping />}
           {activeView === 'seo-optimization' && <SeoOptimization />}
