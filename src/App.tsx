@@ -13,6 +13,8 @@ import { AiCampaigns } from './components/AiCampaigns';
 import { GoogleShopping } from './components/GoogleShopping';
 import { Settings as SettingsComponent } from './components/Settings';
 import { AiChat } from './components/AiChat';
+import { ChatHistory } from './components/ChatHistory';
+import { ChatSettings } from './components/ChatSettings';
 import { ProductSearch } from './components/ProductSearch';
 import { CacheProvider } from './lib/cache';
 import { Language, getTranslation, type Translations } from './lib/translations';
@@ -34,10 +36,12 @@ import {
   BookOpen,
   Sparkles,
   Settings,
-  MessageCircle
+  MessageCircle,
+  History,
+  Settings as SettingsIcon
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -58,6 +62,7 @@ function App() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [seoExpanded, setSeoExpanded] = useState(true);
+  const [aiChatExpanded, setAiChatExpanded] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [language, setLanguage] = useState<Language>('en');
   const [languageLoaded, setLanguageLoaded] = useState(false);
@@ -149,7 +154,6 @@ function App() {
     { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
-    { id: 'ai-chat' as ViewType, name: 'AI Chat', icon: MessageCircle },
   ];
 
   const seoSubItems = [
@@ -162,7 +166,14 @@ function App() {
     { id: 'seo-ai-campaigns' as ViewType, name: 'AI Campaigns', icon: Sparkles },
   ];
 
+  const aiChatSubItems = [
+    { id: 'ai-chat' as ViewType, name: 'Chat', icon: MessageCircle },
+    { id: 'ai-chat-history' as ViewType, name: 'Historique', icon: History },
+    { id: 'ai-chat-settings' as ViewType, name: 'Paramètres', icon: SettingsIcon },
+  ];
+
   const isSeoView = activeView.startsWith('seo-');
+  const isAiChatView = activeView.startsWith('ai-chat');
 
   if (!languageLoaded) {
     return (
@@ -286,6 +297,54 @@ function App() {
               </div>
             )}
           </div>
+
+          <div className="mt-2">
+            <button
+              onClick={() => setAiChatExpanded(!aiChatExpanded)}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition ${
+                isAiChatView
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-medium">AI Chat</span>
+              </div>
+              {aiChatExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+
+            {aiChatExpanded && (
+              <div className="mt-1 space-y-1">
+                {aiChatSubItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeView === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveView(item.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-lg transition text-sm ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="p-4 border-t border-gray-200">
@@ -323,6 +382,19 @@ function App() {
           {activeView === 'seo-ai-blog' && <AiBlogWriter onNavigateToCampaigns={() => setActiveView('seo-ai-campaigns')} />}
           {activeView === 'seo-ai-campaigns' && <AiCampaigns />}
           {activeView === 'ai-chat' && <AiChat />}
+          {activeView === 'ai-chat-history' && (
+            <div className="h-[calc(100vh-150px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+              <ChatHistory
+                onSelectConversation={(conv) => setActiveView('ai-chat')}
+                currentConversationId={undefined}
+              />
+            </div>
+          )}
+          {activeView === 'ai-chat-settings' && (
+            <div className="h-[calc(100vh-150px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+              <ChatSettings />
+            </div>
+          )}
           {activeView === 'settings' && <SettingsComponent />}
         </div>
       </main>
