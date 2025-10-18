@@ -5,9 +5,6 @@ import {
   Bot,
   User,
   Loader2,
-  ShoppingCart,
-  Eye,
-  Sparkles,
   MessageCircle,
   Package,
   Home,
@@ -22,13 +19,12 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   products?: any[];
-  summary?: any;
   timestamp: string;
   mode?: "conversation" | "product_show";
   sector?: string;
+  intent?: "simple_chat" | "product_chat" | "product_show";
 }
 
-// ✅ Ajouter les types manquants
 type SectorType = "meubles" | "montres" | "pret_a_porter";
 
 export function AiChat() {
@@ -41,14 +37,13 @@ export function AiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Corriger le typage des icônes
   const sectorIcons: Record<SectorType, any> = {
     meubles: Home,
     montres: Watch,
     pret_a_porter: Shirt,
   };
 
-  // ✅ Améliorer le chargement du store
+  // Charger les paramètres du store
   useEffect(() => {
     const loadStoreSettings = async () => {
       try {
@@ -67,6 +62,7 @@ export function AiChat() {
               role: "assistant",
               content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
               timestamp: new Date().toISOString(),
+              intent: "simple_chat"
             },
           ]);
         }
@@ -78,7 +74,7 @@ export function AiChat() {
     loadStoreSettings();
   }, []);
 
-  // ✅ Améliorer le scroll automatique
+  // Scroll automatique
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ 
       behavior: "smooth",
@@ -86,7 +82,6 @@ export function AiChat() {
     });
   }, [messages]);
 
-  // ✅ Améliorer l'envoi des messages avec gestion d'erreur
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || loading) return;
 
@@ -102,41 +97,19 @@ export function AiChat() {
     setLoading(true);
 
     try {
-      // ✅ Ajouter le callback pour le streaming
-      let streamedContent = "";
-      
-      const response = await OmnIAChat(
-        currentMessage, 
-        [], 
-        storeId || undefined,
-        (chunk) => {
-          streamedContent += chunk;
-          // Mettre à jour le dernier message en temps réel
-          setMessages(prev => {
-            const newMessages = [...prev];
-            const lastMsg = newMessages[newMessages.length - 1];
-            if (lastMsg?.role === "assistant") {
-              lastMsg.content = streamedContent;
-            }
-            return newMessages;
-          });
-        }
-      );
+      const response = await OmnIAChat(currentMessage, [], storeId || undefined);
 
-      // Si pas de streaming, utiliser la réponse normale
-      if (!streamedContent) {
-        const assistantMessage: ChatMessage = {
-          role: "assistant",
-          content: response.response || response.content || "J'analyse votre demande...",
-          products: response.products || [],
-          summary: response.summary || null,
-          timestamp: new Date().toISOString(),
-          mode: response.intent === "product_show" ? "product_show" : "conversation",
-          sector: response.sector as SectorType || "meubles",
-        };
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: response.content,
+        products: response.products || [],
+        timestamp: new Date().toISOString(),
+        mode: response.mode || "conversation",
+        sector: response.sector || "meubles",
+        intent: response.intent || "simple_chat"
+      };
 
-        setMessages((prev) => [...prev, assistantMessage]);
-      }
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error("Chat Error:", err);
       setMessages((prev) => [
@@ -145,6 +118,7 @@ export function AiChat() {
           role: "assistant",
           content: "Désolé, une erreur technique est survenue. Pouvez-vous reformuler votre question ?",
           timestamp: new Date().toISOString(),
+          intent: "simple_chat"
         },
       ]);
     } finally {
@@ -160,20 +134,33 @@ export function AiChat() {
     }
   };
 
-  // ✅ Ajouter une fonction pour réinitialiser la conversation
   const handleResetChat = () => {
     setMessages([
       {
         role: "assistant",
         content: "Bonjour 👋 Je suis OmnIA, votre assistant shopping. Que puis-je vous aider à trouver aujourd'hui ?",
         timestamp: new Date().toISOString(),
+        intent: "simple_chat"
       },
     ]);
   };
 
+  const getIntentBadge = (intent?: string) => {
+    switch (intent) {
+      case "simple_chat":
+        return { text: "Discussion", icon: MessageCircle, color: "text-blue-500" };
+      case "product_chat":
+        return { text: "Conseil produit", icon: MessageCircle, color: "text-green-500" };
+      case "product_show":
+        return { text: "Résultats produits", icon: Package, color: "text-purple-500" };
+      default:
+        return { text: "Discussion", icon: MessageCircle, color: "text-blue-500" };
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-150px)] flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50 rounded-xl shadow-lg overflow-hidden border border-gray-200">
-      {/* HEADER avec bouton reset */}
+      {/* HEADER */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -197,10 +184,13 @@ export function AiChat() {
         </div>
       </div>
 
-      {/* MESSAGES - Améliorations d'affichage */}
+      {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg, i) => {
           const SectorIcon = msg.sector ? sectorIcons[msg.sector as SectorType] : null;
+          const intentBadge = getIntentBadge(msg.intent);
+          const BadgeIcon = intentBadge.icon;
+          
           return (
             <div key={i}>
               <div
@@ -228,18 +218,9 @@ export function AiChat() {
                   >
                     {msg.role === "assistant" && (
                       <div className="flex items-center gap-2 mb-1 text-xs text-gray-500">
-                        {msg.mode === "product_show" ? (
-                          <>
-                            <Package className="w-3 h-3 text-purple-500" />
-                            <span>Résultats produits</span>
-                            {SectorIcon && <SectorIcon className="w-3 h-3 ml-1" />}
-                          </>
-                        ) : (
-                          <>
-                            <MessageCircle className="w-3 h-3 text-blue-500" />
-                            <span>Discussion</span>
-                          </>
-                        )}
+                        <BadgeIcon className={`w-3 h-3 ${intentBadge.color}`} />
+                        <span>{intentBadge.text}</span>
+                        {SectorIcon && <SectorIcon className="w-3 h-3 ml-1" />}
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -286,7 +267,7 @@ export function AiChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* INPUT - Améliorations UX */}
+      {/* INPUT */}
       <div className="border-t bg-white px-6 py-4">
         <div className="flex gap-3 items-end">
           <input
@@ -295,7 +276,7 @@ export function AiChat() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Décrivez ce que vous cherchez (ex: canapé bleu en promotion)..."
+            placeholder="Décrivez ce que vous cherchez (ex: table en bois, montre élégante)..."
             disabled={loading}
             className="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 transition"
             autoFocus
@@ -330,7 +311,7 @@ export function AiChat() {
   );
 }
 
-// ✅ Product Card améliorée
+// Product Card
 function ProductCard({ product, onViewDetails }: any) {
   const hasPromo = product.compare_at_price && 
                   Number(product.compare_at_price) > Number(product.price);
