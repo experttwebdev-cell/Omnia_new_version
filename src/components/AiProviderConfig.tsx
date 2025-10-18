@@ -59,7 +59,6 @@ export function AiProviderConfig() {
     setTestResults((prev) => ({ ...prev, [providerName]: { testing: true } }));
 
     try {
-      // Test through edge function which will use the provider
       const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
       const anonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
@@ -67,27 +66,41 @@ export function AiProviderConfig() {
         throw new Error('Supabase configuration missing');
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/ai-chat`, {
+      const startTime = Date.now();
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/test-deepseek`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${anonKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: 'test',
-          storeId: null,
-        }),
       });
 
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       const data = await response.json();
 
-      setTestResults((prev) => ({
-        ...prev,
-        [providerName]: {
-          success: response.ok,
-          error: response.ok ? null : data.error,
-        },
-      }));
+      if (response.ok && data.success) {
+        setTestResults((prev) => ({
+          ...prev,
+          [providerName]: {
+            success: true,
+            provider: data.provider,
+            model: data.model,
+            response: data.response,
+            duration: data.duration,
+            message: data.message,
+          },
+        }));
+      } else {
+        setTestResults((prev) => ({
+          ...prev,
+          [providerName]: {
+            success: false,
+            error: data.error || 'Unknown error',
+            details: data.details || null,
+          },
+        }));
+      }
     } catch (error) {
       setTestResults((prev) => ({
         ...prev,
@@ -229,13 +242,29 @@ export function AiProviderConfig() {
                     }`}
                   >
                     {result.testing ? (
-                      '⏳ Testing...'
+                      '⏳ Testing connection...'
                     ) : result.success ? (
-                      '✓ Test successful!'
+                      <div>
+                        <div className="font-semibold mb-1">✓ {result.message || 'Test successful!'}</div>
+                        {result.provider && <div className="text-xs opacity-75">Provider: {result.provider}</div>}
+                        {result.model && <div className="text-xs opacity-75">Model: {result.model}</div>}
+                        {result.duration && <div className="text-xs opacity-75">Response time: {result.duration}</div>}
+                        {result.response && (
+                          <div className="mt-2 p-2 bg-white bg-opacity-50 rounded text-xs italic">
+                            "{result.response}"
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <>
-                        ✗ Test failed: {result.error}
-                      </>
+                      <div>
+                        <div className="font-semibold mb-1">✗ Test failed</div>
+                        <div className="text-xs">{result.error}</div>
+                        {result.details && (
+                          <div className="mt-2 text-xs opacity-75">
+                            <pre className="whitespace-pre-wrap">{JSON.stringify(result.details, null, 2)}</pre>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
