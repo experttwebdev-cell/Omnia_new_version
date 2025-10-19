@@ -4,7 +4,7 @@ import type { Database } from "./database.types";
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
 
-export interface ProductSearchFilters {
+export interface ProductSearchFilters { 
   query?: string;
   category?: string;
   subCategory?: string;
