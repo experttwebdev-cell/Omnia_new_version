@@ -16,6 +16,8 @@ import { AiChat } from './components/AiChat';
 import { ChatHistory } from './components/ChatHistory';
 import { ChatSettings } from './components/ChatSettings';
 import { ProductSearch } from './components/ProductSearch';
+import { OmniaChat } from './components/OmniaChat';
+import { CartProvider } from './lib/cartContext';
 import { CacheProvider } from './lib/cache';
 import { Language, getTranslation, type Translations } from './lib/translations';
 import { supabase, getEnvVar } from './lib/supabase';
@@ -41,7 +43,7 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'settings';
 
 interface LanguageContextType {
   language: Language;
@@ -152,6 +154,7 @@ function App() {
     { id: 'dashboard' as ViewType, name: t.nav.dashboard, icon: LayoutDashboard },
     { id: 'products' as ViewType, name: t.nav.products, icon: Package },
     { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
+    { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
   ];
@@ -188,6 +191,7 @@ function App() {
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage: handleLanguageChange, t }}>
+    <CartProvider>
     <CacheProvider>
     <div className="min-h-screen bg-gray-50">
       <div className="lg:hidden fixed top-0 left-0 right-0 px-4 py-3 flex items-center justify-between z-40 shadow-md" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
@@ -372,6 +376,7 @@ function App() {
             <EnhancedProductList key={refreshKey} onProductSelect={handleProductSelect} />
           )}
           {activeView === 'product-search' && <ProductSearch />}
+          {activeView === 'omniachat' && <OmniaChat />}
           {activeView === 'stores' && <StoreManager onImportStart={handleImportComplete} />}
           {activeView === 'google-shopping' && <GoogleShopping />}
           {activeView === 'seo-optimization' && <SeoOptimization />}
@@ -407,6 +412,7 @@ function App() {
       )}
     </div>
     </CacheProvider>
+    </CartProvider>
     </LanguageContext.Provider>
   );
 }
