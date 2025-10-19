@@ -165,6 +165,33 @@ function calculateRelevanceScore(product: Product, searchQuery: string): number 
 
   let score = 0;
 
+  // Product type keywords that should give MASSIVE boost
+  const productTypes = [
+    'table', 'chaise', 'canape', 'fauteuil', 'armoire', 'lit', 'bureau',
+    'lampe', 'miroir', 'commode', 'buffet', 'etagere', 'tabouret'
+  ];
+
+  // Check if query mentions a specific product type
+  const mentionedType = productTypes.find(type => terms.includes(type));
+
+  if (mentionedType) {
+    // User is looking for a SPECIFIC product type (e.g., "table")
+    // Check if THIS product matches that type
+    const title = normalizeText(product.title || '');
+    const category = normalizeText(product.category || '');
+    const subCategory = normalizeText(product.sub_category || '');
+
+    // MEGA BOOST if product title/category matches the searched type
+    if (title.includes(mentionedType) || category === mentionedType || subCategory.includes(mentionedType)) {
+      score += 1000; // Prioritize exact type matches
+    } else if (category.includes(mentionedType) || title.split(' ').some(word => word === mentionedType)) {
+      score += 800; // Close match
+    } else {
+      // This product is NOT the type user is looking for - penalize heavily
+      score -= 500;
+    }
+  }
+
   // Category match (100 points)
   if (product.category) {
     const category = normalizeText(product.category);
