@@ -127,16 +127,24 @@ async function detectIntent(userMessage: string): Promise<"simple_chat" | "produ
 // ⚙️ APPEL DEEPSEEK
 //
 async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<string> {
-  const supabaseUrl = getEnvVar("VITE_SUPABASE_URL");
-  
+  // Try to get from window.ENV first (runtime config), then fall back to import.meta.env
+  const supabaseUrl = (typeof window !== 'undefined' && (window as any).ENV?.VITE_SUPABASE_URL)
+    || getEnvVar("VITE_SUPABASE_URL");
+
+  console.log("🔑 DeepSeek URL:", supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : "NOT FOUND");
+
   if (!supabaseUrl) {
+    console.error("❌ Supabase URL not configured");
     return "Bonjour ! Je suis votre assistant commercial. Comment puis-je vous aider ?";
   }
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/deepseek-proxy`, {
+    const url = `${supabaseUrl}/functions/v1/deepseek-proxy`;
+    console.log("📡 Calling DeepSeek via:", url);
+
+    const response = await fetch(url, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -148,12 +156,16 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<s
       }),
     });
 
+    console.log("📥 DeepSeek response status:", response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      const errorText = await response.text();
+      console.error("❌ DeepSeek error response:", errorText);
+      throw new Error(`HTTP error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    
+
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return data.choices[0].message.content;
     }
@@ -162,13 +174,13 @@ async function callDeepSeek(messages: ChatMessage[], maxTokens = 300): Promise<s
 
   } catch (err) {
     console.error("❌ Erreur callDeepSeek:", err);
-    
+
     const lastMessage = messages[messages.length - 1]?.content.toLowerCase() || "";
-    
+
     if (lastMessage.includes("bonjour")) {
       return "Bonjour ! 👋 Je suis votre assistant commercial. Que recherchez-vous aujourd'hui ?";
     }
-    
+
     return "Je suis votre assistant commercial. Décrivez-moi ce que vous cherchez !";
   }
 }
