@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chat 404 Fix</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/config-local.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #667eea; margin-bottom: 20px; }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-box">
+        <h1>🔧 Test de Correction du Bug 404</h1>
+
+        <div id="configStatus" class="status info">
+            Vérification de la configuration...
+        </div>
+
+        <div id="testResult"></div>
+
+        <button onclick="testConfiguration()">1️⃣ Tester la Configuration</button>
+        <button onclick="testChatEndpoint()">2️⃣ Tester l'Endpoint Chat</button>
+        <button onclick="testFullMessage()">3️⃣ Test Message Complet</button>
+
+        <div id="logs" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        let supabase;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `status ${type}`;
+            logEntry.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            logsDiv.appendChild(logEntry);
+            console.log(message);
+        }
+
+        function testConfiguration() {
+            const SUPABASE_URL = window.ENV?.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = window.ENV?.VITE_SUPABASE_ANON_KEY;
+            const configStatus = document.getElementById('configStatus');
+
+            if (!SUPABASE_URL || SUPABASE_URL.includes('__') || SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+                configStatus.className = 'status error';
+                configStatus.innerHTML = '❌ Erreur: Les variables d\'environnement ne sont pas chargées. Vérifiez que config-local.js existe et est accessible.';
+                log('Configuration invalide détectée', 'error');
+                return false;
+            }
+
+            configStatus.className = 'status success';
+            configStatus.innerHTML = `✅ Configuration valide!<br>
+                <strong>URL:</strong> ${SUPABASE_URL}<br>
+                <strong>Key:</strong> ${SUPABASE_ANON_KEY.substring(0, 20)}...`;
+
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            log('Configuration validée avec succès', 'success');
+            return true;
+        }
+
+        async function testChatEndpoint() {
+            if (!testConfiguration()) return;
+
+            log('Test de l\'endpoint ai-chat...', 'info');
+
+            const SUPABASE_URL = window.ENV?.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = window.ENV?.VITE_SUPABASE_ANON_KEY;
+            const url = `${SUPABASE_URL}/functions/v1/ai-chat`;
+
+            log(`URL testée: ${url}`, 'info');
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({
+                        userMessage: 'Bonjour',
+                        history: [],
+                        storeId: null
+                    })
+                });
+
+                log(`Statut HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Erreur serveur: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                log('✅ Réponse reçue avec succès!', 'success');
+
+                const resultDiv = document.getElementById('testResult');
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+            } catch (error) {
+                log(`❌ Erreur réseau: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFullMessage() {
+            if (!testConfiguration()) return;
+
+            log('Test avec message: "Tu peux me conseiller un canapé confortable ?"', 'info');
+
+            const SUPABASE_URL = window.ENV?.VITE_SUPABASE_URL;
+            const SUPABASE_ANON_KEY = window.ENV?.VITE_SUPABASE_ANON_KEY;
+            const url = `${SUPABASE_URL}/functions/v1/ai-chat`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({
+                        userMessage: 'Tu peux me conseiller un canapé confortable ?',
+                        history: [],
+                        storeId: null
+                    })
+                });
+
+                log(`Statut HTTP: ${response.status}`, response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Erreur ${response.status}: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                log('✅ Test complet réussi!', 'success');
+
+                const resultDiv = document.getElementById('testResult');
+                resultDiv.innerHTML = `
+                    <div class="status success">
+                        <strong>Intent:</strong> ${data.intent}<br>
+                        <strong>Mode:</strong> ${data.mode}<br>
+                        <strong>Produits:</strong> ${data.products?.length || 0}<br>
+                        <strong>Réponse:</strong> ${data.content}
+                    </div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                log(`❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            testConfiguration();
+        };
+    </script>
+</body>
+</html>
