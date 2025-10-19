@@ -132,6 +132,81 @@ function extractFiltersFromQuery(query: string): ProductSearchFilters {
   return filters;
 }
 
+// Calculate relevance score for a product
+function calculateRelevanceScore(product: Product, searchQuery: string): number {
+  const query = normalizeText(searchQuery);
+  const terms = query.split(' ').filter(term => term.length > 2);
+
+  let score = 0;
+
+  // Category match (100 points)
+  if (product.category) {
+    const category = normalizeText(product.category);
+    if (terms.some(term => category.includes(term))) {
+      score += 100;
+      // Exact category match bonus (500 points)
+      if (terms.some(term => category === term)) {
+        score += 500;
+      }
+    }
+  }
+
+  // Sub-category match (80 points)
+  if (product.sub_category) {
+    const subCat = normalizeText(product.sub_category);
+    if (terms.some(term => subCat.includes(term))) {
+      score += 80;
+    }
+  }
+
+  // Title match (50 points)
+  if (product.title) {
+    const title = normalizeText(product.title);
+    const titleWords = title.split(' ');
+    let titleMatches = 0;
+
+    for (const term of terms) {
+      if (titleWords.some(word => word.includes(term) || term.includes(word))) {
+        titleMatches++;
+      }
+    }
+
+    score += titleMatches * 50;
+
+    // Exact title match bonus (200 points)
+    if (terms.some(term => titleWords.includes(term))) {
+      score += 200;
+    }
+  }
+
+  // Tags match (30 points)
+  if (product.tags) {
+    const tags = normalizeText(product.tags);
+    const tagCount = terms.filter(term => tags.includes(term)).length;
+    score += tagCount * 30;
+  }
+
+  // AI attributes match (20 points each)
+  const aiFields = [product.ai_material, product.ai_color, product.ai_shape, product.style, product.room];
+  for (const field of aiFields) {
+    if (field) {
+      const normalized = normalizeText(field);
+      if (terms.some(term => normalized.includes(term))) {
+        score += 20;
+      }
+    }
+  }
+
+  // Description match (10 points)
+  if (product.description) {
+    const desc = normalizeText(product.description);
+    const descMatches = terms.filter(term => desc.includes(term)).length;
+    score += descMatches * 10;
+  }
+
+  return score;
+}
+
 // Search products in database
 async function searchProducts(filters: ProductSearchFilters, storeId?: string): Promise<Product[]> {
   console.log('🔍 [SEARCH] Searching with filters:', filters);
@@ -199,9 +274,8 @@ async function searchProducts(filters: ProductSearchFilters, storeId?: string): 
       query = query.ilike('sub_category', `%${filters.subCategory}%`);
     }
 
-    query = query
-      .order('created_at', { ascending: false })
-      .limit(filters.limit || 12);
+    // Get more products for scoring (3x limit)
+    query = query.limit((filters.limit || 12) * 3);
 
     const { data, error } = await query;
 
@@ -210,8 +284,32 @@ async function searchProducts(filters: ProductSearchFilters, storeId?: string): 
       throw error;
     }
 
-    console.log(`✅ [SEARCH] Found ${data?.length || 0} products`);
-    return data || [];
+    if (!data || data.length === 0) {
+      console.log('✅ [SEARCH] Found 0 products');
+      return [];
+    }
+
+    // Calculate relevance scores and sort
+    const searchQuery = filters.query || '';
+    const scoredProducts = data.map(product => ({
+      ...product,
+      _relevance_score: calculateRelevanceScore(product, searchQuery)
+    }));
+
+    // Sort by relevance score (descending)
+    scoredProducts.sort((a, b) => b._relevance_score - a._relevance_score);
+
+    // Return top results
+    const results = scoredProducts.slice(0, filters.limit || 12);
+
+    console.log(`✅ [SEARCH] Found ${data.length} products, returning top ${results.length} by relevance`);
+    console.log('🎯 [SEARCH] Top 3 scores:', results.slice(0, 3).map(p => ({
+      title: p.title,
+      score: p._relevance_score,
+      category: p.category
+    })));
+
+    return results;
 
   } catch (error) {
     console.error('❌ [SEARCH] Search failed:', error);
