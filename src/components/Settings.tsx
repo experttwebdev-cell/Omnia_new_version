@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity, MessageSquare } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity, MessageSquare, User, Mail, Building, Calendar } from 'lucide-react';
 import { Language } from '../lib/translations';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
+import { useAuth } from '../lib/authContext';
 import { ConnectionDiagnostics } from './ConnectionDiagnostics';
 import { AiProviderConfig } from './AiProviderConfig';
 
@@ -16,8 +17,16 @@ interface SettingsData {
   chat_enabled: boolean;
 }
 
+interface UserProfile {
+  full_name: string;
+  company_name: string;
+  email: string;
+}
+
 export function Settings() {
   const { language, setLanguage, t } = useLanguage();
+  const { seller, user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'profile' | 'store' | 'chat' | 'diagnostics' | 'ai'>('profile');
   const [settings, setSettings] = useState<SettingsData>({
     enrichment_mode: 'manual',
     enrichment_frequency: 'manual',
@@ -26,14 +35,33 @@ export function Settings() {
     chat_response_length: 'balanced',
     chat_enabled: true
   });
+  const [profile, setProfile] = useState<UserProfile>({
+    full_name: '',
+    company_name: '',
+    email: ''
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchProfile();
   }, []);
+
+  const fetchProfile = async () => {
+    try {
+      if (!seller) return;
+
+      setProfile({
+        full_name: seller.full_name || '',
+        company_name: seller.company_name || '',
+        email: seller.email || ''
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -49,9 +77,9 @@ export function Settings() {
           enrichment_mode: stores.enrichment_mode as 'manual' | 'auto',
           enrichment_frequency: stores.enrichment_frequency as 'on_import' | 'daily' | 'weekly' | 'manual',
           chat_welcome_message: stores.chat_welcome_message || 'Bonjour ! Comment puis-je vous aider aujourd\'hui ?',
-          chat_tone: (stores.chat_tone as any) || 'friendly',
-          chat_response_length: (stores.chat_response_length as any) || 'balanced',
-          chat_enabled: stores.chat_enabled !== false
+          chat_tone: (stores.chat_tone as 'professional' | 'friendly' | 'enthusiastic' | 'casual') || 'friendly',
+          chat_response_length: (stores.chat_response_length as 'concise' | 'balanced' | 'detailed') || 'balanced',
+          chat_enabled: stores.chat_enabled ?? true
         });
       }
     } catch (error) {
@@ -61,7 +89,33 @@ export function Settings() {
     }
   };
 
-  const handleSave = async () => {
+  const saveProfile = async () => {
+    try {
+      setSaving(true);
+      setMessage('');
+
+      const { error } = await supabase
+        .from('sellers')
+        .update({
+          full_name: profile.full_name,
+          company_name: profile.company_name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', seller?.id);
+
+      if (error) throw error;
+
+      setMessage('Profil mis à jour avec succès !');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setMessage('Erreur lors de la sauvegarde du profil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSettings = async () => {
     try {
       setSaving(true);
       setMessage('');
@@ -71,202 +125,336 @@ export function Settings() {
         .select('id')
         .limit(1);
 
-      if (stores && stores.length > 0) {
-        const { error } = await supabase
-          .from('shopify_stores')
-          .update({
-            enrichment_mode: settings.enrichment_mode,
-            enrichment_frequency: settings.enrichment_frequency,
-            chat_welcome_message: settings.chat_welcome_message,
-            chat_tone: settings.chat_tone,
-            chat_response_length: settings.chat_response_length,
-            chat_enabled: settings.chat_enabled
-          })
-          .eq('id', stores[0].id);
-
-        if (error) throw error;
-
-        setMessage(t.settings.settingsSaved);
-        setTimeout(() => setMessage(''), 3000);
+      if (!stores || stores.length === 0) {
+        setMessage('Aucun magasin trouvé. Veuillez d\'abord connecter un magasin Shopify.');
+        setSaving(false);
+        return;
       }
+
+      const { error } = await supabase
+        .from('shopify_stores')
+        .update({
+          enrichment_mode: settings.enrichment_mode,
+          enrichment_frequency: settings.enrichment_frequency,
+          chat_welcome_message: settings.chat_welcome_message,
+          chat_tone: settings.chat_tone,
+          chat_response_length: settings.chat_response_length,
+          chat_enabled: settings.chat_enabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', stores[0].id);
+
+      if (error) throw error;
+
+      setMessage('Paramètres sauvegardés avec succès !');
+      setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error saving settings:', error);
-      setMessage(t.settings.errorSaving);
+      setMessage('Erreur lors de la sauvegarde des paramètres');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <LoadingAnimation type="settings" />;
+    return <LoadingAnimation />;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <SettingsIcon className="w-6 h-6 text-gray-600" />
-        <h1 className="text-2xl font-bold text-gray-800">{t.settings.title}</h1>
-      </div>
-
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Globe className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-800">{t.settings.language}</h2>
-        </div>
-        <p className="text-gray-600 mb-6">
-          Select your preferred language for the application interface
-        </p>
-
+      <div className="flex items-center justify-between">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t.settings.selectLanguage}
-          </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="fr">🇫🇷 Français</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="es">🇪🇸 Español</option>
-            <option value="de">🇩🇪 Deutsch</option>
-            <option value="it">🇮🇹 Italiano</option>
-            <option value="pt">🇵🇹 Português</option>
-            <option value="nl">🇳🇱 Nederlands</option>
-            <option value="ru">🇷🇺 Русский</option>
-            <option value="zh">🇨🇳 中文</option>
-            <option value="ja">🇯🇵 日本語</option>
-          </select>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <SettingsIcon className="w-8 h-8" />
+            Paramètres
+          </h1>
+          <p className="text-gray-600 mt-2">Gérez votre profil et vos préférences</p>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          {t.settings.enrichmentSettings}
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Configure automatic product enrichment
-        </p>
+      {message && (
+        <div className={`p-4 rounded-lg ${message.includes('succès') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {message}
+        </div>
+      )}
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t.settings.enrichmentMode}
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="enrichment_mode"
-                  value="manual"
-                  checked={settings.enrichment_mode === 'manual'}
-                  onChange={(e) => setSettings({ ...settings, enrichment_mode: e.target.value as 'manual' | 'auto' })}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-gray-700">{t.settings.manual}</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="enrichment_mode"
-                  value="auto"
-                  checked={settings.enrichment_mode === 'auto'}
-                  onChange={(e) => setSettings({ ...settings, enrichment_mode: e.target.value as 'manual' | 'auto' })}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-gray-700">{t.settings.automatic}</span>
-              </label>
-            </div>
-          </div>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'profile'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <User className="w-4 h-4 inline-block mr-2" />
+              Mon Profil
+            </button>
+            <button
+              onClick={() => setActiveTab('store')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'store'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Activity className="w-4 h-4 inline-block mr-2" />
+              Magasin
+            </button>
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'chat'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 inline-block mr-2" />
+              Chat IA
+            </button>
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'ai'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <SettingsIcon className="w-4 h-4 inline-block mr-2" />
+              Fournisseurs IA
+            </button>
+            <button
+              onClick={() => setActiveTab('diagnostics')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'diagnostics'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <RefreshCw className="w-4 h-4 inline-block mr-2" />
+              Diagnostics
+            </button>
+          </nav>
+        </div>
 
-          {settings.enrichment_mode === 'auto' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t.settings.frequency}
-              </label>
-              <select
-                value={settings.enrichment_frequency}
-                onChange={(e) => setSettings({ ...settings, enrichment_frequency: e.target.value as any })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="manual">{t.settings.manual}</option>
-                <option value="on_import">{t.settings.onImport}</option>
-                <option value="daily">{t.settings.daily}</option>
-                <option value="weekly">{t.settings.weekly}</option>
-              </select>
-              <p className="text-sm text-gray-500 mt-2">
-                {settings.enrichment_frequency === 'on_import' && 'Products will be enriched automatically upon import'}
-                {settings.enrichment_frequency === 'daily' && 'New products will be enriched once per day'}
-                {settings.enrichment_frequency === 'weekly' && 'New products will be enriched once per week'}
-                {settings.enrichment_frequency === 'manual' && 'You will need to manually enrich products'}
-              </p>
+        <div className="p-6">
+          {activeTab === 'profile' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Informations du Profil</h2>
+                <p className="text-gray-600 mb-6">Gérez vos informations personnelles et votre compte</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <User className="w-4 h-4 inline mr-2" />
+                    Nom Complet
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.full_name}
+                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="John Doe"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Building className="w-4 h-4 inline mr-2" />
+                    Nom de l'Entreprise
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.company_name}
+                    onChange={(e) => setProfile({ ...profile, company_name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Mon E-Commerce"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Mail className="w-4 h-4 inline mr-2" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Calendar className="w-4 h-4 inline mr-2" />
+                    Membre depuis
+                  </label>
+                  <input
+                    type="text"
+                    value={seller?.created_at ? new Date(seller.created_at).toLocaleDateString('fr-FR') : 'N/A'}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-200">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Informations du Compte</h3>
+                  <div className="space-y-2 text-sm text-blue-800">
+                    <p><strong>Statut:</strong> <span className={`px-2 py-1 rounded-full text-xs ${seller?.status === 'trial' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>{seller?.status === 'trial' ? 'Essai Gratuit' : 'Actif'}</span></p>
+                    {seller?.trial_ends_at && seller?.status === 'trial' && (
+                      <p><strong>Trial se termine le:</strong> {new Date(seller.trial_ends_at).toLocaleDateString('fr-FR')}</p>
+                    )}
+                    <p><strong>Rôle:</strong> {seller?.role === 'superadmin' ? 'Super Administrateur' : 'Vendeur'}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={saveProfile}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+                >
+                  {saving ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Sauvegarder le Profil
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      <AiProviderConfig />
-
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <MessageSquare className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Paramètres du Chat IA</h2>
-        </div>
-        <p className="text-gray-600 mb-6">
-          Personnalisez le comportement et le style de votre assistant conversationnel
-        </p>
-
-        <div className="space-y-6">
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer mb-4">
-              <input
-                type="checkbox"
-                checked={settings.chat_enabled}
-                onChange={(e) => setSettings({ ...settings, chat_enabled: e.target.checked })}
-                className="w-4 h-4 text-blue-600 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Activer le chat IA</span>
-            </label>
-          </div>
-
-          {settings.chat_enabled && (
-            <>
+          {activeTab === 'store' && (
+            <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message d'accueil
-                </label>
-                <textarea
-                  value={settings.chat_welcome_message}
-                  onChange={(e) => setSettings({ ...settings, chat_welcome_message: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Bonjour ! Comment puis-je vous aider aujourd'hui ?"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Premier message affiché aux visiteurs
-                </p>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Paramètres du Magasin</h2>
+                <p className="text-gray-600">Configuration de l'enrichissement automatique</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ton de conversation
+                  Mode d'enrichissement
+                </label>
+                <select
+                  value={settings.enrichment_mode}
+                  onChange={(e) => setSettings({ ...settings, enrichment_mode: e.target.value as 'manual' | 'auto' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="manual">Manuel</option>
+                  <option value="auto">Automatique</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fréquence d'enrichissement
+                </label>
+                <select
+                  value={settings.enrichment_frequency}
+                  onChange={(e) => setSettings({ ...settings, enrichment_frequency: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="manual">Manuel uniquement</option>
+                  <option value="on_import">À l'importation</option>
+                  <option value="daily">Quotidien</option>
+                  <option value="weekly">Hebdomadaire</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Globe className="w-4 h-4 inline mr-2" />
+                  Langue
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as Language)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="fr">Français</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+
+              <button
+                onClick={saveSettings}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Sauvegarder
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Configuration du Chat IA</h2>
+                <p className="text-gray-600">Personnalisez le comportement de votre assistant IA</p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={settings.chat_enabled}
+                    onChange={(e) => setSettings({ ...settings, chat_enabled: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Activer le chat IA</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Message de bienvenue
+                </label>
+                <textarea
+                  value={settings.chat_welcome_message}
+                  onChange={(e) => setSettings({ ...settings, chat_welcome_message: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Bonjour ! Comment puis-je vous aider aujourd'hui ?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ton des réponses
                 </label>
                 <select
                   value={settings.chat_tone}
                   onChange={(e) => setSettings({ ...settings, chat_tone: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="professional">Professionnel</option>
                   <option value="friendly">Amical</option>
                   <option value="enthusiastic">Enthousiaste</option>
                   <option value="casual">Décontracté</option>
                 </select>
-                <p className="text-sm text-gray-500 mt-1">
-                  {settings.chat_tone === 'professional' && 'Ton formel et expert, adapté aux ventes B2B'}
-                  {settings.chat_tone === 'friendly' && 'Ton chaleureux et accessible, équilibré'}
-                  {settings.chat_tone === 'enthusiastic' && 'Ton dynamique et engageant, très expressif'}
-                  {settings.chat_tone === 'casual' && 'Ton décontracté et proche, style conversationnel'}
-                </p>
               </div>
 
               <div>
@@ -276,90 +464,43 @@ export function Settings() {
                 <select
                   value={settings.chat_response_length}
                   onChange={(e) => setSettings({ ...settings, chat_response_length: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="concise">Concis (10-20 mots)</option>
-                  <option value="balanced">Équilibré (20-40 mots)</option>
-                  <option value="detailed">Détaillé (40-80 mots)</option>
+                  <option value="concise">Concis</option>
+                  <option value="balanced">Équilibré</option>
+                  <option value="detailed">Détaillé</option>
                 </select>
-                <p className="text-sm text-gray-500 mt-1">
-                  {settings.chat_response_length === 'concise' && 'Réponses courtes et directes, idéal pour mobile'}
-                  {settings.chat_response_length === 'balanced' && 'Réponses équilibrées avec contexte'}
-                  {settings.chat_response_length === 'detailed' && 'Réponses complètes et descriptives'}
-                </p>
               </div>
-            </>
+
+              <button
+                onClick={saveSettings}
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Sauvegarder
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'ai' && (
+            <AiProviderConfig />
+          )}
+
+          {activeTab === 'diagnostics' && (
+            <ConnectionDiagnostics />
           )}
         </div>
       </div>
-
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-400 disabled:from-gray-400 disabled:to-gray-400 text-white font-medium rounded-lg transition shadow-lg"
-        >
-          {saving ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              {t.settings.saving}
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              {t.settings.saveSettings}
-            </>
-          )}
-        </button>
-
-        {message && (
-          <span className={`text-sm ${message.includes('succès') ? 'text-green-600' : 'text-red-600'}`}>
-            {message}
-          </span>
-        )}
-      </div>
-
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Activity className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Database Connection</h2>
-        </div>
-        <p className="text-gray-600 mb-4">
-          Test your Supabase database connection and diagnose any configuration issues.
-        </p>
-        <button
-          onClick={() => setShowDiagnostics(true)}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-medium rounded-lg transition shadow-lg"
-        >
-          <Activity className="w-4 h-4" />
-          Run Connection Diagnostics
-        </button>
-      </div>
-
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          {t.settings.aboutEnrichment}
-        </h2>
-        <div className="space-y-3 text-gray-600">
-          <p>
-            L'enrichissement automatique utilise l'intelligence artificielle pour analyser vos produits et générer automatiquement:
-          </p>
-          <ul className="list-disc list-inside space-y-2 ml-4">
-            <li>Des titres SEO optimisés</li>
-            <li>Des descriptions méta pertinentes</li>
-            <li>Des textes alternatifs pour les images</li>
-            <li>Des tags et catégories appropriées</li>
-            <li>Des analyses de couleur et de matériel</li>
-          </ul>
-          <p className="mt-4">
-            Lorsque le mode automatique est activé, le système enrichira les produits selon la fréquence que vous avez choisie.
-          </p>
-        </div>
-      </div>
-
-      {showDiagnostics && (
-        <ConnectionDiagnostics onClose={() => setShowDiagnostics(false)} />
-      )}
     </div>
   );
 }
