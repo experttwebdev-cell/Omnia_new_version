@@ -304,17 +304,24 @@ export function AiChat() {
               </div>
 
               {msg.products && msg.products.length > 0 && (
-                <div className="ml-12 mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {msg.products.map((p) => (
-                    <ProductCard
-                      key={p.id}
-                      product={p}
-                      onViewDetails={() => {
-                        setSelectedProduct(p);
-                        setShowProductLanding(true);
-                      }}
-                    />
-                  ))}
+                <div className="ml-12 mt-3">
+                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-2 border-b">
+                      📦 {msg.products.length} produits trouvés
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {msg.products.map((p) => (
+                        <ProductListItem
+                          key={p.id}
+                          product={p}
+                          onViewDetails={() => {
+                            setSelectedProduct(p);
+                            setShowProductLanding(true);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -374,47 +381,72 @@ export function AiChat() {
   );
 }
 
-// Product Card
-function ProductCard({ product, onViewDetails }: any) {
-  const hasPromo = product.compare_at_price && 
+// Vue liste compressée pour les produits
+function ProductListItem({ product, onViewDetails }: any) {
+  const hasPromo = product.compare_at_price &&
                   Number(product.compare_at_price) > Number(product.price);
+
+  const promoPercent = hasPromo
+    ? Math.round(100 - (Number(product.price) / Number(product.compare_at_price)) * 100)
+    : 0;
 
   return (
     <div
       onClick={onViewDetails}
-      className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 hover:scale-[1.02] group"
+      className="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer transition-colors group"
     >
-      <div className="relative w-full h-40 bg-gray-100 flex items-center justify-center overflow-hidden rounded-t-xl">
+      {/* Image miniature */}
+      <div className="relative flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
         <img
           src={product.image_url || "/placeholder-product.jpg"}
           alt={product.title}
-          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/placeholder-product.jpg";
           }}
         />
         {hasPromo && (
-          <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-            -{Math.round(100 - (Number(product.price) / Number(product.compare_at_price)) * 100)}%
+          <div className="absolute top-0 right-0 bg-red-500 text-white px-1 py-0.5 text-[10px] font-bold rounded-bl">
+            -{promoPercent}%
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h5 className="font-semibold text-sm text-gray-800 line-clamp-2 mb-2">
+
+      {/* Infos produit */}
+      <div className="flex-1 min-w-0">
+        <h5 className="font-medium text-sm text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
           {product.title}
         </h5>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-blue-600">
+
+        {/* Catégorie & Marque */}
+        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+          {product.category && (
+            <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
+              {product.category}
+            </span>
+          )}
+          {product.vendor && product.vendor !== product.category && (
+            <span className="text-[11px]">{product.vendor}</span>
+          )}
+        </div>
+
+        {/* Prix */}
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-base font-bold text-blue-600">
             {formatPrice(Number(product.price), product.currency || "EUR")}
           </span>
           {hasPromo && (
-            <span className="text-sm text-gray-400 line-through">
+            <span className="text-xs text-gray-400 line-through">
               {formatPrice(Number(product.compare_at_price), product.currency || "EUR")}
             </span>
           )}
         </div>
-        <button className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition">
-          Voir détails
+      </div>
+
+      {/* Bouton action */}
+      <div className="flex-shrink-0">
+        <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition">
+          👁 Voir
         </button>
       </div>
     </div>

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Test Chat Amélioré - Scoring Multicritères + Vue Liste</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 32px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        .improvements {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .improvements h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .improvement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .improvement-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .improvement-card h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .improvement-card p {
+            font-size: 14px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        .scoring-table {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .scoring-table h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .scoring-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .scoring-item:last-child {
+            border-bottom: none;
+        }
+        .scoring-label {
+            font-weight: 500;
+            color: #333;
+        }
+        .scoring-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .test-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .test-cases {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .test-case:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        .test-case.conversation {
+            border-left: 4px solid #22c55e;
+        }
+        .test-case.simple-search {
+            border-left: 4px solid #a855f7;
+        }
+        .test-case.filtered-search {
+            border-left: 4px solid #3b82f6;
+        }
+        .test-label {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .test-label.conversation { color: #22c55e; }
+        .test-label.simple-search { color: #a855f7; }
+        .test-label.filtered-search { color: #3b82f6; }
+        .test-query {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .comparison {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .comparison h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .comparison-card {
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .comparison-card.before {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        .comparison-card.after {
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+            color: white;
+        }
+        .comparison-card h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .comparison-card ul {
+            list-style: none;
+        }
+        .comparison-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .comparison-card li:before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+        }
+        .before li:before { background: #ffe066; }
+        .after li:before { background: #fff; }
+        .visual-example {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .visual-example h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .list-preview {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .list-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            font-weight: bold;
+        }
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s;
+        }
+        .list-item:hover {
+            background: #e3f2fd;
+        }
+        .list-item:last-child {
+            border-bottom: none;
+        }
+        .item-image {
+            width: 64px;
+            height: 64px;
+            background: #ddd;
+            border-radius: 8px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .item-image::after {
+            content: "IMG";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 11px;
+        }
+        .promo-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 0 0 0 4px;
+        }
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .item-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-meta {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .item-category {
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+        }
+        .item-price {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .item-action {
+            flex-shrink: 0;
+        }
+        .btn-view {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-view:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 Chat Amélioré - Version 2.0</h1>
+            <p>Scoring Multicritères + Affichage Liste Compressé</p>
+        </div>
+
+        <!-- Améliorations -->
+        <div class="improvements">
+            <h2>🚀 Améliorations Implémentées</h2>
+            <div class="improvement-grid">
+                <div class="improvement-card">
+                    <h3>1️⃣ Scoring Multicritères</h3>
+                    <p>Les produits sont maintenant classés selon un système de points pondérés par champ (catégorie 100pts, titre 50pts, tags 30pts...)</p>
+                </div>
+                <div class="improvement-card">
+                    <h3>2️⃣ Pertinence Améliorée</h3>
+                    <p>"table pour mon salon" retourne maintenant des TABLES en priorité (et non plus 11 canapés + 1 table)</p>
+                </div>
+                <div class="improvement-card">
+                    <h3>3️⃣ Vue Liste Compressée</h3>
+                    <p>Affichage optimisé avec miniatures 64x64, 3x plus de produits visibles sans scroll</p>
+                </div>
+            </div>
+
+            <div class="scoring-table">
+                <h3>📊 Système de Scoring (poids décroissant)</h3>
+                <div class="scoring-item">
+                    <span class="scoring-label">🥇 Catégorie / Sous-catégorie</span>
+                    <span class="scoring-value">100 points</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">🥈 Titre du produit</span>
+                    <span class="scoring-value">50 points</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">🥉 Tags</span>
+                    <span class="scoring-value">30 points</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">🏅 Attributs IA (couleur, matériau, style)</span>
+                    <span class="scoring-value">20 points</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">📝 Description</span>
+                    <span class="scoring-value">10 points</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">🎯 Match exact catégorie</span>
+                    <span class="scoring-value">+500 bonus</span>
+                </div>
+                <div class="scoring-item">
+                    <span class="scoring-label">✨ Match exact titre</span>
+                    <span class="scoring-value">+200 bonus</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 30 Cas de Test -->
+        <div class="test-section">
+            <h2>🧪 30 Cas de Test - Cliquez pour tester</h2>
+
+            <h3 style="color: #22c55e; margin: 20px 0 15px 0;">🟢 Chat Conversationnel (10)</h3>
+            <div class="test-cases">
+                <div class="test-case conversation" onclick="alert('Test: Bonjour\n\nRésultat attendu:\n✅ Intent: simple_chat\n✅ Produits: 0\n✅ Réponse: Conversation friendly')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Bonjour</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Salut tu vas bien?\n\nRésultat attendu:\n✅ Intent: simple_chat\n✅ Produits: 0')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Salut, tu vas bien ?</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Je cherche une table pour mon salon\n\nRésultat attendu:\n✅ Intent: product_show\n✅ 10-12 TABLES en priorité\n✅ Score catégorie > 100')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Je cherche une table pour mon salon</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Conseiller canapé confortable\n\nRésultat attendu:\n✅ Intent: product_chat\n✅ Produits: 0 (discussion uniquement)')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Conseiller canapé confortable</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Table pas trop grande\n\nRésultat attendu:\n✅ Intent: product_show\n✅ Tables retournées')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Table pas trop grande</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Nouveautés salon')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Nouveautés salon</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Meuble design')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Meuble design</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Avez-vous des promotions?')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Avez-vous des promotions ?</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Idée déco bois clair')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Idée déco bois clair</div>
+                </div>
+                <div class="test-case conversation" onclick="alert('Test: Ensemble table + chaises')">
+                    <div class="test-label conversation">Discussion</div>
+                    <div class="test-query">Ensemble table + chaises</div>
+                </div>
+            </div>
+
+            <h3 style="color: #a855f7; margin: 30px 0 15px 0;">🟣 Recherche Produit Simple (10)</h3>
+            <div class="test-cases">
+                <div class="test-case simple-search" onclick="alert('Test: Table basse travertin\n\n✅ Catégorie: Table\n✅ Matériau: Travertin\n✅ Score > 120')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Table basse travertin</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Canapé scandinave beige\n\n✅ Catégorie: Canapé\n✅ Style: Scandinave\n✅ Couleur: Beige')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Canapé scandinave beige</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Chaise velours noir')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Chaise velours noir</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Meuble TV bois massif')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Meuble TV bois massif</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Table à manger ronde')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Table à manger ronde</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Buffet moderne blanc')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Buffet moderne blanc</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Table basse rectangulaire')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Table basse rectangulaire</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Canapé d\'angle gris clair')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Canapé d'angle gris clair</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Commode 3 tiroirs chêne')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Commode 3 tiroirs chêne</div>
+                </div>
+                <div class="test-case simple-search" onclick="alert('Test: Bureau industriel métal bois')">
+                    <div class="test-label simple-search">Recherche</div>
+                    <div class="test-query">Bureau industriel métal bois</div>
+                </div>
+            </div>
+
+            <h3 style="color: #3b82f6; margin: 30px 0 15px 0;">🔵 Recherche avec Filtres (10)</h3>
+            <div class="test-cases">
+                <div class="test-case filtered-search" onclick="alert('Test: Table travertin < 100€\n\n✅ Filtre prix: maxPrice=100\n✅ Matériau: travertin')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Table travertin < 100€</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Canapé 3 places < 500€')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Canapé 3 places < 500€</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Table ronde 120cm')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Table ronde 120cm</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Petite table basse')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Petite table basse</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Canapé convertible < 700€')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Canapé convertible < 700€</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Chaise design < 80€')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Chaise design < 80€</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Meuble TV 150cm max')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Meuble TV 150cm max</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Table 8 personnes')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Table 8 personnes</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Canapé angle promo')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Canapé angle promo</div>
+                </div>
+                <div class="test-case filtered-search" onclick="alert('Test: Table marbre réduction')">
+                    <div class="test-label filtered-search">Filtré</div>
+                    <div class="test-query">Table marbre réduction</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparaison Avant/Après -->
+        <div class="comparison">
+            <h2>📊 Comparaison Avant/Après</h2>
+            <div class="comparison-grid">
+                <div class="comparison-card before">
+                    <h3>❌ Avant (Version 1.0)</h3>
+                    <ul>
+                        <li>Recherche trop large</li>
+                        <li>Tous les champs = même poids</li>
+                        <li>"table salon" → 11 canapés + 1 table</li>
+                        <li>Vue grille (grandes cartes)</li>
+                        <li>3 produits visibles max</li>
+                        <li>Beaucoup de scroll nécessaire</li>
+                    </ul>
+                </div>
+                <div class="comparison-card after">
+                    <h3>✅ Après (Version 2.0)</h3>
+                    <ul>
+                        <li>Scoring multicritères</li>
+                        <li>Catégorie = 100pts, Titre = 50pts</li>
+                        <li>"table salon" → 10 tables prioritaires</li>
+                        <li>Vue liste (miniatures)</li>
+                        <li>8-10 produits visibles sans scroll</li>
+                        <li>Navigation fluide</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exemple Visuel -->
+        <div class="visual-example">
+            <h2>🎨 Nouvelle Vue Liste (exemple)</h2>
+            <div class="list-preview">
+                <div class="list-header">📦 12 produits trouvés</div>
+                <div class="list-item">
+                    <div class="item-image">
+                        <div class="promo-badge">-35%</div>
+                    </div>
+                    <div class="item-info">
+                        <div class="item-title">Table Basse Moderne – Plateau Transparent ou Marbre Blanc</div>
+                        <div class="item-meta">
+                            <span class="item-category">Mobilier</span>
+                            <span style="font-size: 11px; color: #999;">· Table</span>
+                        </div>
+                        <div class="item-price">389 USD</div>
+                    </div>
+                    <div class="item-action">
+                        <button class="btn-view">👁 Voir</button>
+                    </div>
+                </div>
+                <div class="list-item">
+                    <div class="item-image"></div>
+                    <div class="item-info">
+                        <div class="item-title">Table ronde en chêne massif - 120cm</div>
+                        <div class="item-meta">
+                            <span class="item-category">Mobilier</span>
+                            <span style="font-size: 11px; color: #999;">· Table</span>
+                        </div>
+                        <div class="item-price">599 USD</div>
+                    </div>
+                    <div class="item-action">
+                        <button class="btn-view">👁 Voir</button>
+                    </div>
+                </div>
+                <div class="list-item">
+                    <div class="item-image">
+                        <div class="promo-badge">-20%</div>
+                    </div>
+                    <div class="item-info">
+                        <div class="item-title">Table travertin élégante - Design contemporain</div>
+                        <div class="item-meta">
+                            <span class="item-category">Tables</span>
+                            <span style="font-size: 11px; color: #999;">· Travertin</span>
+                        </div>
+                        <div class="item-price">299 USD</div>
+                    </div>
+                    <div class="item-action">
+                        <button class="btn-view">👁 Voir</button>
+                    </div>
+                </div>
+            </div>
+            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                ✨ <strong>Avantages</strong> : Image miniature 64x64, catégorie visible, badge promo, hover interactif, bouton "Voir" compact
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -346,8 +346,8 @@ function applyPostFilters(products: Product[], filters: ProductSearchFilters): P
   return filtered;
 }
 
-// 🎯 FONCTION DE SCORING SIMPLIFIÉE
-function rankProductsByRelevance(products: Product[], query: string): { 
+// 🎯 FONCTION DE SCORING MULTICRITÈRES AMÉLIORÉE
+function rankProductsByRelevance(products: Product[], query: string): {
   products: (Product & { _relevance_score: number; _match_type: 'exact' | 'partial' | 'fallback' })[];
   matchType: 'exact' | 'partial' | 'fallback';
 } {
@@ -356,10 +356,10 @@ function rankProductsByRelevance(products: Product[], query: string): {
 
   if (searchTerms.length === 0) {
     return {
-      products: products.map(p => ({ 
-        ...p, 
+      products: products.map(p => ({
+        ...p,
         _relevance_score: 0,
-        _match_type: 'fallback' 
+        _match_type: 'fallback'
       })),
       matchType: 'fallback'
     };
@@ -368,78 +368,78 @@ function rankProductsByRelevance(products: Product[], query: string): {
   const scoredProducts = products.map(product => {
     let score = 0;
 
-    // Vérifier tous les champs textuels du produit
-    const allTextFields = [
-      product.title,
-      product.description,
-      product.category,
-      product.sub_category,
-      product.product_type,
-      product.vendor,
-      product.style,
-      product.room,
-      product.material,
-      product.color,
-      product.tags,
-      product.characteristics,
-      product.dimensions_text,
-      product.ai_color,
-      product.ai_material,
-      product.ai_shape,
-      product.ai_texture,
-      product.ai_pattern,
-      product.ai_finish,
-      product.ai_design_elements,
-      product.ai_vision_analysis,
-      product.seo_title,
-      product.seo_description,
-      product.chat_text,
-      product.functionality
-    ].filter(Boolean).join(' ').toLowerCase();
-
-    // Correspondance exacte de la requête complète
-    if (allTextFields.includes(normalizedQuery)) {
-      score += 100;
-    }
-
-    // Score pour chaque terme de recherche
+    // 🎯 SCORING MULTICRITÈRES (par poids décroissant)
     searchTerms.forEach(term => {
-      if (allTextFields.includes(term)) {
-        score += 10;
-        
-        // Bonus pour les correspondances dans les champs importants
-        if (product.title?.toLowerCase().includes(term)) score += 5;
-        if (product.category?.toLowerCase().includes(term)) score += 3;
-        if (product.tags?.toLowerCase().includes(term)) score += 2;
-      }
+      // 1️⃣ CATÉGORIE / SOUS-CATÉGORIE (score: 100)
+      if (product.category?.toLowerCase().includes(term)) score += 100;
+      if (product.sub_category?.toLowerCase().includes(term)) score += 90;
+
+      // 2️⃣ TITRE (score: 50)
+      if (product.title?.toLowerCase().includes(term)) score += 50;
+
+      // 3️⃣ TAGS (score: 30)
+      if (product.tags?.toLowerCase().includes(term)) score += 30;
+
+      // 4️⃣ ATTRIBUTS IA (score: 20)
+      if (product.ai_color?.toLowerCase().includes(term)) score += 20;
+      if (product.ai_material?.toLowerCase().includes(term)) score += 20;
+      if (product.ai_shape?.toLowerCase().includes(term)) score += 20;
+      if (product.style?.toLowerCase().includes(term)) score += 20;
+      if (product.room?.toLowerCase().includes(term)) score += 20;
+
+      // 5️⃣ DESCRIPTION (score: 10)
+      if (product.description?.toLowerCase().includes(term)) score += 10;
+      if (product.characteristics?.toLowerCase().includes(term)) score += 10;
+      if (product.functionality?.toLowerCase().includes(term)) score += 10;
     });
 
-    // Bonus pour les produits enrichis par IA
-    if (product.enrichment_status === 'enriched') {
-      score += 5;
+    // 🎯 CORRESPONDANCE EXACTE (bonus massif)
+    const titleLower = product.title?.toLowerCase() || '';
+    const categoryLower = product.category?.toLowerCase() || '';
+    const subCategoryLower = product.sub_category?.toLowerCase() || '';
+
+    // Match exact du titre
+    if (titleLower.includes(normalizedQuery)) {
+      score += 200;
     }
 
-    // Bonus pour les produits en stock
-    if (product.inventory_quantity && product.inventory_quantity > 0) {
-      score += 3;
+    // Match exact de la catégorie
+    if (categoryLower === normalizedQuery || subCategoryLower === normalizedQuery) {
+      score += 500; // Poids TRÈS élevé pour les catégories exactes
     }
 
-    // Déterminer le type de correspondance
+    // 🎯 BONUS QUALITÉ
+    if (product.enrichment_status === 'enriched') score += 5;
+    if (product.inventory_quantity && product.inventory_quantity > 0) score += 3;
+
+    // 🎯 DÉTERMINER LE TYPE DE CORRESPONDANCE
     let matchType: 'exact' | 'partial' | 'fallback' = 'fallback';
-    if (score >= 50) matchType = 'exact';
-    else if (score >= 20) matchType = 'partial';
+    if (score >= 100) matchType = 'exact';
+    else if (score >= 30) matchType = 'partial';
 
-    return { 
-      ...product, 
+    return {
+      ...product,
       _relevance_score: score,
       _match_type: matchType
     };
   });
 
+  // Trier par score décroissant
+  const sorted = scoredProducts.sort((a, b) => b._relevance_score - a._relevance_score);
+
+  // Déterminer le match type global
+  const globalMatchType = sorted.some(p => p._relevance_score >= 100) ? 'exact' :
+                          sorted.some(p => p._relevance_score >= 30) ? 'partial' : 'fallback';
+
+  console.log('🎯 Top 3 scores:', sorted.slice(0, 3).map(p => ({
+    title: p.title?.substring(0, 40),
+    category: p.category,
+    score: p._relevance_score
+  })));
+
   return {
-    products: scoredProducts.sort((a, b) => b._relevance_score - a._relevance_score),
-    matchType: scoredProducts.some(p => p._relevance_score >= 50) ? 'exact' : 
-               scoredProducts.some(p => p._relevance_score >= 20) ? 'partial' : 'fallback'
+    products: sorted,
+    matchType: globalMatchType
   };
 }
 
