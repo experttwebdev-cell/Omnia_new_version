@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ProductSearchBar } from './ProductSearchBar';
-import { Package, Sparkles, TrendingUp } from 'lucide-react';
+import { Package, Sparkles, TrendingUp, Search, X } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
+import { searchProducts } from '../lib/productSearch';
 import type { Database } from '../lib/database.types';
 
 type Product = Database['public']['Tables']['shopify_products']['Row'];
@@ -10,11 +10,31 @@ export function ProductSearch() {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [inputValue, setInputValue] = useState('');
 
-  const handleSearch = (products: Product[], query: string) => {
-    setSearchResults(products);
-    setSearchQuery(query);
+  const handleSearch = async () => {
+    if (!inputValue.trim()) return;
+
+    setLoading(true);
+    setSearchQuery(inputValue);
     setIsSearching(true);
+
+    try {
+      const result = await searchProducts({ query: inputValue });
+      setSearchResults(result.products);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   return (
@@ -28,11 +48,38 @@ export function ProductSearch() {
         </p>
       </div>
 
-      <ProductSearchBar
-        onSearch={handleSearch}
-        showAdvancedFilters={true}
-        placeholder="Rechercher par nom, catégorie, couleur, matériau..."
-      />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Rechercher par nom, catégorie, couleur, matériau..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={handleSearch}
+            disabled={loading || !inputValue.trim()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Recherche...
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                Rechercher
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
       {isSearching && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
