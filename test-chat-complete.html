@@ -469,7 +469,7 @@
                         'apikey': SUPABASE_ANON_KEY
                     },
                     body: JSON.stringify({
-                        message: message,
+                        userMessage: message,
                         history: [],
                         storeId: null
                     })
@@ -482,7 +482,7 @@
                 const data = await response.json();
 
                 // Add assistant response with products
-                addMessage('assistant', data.response, data.products || []);
+                addMessage('assistant', data.content || data.response, data.products || []);
 
             } catch (error) {
                 console.error('Erreur:', error);
