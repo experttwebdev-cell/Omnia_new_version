@@ -248,82 +248,78 @@ export function AiChat() {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
         {messages.map((msg, i) => {
           const SectorIcon = msg.sector ? sectorIcons[msg.sector as SectorType] : null;
           const intentBadge = getIntentBadge(msg.intent);
           const BadgeIcon = intentBadge.icon;
-          
+
           return (
-            <div key={i}>
-              <div
-                className={`flex gap-3 ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                )}
-
-                <div
-                  className={`max-w-[75%] ${
-                    msg.role === "user" ? "order-2" : ""
-                  }`}
-                >
-                  <div
-                    className={`rounded-2xl px-4 py-3 shadow ${
-                      msg.role === "user"
-                        ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
-                        : "bg-white border border-gray-200 text-gray-800"
-                    }`}
-                  >
-                    {msg.role === "assistant" && (
-                      <div className="flex items-center gap-2 mb-1 text-xs text-gray-500">
-                        <BadgeIcon className={`w-3 h-3 ${intentBadge.color}`} />
-                        <span>{intentBadge.text}</span>
-                        {SectorIcon && <SectorIcon className="w-3 h-3 ml-1" />}
-                      </div>
-                    )}
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 ml-2">
-                    {new Date(msg.timestamp).toLocaleTimeString("fr-FR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-
-                {msg.role === "user" && (
-                  <div className="flex-shrink-0 w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center shadow-md">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                )}
-              </div>
-
-              {msg.products && msg.products.length > 0 && (
-                <div className="ml-12 mt-3">
-                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-2 border-b">
-                      📦 {msg.products.length} produits trouvés
-                    </div>
-                    <div className="divide-y divide-gray-100">
-                      {msg.products.map((p) => (
-                        <ProductListItem
-                          key={p.id}
-                          product={p}
-                          onViewDetails={() => {
-                            setSelectedProduct(p);
-                            setShowProductLanding(true);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
+            <div key={i} className="flex gap-4">
+              {/* Avatar */}
+              {msg.role === "assistant" && (
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Bot className="w-6 h-6 text-white" />
                 </div>
               )}
+
+              {msg.role === "user" && (
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 rounded-full flex items-center justify-center shadow-lg order-2">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+              )}
+
+              {/* Content */}
+              <div className={`flex-1 ${msg.role === "user" ? "flex flex-col items-end" : ""}`}>
+                <div className={`max-w-[85%] ${msg.role === "user" ? "ml-auto" : ""}`}>
+                  {/* Message bubble */}
+                  <div
+                    className={`rounded-xl px-4 py-3 shadow-md ${
+                      msg.role === "user"
+                        ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+                        : "bg-white text-gray-800"
+                    }`}
+                  >
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                    <div className={`text-xs mt-2 ${
+                      msg.role === "user" ? "text-blue-200" : "text-gray-400"
+                    }`}>
+                      {new Date(msg.timestamp).toLocaleTimeString("fr-FR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Products inline */}
+                  {msg.products && msg.products.length > 0 && (
+                    <div className="mt-3">
+                      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2 border-b border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-semibold text-gray-700">
+                              {msg.products.length} produit{msg.products.length > 1 ? 's' : ''} trouvé{msg.products.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="divide-y divide-gray-100">
+                          {msg.products.map((p) => (
+                            <ProductListItem
+                              key={p.id}
+                              product={p}
+                              onViewDetails={() => {
+                                setSelectedProduct(p);
+                                setShowProductLanding(true);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}
@@ -393,20 +389,20 @@ function ProductListItem({ product, onViewDetails }: any) {
   return (
     <div
       onClick={onViewDetails}
-      className="flex items-center gap-3 p-3 hover:bg-blue-50 cursor-pointer transition-colors group"
+      className="flex items-center gap-4 p-3 hover:bg-gray-50 cursor-pointer transition-all duration-200 group"
     >
       {/* Image miniature */}
-      <div className="relative flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
+      <div className="relative flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden shadow-sm">
         <img
           src={product.image_url || "/placeholder-product.jpg"}
           alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/placeholder-product.jpg";
           }}
         />
         {hasPromo && (
-          <div className="absolute top-0 right-0 bg-red-500 text-white px-1 py-0.5 text-[10px] font-bold rounded-bl">
+          <div className="absolute top-1 right-1 bg-red-500 text-white px-1.5 py-0.5 text-[10px] font-bold rounded">
             -{promoPercent}%
           </div>
         )}
@@ -414,25 +410,22 @@ function ProductListItem({ product, onViewDetails }: any) {
 
       {/* Infos produit */}
       <div className="flex-1 min-w-0">
-        <h5 className="font-medium text-sm text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+        <h5 className="font-semibold text-sm text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors leading-snug">
           {product.title}
         </h5>
 
-        {/* Catégorie & Marque */}
-        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+        {/* Catégorie */}
+        <div className="flex items-center gap-2 mt-1.5">
           {product.category && (
-            <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">
+            <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md text-[11px] font-medium">
               {product.category}
             </span>
-          )}
-          {product.vendor && product.vendor !== product.category && (
-            <span className="text-[11px]">{product.vendor}</span>
           )}
         </div>
 
         {/* Prix */}
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-base font-bold text-blue-600">
+        <div className="flex items-center gap-2 mt-2">
+          <span className={`text-lg font-bold ${hasPromo ? 'text-red-600' : 'text-blue-600'}`}>
             {formatPrice(Number(product.price), product.currency || "EUR")}
           </span>
           {hasPromo && (
