@@ -17,8 +17,14 @@ import { ChatHistory } from './components/ChatHistory';
 import { ChatSettings } from './components/ChatSettings';
 import { ProductSearch } from './components/ProductSearch';
 import { OmniaChat } from './components/OmniaChat';
+import { PricingLandingPage } from './components/PricingLandingPage';
+import { LoginPage } from './components/LoginPage';
+import { SignUpPage } from './components/SignUpPage';
+import { UsageDashboard } from './components/UsageDashboard';
+import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 import { CartProvider } from './lib/cartContext';
 import { CacheProvider } from './lib/cache';
+import { AuthProvider, useAuth } from './lib/authContext';
 import { Language, getTranslation, type Translations } from './lib/translations';
 import { supabase, getEnvVar } from './lib/supabase';
 import {
@@ -43,7 +49,8 @@ import {
   Settings as SettingsIcon
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'super-admin' | 'settings';
+type AppViewType = 'landing' | 'login' | 'signup' | 'app';
 
 interface LanguageContextType {
   language: Language;
@@ -59,7 +66,8 @@ export const useLanguage = () => {
   return context;
 };
 
-function App() {
+function MainApp() {
+  const { seller, signOut } = useAuth();
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -157,7 +165,12 @@ function App() {
     { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
+    { id: 'usage-dashboard' as ViewType, name: 'Mon Abonnement', icon: Package },
   ];
+
+  const adminNavigation = seller?.role === 'super_admin' ? [
+    { id: 'super-admin' as ViewType, name: 'Admin', icon: Settings },
+  ] : [];
 
   const seoSubItems = [
     { id: 'seo-optimization' as ViewType, name: t.nav.seoOptimization, icon: FileText },
@@ -351,7 +364,28 @@ function App() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 space-y-1">
+          {adminNavigation.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveView(item.id);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.name}</span>
+              </button>
+            );
+          })}
           <button
             onClick={() => {
               setActiveView('settings');
@@ -365,6 +399,13 @@ function App() {
           >
             <Settings className="w-5 h-5" />
             <span className="font-medium">{t.nav.settings}</span>
+          </button>
+          <button
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition"
+          >
+            <X className="w-5 h-5" />
+            <span className="font-medium">Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -400,6 +441,8 @@ function App() {
               <ChatSettings />
             </div>
           )}
+          {activeView === 'usage-dashboard' && <UsageDashboard />}
+          {activeView === 'super-admin' && <SuperAdminDashboard />}
           {activeView === 'settings' && <SettingsComponent />}
         </div>
       </main>
@@ -414,6 +457,86 @@ function App() {
     </CacheProvider>
     </CartProvider>
     </LanguageContext.Provider>
+  );
+}
+
+function App() {
+  const [appView, setAppView] = useState<AppViewType>('landing');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('starter');
+
+  return (
+    <AuthProvider>
+      <AppContent
+        appView={appView}
+        setAppView={setAppView}
+        selectedPlanId={selectedPlanId}
+        setSelectedPlanId={setSelectedPlanId}
+      />
+    </AuthProvider>
+  );
+}
+
+function AppContent({
+  appView,
+  setAppView,
+  selectedPlanId,
+  setSelectedPlanId,
+}: {
+  appView: AppViewType;
+  setAppView: (view: AppViewType) => void;
+  selectedPlanId: string;
+  setSelectedPlanId: (id: string) => void;
+}) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (appView === 'login') {
+      return (
+        <LoginPage
+          onSignUp={() => setAppView('signup')}
+          onBack={() => setAppView('landing')}
+        />
+      );
+    }
+
+    if (appView === 'signup') {
+      return (
+        <SignUpPage
+          planId={selectedPlanId}
+          onLogin={() => setAppView('login')}
+          onBack={() => setAppView('landing')}
+        />
+      );
+    }
+
+    return (
+      <PricingLandingPage
+        onSignUp={(planId) => {
+          setSelectedPlanId(planId);
+          setAppView('signup');
+        }}
+        onLogin={() => setAppView('login')}
+      />
+    );
+  }
+
+  return (
+    <CartProvider>
+      <CacheProvider>
+        <MainApp />
+      </CacheProvider>
+    </CartProvider>
   );
 }
 
