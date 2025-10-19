@@ -340,32 +340,47 @@ export async function OmnIAChat(
 ): Promise<ChatResponse> {
   console.log("🚀 [OMNIA] Message reçu:", userMessage);
 
-  const msg = userMessage.toLowerCase().trim();
-
   try {
-    // 🔥 DÉTECTION INTENTION
-    const intent = await detectIntent(userMessage);
-    console.log("🎯 Intention finale:", intent);
+    // 🔥 CALL EDGE FUNCTION ai-chat (new improved version)
+    const supabaseUrl = (typeof window !== 'undefined' && (window as any).ENV?.VITE_SUPABASE_URL)
+      || getEnvVar("VITE_SUPABASE_URL");
 
-    // 🔥 ROUTAGE PAR TYPE D'INTENTION
-    switch (intent) {
-      case "simple_chat":
-        return await handleSimpleChat(userMessage);
-
-      case "product_chat":
-        return await handleProductChat(userMessage);
-
-      case "product_show":
-        return await handleProductShow(userMessage, storeId);
-
-      default:
-        // Fallback vers product_chat
-        return await handleProductChat(userMessage);
+    if (!supabaseUrl) {
+      console.error("❌ Supabase URL not configured");
+      throw new Error("Supabase URL not found");
     }
+
+    const url = `${supabaseUrl}/functions/v1/ai-chat`;
+    console.log("📡 Calling OmnIA Edge Function:", url);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userMessage,
+        history,
+        storeId
+      }),
+    });
+
+    console.log("📥 OmnIA response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ OmnIA error response:", errorText);
+      throw new Error(`HTTP error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("✅ OmnIA response:", data);
+
+    return data;
 
   } catch (error) {
     console.error("❌ [OMNIA] Erreur globale:", error);
-    
+
     return {
       role: "assistant",
       content: "Bonjour ! Je suis votre assistant commercial. Comment puis-je vous aider aujourd'hui ?",
