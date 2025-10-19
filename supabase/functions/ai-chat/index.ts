@@ -75,60 +75,86 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+// Extract context from conversation history
+function extractContextFromHistory(history: ChatMessage[]): string {
+  // Get last 3 user messages to extract context
+  const recentUserMessages = history
+    .filter(msg => msg.role === 'user')
+    .slice(-3)
+    .map(msg => msg.content)
+    .join(' ');
+
+  return recentUserMessages;
+}
+
 // Extract filters from user query
-function extractFiltersFromQuery(query: string): ProductSearchFilters {
+function extractFiltersFromQuery(query: string, history: ChatMessage[] = []): ProductSearchFilters {
   const filters: ProductSearchFilters = {};
   const normalized = normalizeText(query);
-  const lowerQuery = query.toLowerCase();
+
+  // Check if query is a pronoun reference (show me, show it, etc.)
+  const pronounReferences = ['la', 'le', 'les', 'celle', 'celui', 'celles', 'ceux', 'ca', 'ça'];
+  const hasPronounReference = pronounReferences.some(word => normalized.includes(word));
+
+  // If pronoun reference, extract context from history
+  let searchQuery = query;
+  if (hasPronounReference && history.length > 0) {
+    const context = extractContextFromHistory(history);
+    console.log('🔄 Pronoun detected, using context:', context);
+    searchQuery = context + ' ' + query;
+  }
+
+  const searchNormalized = normalizeText(searchQuery);
 
   // Generic request keywords (show all products)
   const genericKeywords = ['produits', 'articles', 'catalogue', 'collection', 'tout', 'tous', 'tes', 'vos'];
-  const isGenericRequest = genericKeywords.some(word => normalized.includes(word));
+  const isGenericRequest = genericKeywords.some(word => searchNormalized.includes(word));
 
   // Colors (French and English)
   const colors = ['blanc', 'noir', 'gris', 'beige', 'bois', 'marron', 'bleu', 'vert', 'rouge', 'jaune', 'orange', 'rose', 'violet', 'white', 'black', 'gray', 'brown', 'blue', 'green', 'red', 'yellow', 'pink', 'purple'];
-  const foundColor = colors.find(c => normalized.includes(normalizeText(c)));
+  const foundColor = colors.find(c => searchNormalized.includes(normalizeText(c)));
   if (foundColor) {
     filters.color = foundColor;
   }
 
   // Materials (French and English)
   const materials = ['bois', 'metal', 'métal', 'verre', 'marbre', 'cuir', 'tissu', 'plastique', 'ceramique', 'céramique', 'wood', 'metal', 'glass', 'marble', 'leather', 'fabric', 'plastic', 'ceramic'];
-  const foundMaterial = materials.find(m => normalized.includes(normalizeText(m)));
+  const foundMaterial = materials.find(m => searchNormalized.includes(normalizeText(m)));
   if (foundMaterial) {
     filters.material = foundMaterial;
   }
 
   // Styles (French)
   const styles = ['moderne', 'contemporain', 'classique', 'vintage', 'scandinave', 'industriel', 'rustique', 'tendance', 'elegant', 'élégant', 'design', 'minimaliste'];
-  const foundStyle = styles.find(s => normalized.includes(normalizeText(s)));
+  const foundStyle = styles.find(s => searchNormalized.includes(normalizeText(s)));
   if (foundStyle) {
     filters.style = foundStyle;
   }
 
   // Rooms (French)
   const rooms = ['salon', 'chambre', 'cuisine', 'salle de bain', 'bureau', 'jardin', 'terrasse', 'entree', 'entrée'];
-  const foundRoom = rooms.find(r => normalized.includes(normalizeText(r)));
+  const foundRoom = rooms.find(r => searchNormalized.includes(normalizeText(r)));
   if (foundRoom) {
     filters.room = foundRoom;
   }
 
   // Product categories (French)
   const categories = ['canape', 'table', 'chaise', 'fauteuil', 'meuble', 'armoire', 'lit', 'bureau', 'lampe', 'miroir'];
-  const foundCategory = categories.find(c => normalized.includes(c));
+  const foundCategory = categories.find(c => searchNormalized.includes(c));
   if (foundCategory) {
     filters.query = foundCategory;
   } else if (isGenericRequest) {
     // Generic request - show all products (no query filter)
     filters.query = '';
   } else {
-    // Use the full query for search
-    filters.query = query;
+    // Use the combined query for search
+    filters.query = searchQuery;
   }
 
   filters.status = 'active';
   filters.limit = 12;
 
+  console.log('📋 Extracted filters:', filters);
   return filters;
 }
 
@@ -485,7 +511,7 @@ Max 50 mots. Sois naturel et engageant.`
 
     // Product chat handler (conversation without showing products)
     if (intent === "product_chat") {
-      const searchFilters = extractFiltersFromQuery(userMessage);
+      const searchFilters = extractFiltersFromQuery(userMessage, history);
       const products = await searchProducts(searchFilters, storeId);
 
       const messages: ChatMessage[] = [
@@ -530,7 +556,7 @@ Réponds naturellement sans lister les produits.`
     // Product show handler (search and display products)
     console.log("🛍️ Searching products for display...");
 
-    const searchFilters = extractFiltersFromQuery(userMessage);
+    const searchFilters = extractFiltersFromQuery(userMessage, history);
     const products = await searchProducts(searchFilters, storeId);
 
     let response = "";
