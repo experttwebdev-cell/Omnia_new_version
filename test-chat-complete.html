@@ -157,35 +157,44 @@
         }
         .products-list {
             margin-top: 15px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
         }
         .products-list-title {
             font-weight: 600;
             color: #2d3748;
-            margin-bottom: 12px;
-            font-size: 14px;
+            padding: 10px 15px;
+            font-size: 13px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
         }
         .product-item {
             display: flex;
+            align-items: center;
             gap: 12px;
-            background: #f7fafc;
+            background: white;
             padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            border-radius: 0;
+            margin-bottom: 0;
             transition: all 0.2s;
-            border: 2px solid transparent;
+            border: none;
+            border-bottom: 1px solid #e2e8f0;
         }
         .product-item:hover {
-            border-color: #667eea;
-            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.15);
+            background: #edf2f7;
+        }
+        .product-item:last-child {
+            border-bottom: none;
         }
         .product-image {
-            width: 80px;
-            height: 80px;
+            width: 64px;
+            height: 64px;
             border-radius: 8px;
             object-fit: cover;
             background: #e2e8f0;
+            flex-shrink: 0;
         }
         .product-info {
             flex: 1;
@@ -193,13 +202,20 @@
         .product-title {
             font-weight: 600;
             color: #2d3748;
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .product-category {
-            color: #718096;
-            font-size: 12px;
-            margin-bottom: 6px;
+            display: inline-block;
+            background: #e2e8f0;
+            color: #4a5568;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
         }
         .product-price {
             font-weight: 700;
@@ -226,17 +242,18 @@
         }
         .product-actions {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            justify-content: center;
+            flex-direction: row;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-shrink: 0;
         }
         .btn-add-cart {
             background: #667eea;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -244,20 +261,21 @@
         }
         .btn-add-cart:hover {
             background: #5568d3;
-            transform: translateY(-2px);
         }
         .btn-view {
             background: white;
             color: #667eea;
             border: 1px solid #667eea;
-            padding: 6px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
             font-size: 11px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         .btn-view:hover {
-            background: #f7fafc;
+            background: #edf2f7;
         }
         .chat-input-area {
             padding: 20px;
@@ -541,28 +559,30 @@
             return `
                 <div class="products-list">
                     <div class="products-list-title">📦 ${products.length} produit${products.length > 1 ? 's' : ''} trouvé${products.length > 1 ? 's' : ''}</div>
-                    ${products.map(p => {
+                    ${products.map((p, index) => {
                         const hasPromo = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
                         const discount = hasPromo ? Math.round((1 - Number(p.price) / Number(p.compare_at_price)) * 100) : 0;
+                        const score = p._relevance_score || 0;
+                        const matchType = p._match_type || 'fallback';
 
                         return `
                             <div class="product-item">
-                                <img src="${p.image_url || 'https://via.placeholder.com/80'}"
+                                <img src="${p.image_url || 'https://via.placeholder.com/64'}"
                                      alt="${p.title}"
                                      class="product-image"
-                                     onerror="this.src='https://via.placeholder.com/80?text=Produit'">
+                                     onerror="this.src='https://via.placeholder.com/64?text=Produit'">
                                 <div class="product-info">
-                                    <div class="product-title">${p.title}</div>
-                                    <div class="product-category">${p.category || 'Produit'}</div>
+                                    <div class="product-title" title="${p.title}">${p.title}</div>
+                                    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
+                                        <span class="product-category">${p.category || 'Produit'}</span>
+                                        ${score > 0 ? `<span style="font-size: 10px; color: #a0aec0;">Score: ${score}</span>` : ''}
+                                    </div>
                                     <div class="product-price ${hasPromo ? 'promo' : ''}">
                                         ${p.price}${p.currency || '€'}
                                         ${hasPromo ? `<span class="product-compare-price">${p.compare_at_price}${p.currency || '€'}</span><span class="product-discount">-${discount}%</span>` : ''}
                                     </div>
                                 </div>
                                 <div class="product-actions">
-                                    <button class="btn-add-cart" onclick='addToCart(${JSON.stringify(p)})'>
-                                        ➕ Panier
-                                    </button>
                                     <button class="btn-view" onclick="viewProduct('${p.id}')">
                                         👁 Voir
                                     </button>
