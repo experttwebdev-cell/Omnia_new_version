@@ -16,10 +16,11 @@ import {
   Star,
   ArrowUpDown,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  MessageCircle
 } from 'lucide-react';
 import { formatPrice } from '../lib/currency';
-import { searchProducts, quickProductSearch, extractFiltersFromQuery, getProductSuggestions } from '../lib/productSearch';
+import { searchProducts, quickProductSearch, getProductSuggestions } from '../lib/productSearch';
 import type { Database } from '../lib/database.types';
 import type { ProductSearchFilters, ProductSearchResult } from '../lib/productSearch';
 
@@ -94,11 +95,8 @@ export function ProductSearch() {
     setShowSuggestions(false);
 
     try {
-      // Extraire les filtres automatiquement de la requête
-      const extractedFilters = extractFiltersFromQuery(searchText);
       const filters: ProductSearchFilters = {
-        ...extractedFilters,
-        query: extractedFilters.query || searchText,
+        query: searchText,
         sortBy: sortBy,
         limit: 24
       };
@@ -117,7 +115,8 @@ export function ProductSearch() {
           originalQuery: searchText,
           processedQuery: searchText,
           searchTime: 0,
-          matchType: 'fallback'
+          matchType: 'fallback',
+          extractedFilters: {}
         }
       });
     } finally {
@@ -174,6 +173,35 @@ export function ProductSearch() {
     }
   };
 
+  // Fonction pour afficher les filtres extraits par DeepSeek
+  const renderExtractedFilters = () => {
+    if (!searchResult?.searchMeta?.extractedFilters) return null;
+
+    const filters = searchResult.searchMeta.extractedFilters;
+    const filterEntries = Object.entries(filters).filter(([key, value]) => 
+      value && key !== 'query' && key !== 'limit' && key !== 'sortBy'
+    );
+
+    if (filterEntries.length === 0) return null;
+
+    return (
+      <div className="mt-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Zap className="w-4 h-4 text-purple-600" />
+          <span className="text-sm font-medium text-gray-700">Filtres détectés automatiquement :</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {filterEntries.map(([key, value]) => (
+            <span key={key} className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 rounded-full text-sm border border-purple-200">
+              <Sparkles className="w-3 h-3" />
+              {key}: {value}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -183,7 +211,7 @@ export function ProductSearch() {
             Recherche Intelligente
           </h2>
           <p className="text-gray-600">
-            Recherche avancée avec IA dans votre catalogue produits
+            Parlez comme à un assistant - Je comprends le langage naturel
           </p>
         </div>
         {searchResult && (
@@ -202,7 +230,7 @@ export function ProductSearch() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-400" />
             <input
               ref={searchInputRef}
               type="text"
@@ -210,7 +238,7 @@ export function ProductSearch() {
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyPress={handleKeyPress}
               onFocus={() => inputValue.length >= 2 && setShowSuggestions(true)}
-              placeholder="Rechercher un produit, une catégorie, un style, un matériau..."
+              placeholder="Exemple: 'table basse travertin moins de 100 euros' ou 'canapé scandinave bleu pour salon'..."
               className="w-full pl-12 pr-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg placeholder-gray-400"
             />
             {inputValue && (
@@ -264,7 +292,7 @@ export function ProductSearch() {
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              Filtres
+              Options
             </button>
             
             <button
@@ -275,7 +303,7 @@ export function ProductSearch() {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Recherche...
+                  Analyse...
                 </>
               ) : (
                 <>
@@ -287,7 +315,7 @@ export function ProductSearch() {
           </div>
         </div>
 
-        {/* Filtres Avancés */}
+        {/* Options de tri */}
         {showFilters && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -307,15 +335,20 @@ export function ProductSearch() {
                 </select>
               </div>
               
-              {/* Vous pouvez ajouter plus de filtres ici */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Statut
                 </label>
-                <select className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <option value="all">Tous les statuts</option>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    const newFilters = { ...activeFilters, status: e.target.value as any };
+                    setActiveFilters(newFilters);
+                    if (isSearching) handleSearch(searchQuery);
+                  }}
+                >
                   <option value="active">Actif</option>
-                  <option value="draft">Brouillon</option>
+                  <option value="all">Tous</option>
                 </select>
               </div>
               
@@ -323,7 +356,14 @@ export function ProductSearch() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Enrichissement IA
                 </label>
-                <select className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    const newFilters = { ...activeFilters, enrichmentStatus: e.target.value as any };
+                    setActiveFilters(newFilters);
+                    if (isSearching) handleSearch(searchQuery);
+                  }}
+                >
                   <option value="all">Tous</option>
                   <option value="enriched">Avec IA</option>
                   <option value="not_enriched">Sans IA</option>
@@ -332,9 +372,16 @@ export function ProductSearch() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  En stock
+                  Stock
                 </label>
-                <select className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    const newFilters = { ...activeFilters, inStock: e.target.value === 'in_stock' };
+                    setActiveFilters(newFilters);
+                    if (isSearching) handleSearch(searchQuery);
+                  }}
+                >
                   <option value="all">Tous</option>
                   <option value="in_stock">En stock</option>
                   <option value="out_of_stock">Rupture</option>
@@ -344,49 +391,32 @@ export function ProductSearch() {
           </div>
         )}
 
-        {/* Filtres Actifs */}
-        {Object.keys(activeFilters).length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {activeFilters.query && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                📝 {activeFilters.query}
-                <button onClick={() => setActiveFilters(prev => ({ ...prev, query: undefined }))}>
-                  <X className="w-3 h-3" />
+        {/* Filtres extraits par DeepSeek */}
+        {renderExtractedFilters()}
+
+        {/* Exemples de recherche */}
+        {!isSearching && (
+          <div className="mt-4">
+            <p className="text-sm text-gray-600 mb-2">Exemples de recherches naturelles :</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "table basse travertin moins de 100 euros",
+                "canapé scandinave bleu pour salon",
+                "chaise design en bois avec promotion",
+                "meuble tv moderne en chêne"
+              ].map((example, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setInputValue(example);
+                    handleSearch(example);
+                  }}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition"
+                >
+                  {example}
                 </button>
-              </span>
-            )}
-            {activeFilters.category && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                📦 {activeFilters.category}
-                <button onClick={() => setActiveFilters(prev => ({ ...prev, category: undefined }))}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {activeFilters.color && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
-                🎨 {activeFilters.color}
-                <button onClick={() => setActiveFilters(prev => ({ ...prev, color: undefined }))}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {activeFilters.material && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
-                🔨 {activeFilters.material}
-                <button onClick={() => setActiveFilters(prev => ({ ...prev, material: undefined }))}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            {activeFilters.hasPromo && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
-                🔥 Promotion
-                <button onClick={() => setActiveFilters(prev => ({ ...prev, hasPromo: undefined }))}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -448,7 +478,11 @@ export function ProductSearch() {
               <div className="flex justify-center items-center py-12">
                 <div className="text-center">
                   <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-600">Recherche en cours...</p>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Zap className="w-5 h-5 text-purple-500" />
+                    <p>Analyse de votre recherche avec l'IA...</p>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">Je comprends votre intention pour trouver les meilleurs résultats</p>
                 </div>
               </div>
             ) : searchResult?.products.length === 0 ? (
@@ -460,7 +494,7 @@ export function ProductSearch() {
                   Aucun produit trouvé
                 </h3>
                 <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                  Essayez d'ajuster vos critères de recherche ou utilisez des termes plus généraux.
+                  Essayez de reformuler votre recherche ou utilisez des termes plus généraux.
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   <button
@@ -497,7 +531,6 @@ export function ProductSearch() {
                   <div className="flex justify-center mt-8">
                     <button
                       onClick={() => {
-                        // Implémenter le chargement supplémentaire
                         const newFilters = { ...activeFilters, offset: (activeFilters.offset || 0) + 24 };
                         setActiveFilters(newFilters);
                         handleSearch(searchQuery);
@@ -521,14 +554,14 @@ export function ProductSearch() {
           <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-8 border border-blue-100">
             <div className="flex items-center gap-4 mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-xl">
-                <Zap className="w-8 h-8 text-blue-600" />
+                <MessageCircle className="w-8 h-8 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                  Recherche Intelligente
+                  Recherche Conversationnelle
                 </h3>
                 <p className="text-gray-600">
-                  Utilisez l'IA pour trouver exactement ce que vous cherchez
+                  Parlez comme à un assistant - Je comprends le langage naturel
                 </p>
               </div>
             </div>
@@ -536,15 +569,15 @@ export function ProductSearch() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                <span>Recherche naturelle avec des phrases complètes</span>
+                <span>Décrivez ce que vous cherchez en phrases complètes</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span>Détection automatique des couleurs et matériaux</span>
+                <span>Mentionnez le budget, les couleurs, les matériaux</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                <span>Suggestions intelligentes en temps réel</span>
+                <span>L'IA analyse votre intention pour des résultats précis</span>
               </div>
             </div>
           </div>
