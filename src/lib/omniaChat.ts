@@ -1,5 +1,5 @@
 import { supabase, getEnvVar } from "./supabase";
-import { searchProducts, extractFiltersFromQuery, type ProductSearchFilters } from "./productSearch";
+import { searchProducts, type ProductSearchFilters } from "./productSearch";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -204,9 +204,11 @@ Max 50 mots. Sois naturel et engageant.`
 //
 async function handleProductChat(userMessage: string): Promise<ChatResponse> {
   // 🔍 Recherche en arrière-plan pour avoir les infos réelles
-  const searchFilters = extractFiltersFromQuery(userMessage);
-  searchFilters.limit = 10;
-  searchFilters.sortBy = 'relevance';
+  const searchFilters: ProductSearchFilters = {
+    query: userMessage,
+    limit: 10,
+    sortBy: 'relevance'
+  };
   
   const result = await searchProducts(searchFilters);
   const products = result.products;
@@ -274,9 +276,11 @@ Réponds de manière NATURELLE sans montrer les produits. Utilise ces informatio
 async function handleProductShow(userMessage: string, storeId?: string): Promise<ChatResponse> {
   console.log("🛍️ Recherche produits pour affichage...");
   
-  const searchFilters = extractFiltersFromQuery(userMessage);
-  searchFilters.limit = 12;
-  searchFilters.sortBy = 'relevance';
+  const searchFilters: ProductSearchFilters = {
+    query: userMessage,
+    limit: 12,
+    sortBy: 'relevance'
+  };
 
   const result = await searchProducts(searchFilters, storeId);
   const products = result.products;
