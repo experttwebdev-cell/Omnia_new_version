@@ -416,30 +416,32 @@ export function extractFiltersFromQuery(query: string): Partial<ProductSearchFil
     filters.maxPrice = Number(priceRangeMatch[2] || priceRangeMatch[4]);
   }
 
-  // ✅ CORRECTION : Si demande générique, on cherche dans tous les produits
-  const genericWords = ['produits', 'articles', 'catalogue', 'collection', 'choix', 'sélection', 'quelque chose', 'quelques', 'tout', 'tous', 'tes', 'vos'];
-  const hasGenericWord = genericWords.some(word => lowerQuery.includes(word));
+  // ✅ Extraction des mots-clés significatifs
+  const stopWords = ['je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles',
+                     'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de',
+                     'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son', 'sa', 'ses',
+                     'notre', 'nos', 'votre', 'vos', 'leur', 'leurs',
+                     'ce', 'cet', 'cette', 'ces', 'ça',
+                     'est', 'sont', 'être', 'avoir', 'a', 'ai', 'as', 'avons', 'avez', 'ont',
+                     'cherche', 'recherche', 'veux', 'voudrais', 'souhaite', 'besoin',
+                     'montre', 'affiche', 'voir', 'trouve', 'montrer'];
 
-  // Product categories (French) - prioritize specific product searches
-  const categories = ['canapé', 'canape', 'table', 'chaise', 'fauteuil', 'meuble', 'armoire', 'lit', 'bureau', 'lampe', 'miroir'];
-  const foundCategory = categories.find(c => lowerQuery.includes(c));
+  let cleanQuery = query
+    .replace(new RegExp(`\\b(${colors.join('|')})\\b`, 'gi'), '')
+    .replace(new RegExp(`\\b(${materials.join('|')})\\b`, 'gi'), '')
+    .replace(/\b(promo|promotion|solde|réduction|reduction|discount|sale)\b/gi, '')
+    .replace(/\d+\s*(€|euros?|dollars?|\$)/gi, '')
+    .replace(/entre\s+\d+\s+et\s+\d+|\d+\s*-\s*\d+/gi, '');
 
-  if (foundCategory) {
-    filters.query = foundCategory;
-  } else if (hasGenericWord) {
-    filters.query = ''; // Recherche vide = tous les produits
-  } else {
-    // Nettoyer la requête
-    const cleanQuery = query
-      .replace(new RegExp(`\\b(${colors.join('|')})\\b`, 'gi'), '')
-      .replace(new RegExp(`\\b(${materials.join('|')})\\b`, 'gi'), '')
-      .replace(/\b(promo|promotion|solde|réduction|reduction|discount|sale)\b/gi, '')
-      .replace(/\d+\s*(€|euros?|dollars?|\$)/gi, '')
-      .trim();
+  const words = cleanQuery.toLowerCase().split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.includes(word));
 
-    if (cleanQuery) {
-      filters.query = cleanQuery;
-    }
+  if (words.length > 0) {
+    filters.query = words.join(' ');
+    console.log("🎯 Requête nettoyée:", filters.query);
+  } else if (foundMaterial || foundColor) {
+    filters.query = '';
+    console.log("🎯 Recherche par attributs uniquement");
   }
 
   return filters;
