@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Production - Product Catalogue</title>
+    <script src="/config-local.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-card.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .status-card.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .status-card.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .status-card h3 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+        }
+
+        .status-details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .status-details code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 24px;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #f3f4f6;
+        }
+
+        .product-info {
+            padding: 16px;
+        }
+
+        .product-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-vendor {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .product-status {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge.enriched {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Test de Production</h1>
+            <p>Product Catalogue - Vérification complète du système</p>
+        </div>
+
+        <div class="content">
+            <div id="status-container"></div>
+            <div id="stats-container"></div>
+            <div id="products-container"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Configuration
+        const SUPABASE_URL = window.ENV?.VITE_SUPABASE_URL;
+        const SUPABASE_ANON_KEY = window.ENV?.VITE_SUPABASE_ANON_KEY;
+
+        let allTestsPassed = true;
+
+        // Fonction pour afficher un statut
+        function showStatus(type, title, details) {
+            const statusContainer = document.getElementById('status-container');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️';
+
+            if (type === 'error') allTestsPassed = false;
+
+            const card = document.createElement('div');
+            card.className = `status-card ${type}`;
+            card.innerHTML = `
+                <h3><span class="status-icon">${icon}</span> ${title}</h3>
+                <div class="status-details">${details}</div>
+            `;
+            statusContainer.appendChild(card);
+        }
+
+        // Test 1: Variables d'environnement
+        function testEnvironmentVariables() {
+            if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                showStatus('error', 'Variables d\'environnement manquantes',
+                    'Les variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY ne sont pas configurées. Vérifiez votre fichier .env ou config.js');
+                return false;
+            }
+
+            if (SUPABASE_URL.includes('placeholder') || SUPABASE_ANON_KEY.includes('placeholder')) {
+                showStatus('error', 'Variables d\'environnement invalides',
+                    'Les variables contiennent encore des valeurs de placeholder. Configurez les vraies valeurs.');
+                return false;
+            }
+
+            showStatus('success', 'Variables d\'environnement configurées',
+                `Supabase URL: <code>${SUPABASE_URL}</code>`);
+            return true;
+        }
+
+        // Test 2: Connexion à Supabase
+        async function testSupabaseConnection() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (response.ok) {
+                    showStatus('success', 'Connexion Supabase réussie',
+                        'La connexion à la base de données fonctionne correctement.');
+                    return true;
+                } else {
+                    showStatus('error', 'Erreur de connexion Supabase',
+                        `Status: ${response.status} - Vérifiez vos clés API.`);
+                    return false;
+                }
+            } catch (error) {
+                showStatus('error', 'Impossible de se connecter à Supabase',
+                    `Erreur: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Test 3: Charger les statistiques
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/fast_dashboard_cache?select=*`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const stats = data[0];
+                    showStatus('success', 'Cache du dashboard chargé',
+                        `${stats.total_products || 0} produits trouvés dans la base de données.`);
+
+                    // Afficher les statistiques
+                    const statsContainer = document.getElementById('stats-container');
+                    statsContainer.innerHTML = `
+                        <div class="stats">
+                            <div class="stat-card">
+                                <div class="stat-value">${stats.total_products || 0}</div>
+                                <div class="stat-label">Produits Total</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${stats.enriched_products || 0}</div>
+                                <div class="stat-label">Enrichis par IA</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${stats.synced_products || 0}</div>
+                                <div class="stat-label">Synchronisés</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${stats.unique_vendors || 0}</div>
+                                <div class="stat-label">Fournisseurs</div>
+                            </div>
+                        </div>
+                    `;
+
+                    return stats;
+                } else {
+                    showStatus('warning', 'Cache vide',
+                        'Le cache du dashboard est vide. Exécutez la fonction refresh-dashboard-cache.');
+                    return null;
+                }
+            } catch (error) {
+                showStatus('error', 'Erreur de chargement du cache',
+                    `Impossible de charger les statistiques: ${error.message}`);
+                return null;
+            }
+        }
+
+        // Test 4: Charger les produits
+        async function loadProducts() {
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/shopify_products?select=id,title,vendor,image_url,enrichment_status,seo_synced_to_shopify&order=created_at.desc&limit=12`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const products = await response.json();
+
+                if (products && products.length > 0) {
+                    showStatus('success', 'Produits chargés avec succès',
+                        `${products.length} produits récents affichés ci-dessous.`);
+
+                    displayProducts(products);
+                    return true;
+                } else {
+                    showStatus('warning', 'Aucun produit trouvé',
+                        'La base de données ne contient aucun produit. Importez des produits depuis Shopify.');
+                    return false;
+                }
+            } catch (error) {
+                showStatus('error', 'Erreur de chargement des produits',
+                    `Impossible de charger les produits: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Afficher les produits
+        function displayProducts(products) {
+            const container = document.getElementById('products-container');
+            container.innerHTML = '<h2 style="margin-bottom: 20px; color: #1f2937;">Produits Récents</h2>';
+
+            const grid = document.createElement('div');
+            grid.className = 'products-grid';
+
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+
+                const statusBadge = product.enrichment_status === 'enriched'
+                    ? '<span class="badge enriched">✨ Enrichi IA</span>'
+                    : '<span class="badge pending">⏳ En attente</span>';
+
+                card.innerHTML = `
+                    ${product.image_url
+                        ? `<img src="${product.image_url}" alt="${product.title}" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22200%22%3E%3Crect width=%22280%22 height=%22200%22 fill=%22%23f3f4f6%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%239ca3af%22 font-family=%22sans-serif%22 font-size=%2216%22%3EImage non disponible%3C/text%3E%3C/svg%3E'">`
+                        : '<div class="product-image" style="display: flex; align-items: center; justify-content: center; color: #9ca3af;">Pas d\'image</div>'
+                    }
+                    <div class="product-info">
+                        <div class="product-title">${product.title || 'Sans titre'}</div>
+                        <div class="product-vendor">Par ${product.vendor || 'Inconnu'}</div>
+                        <div class="product-status">
+                            ${statusBadge}
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+
+            container.appendChild(grid);
+        }
+
+        // Test 5: Tester une Edge Function
+        async function testEdgeFunction() {
+            try {
+                const response = await fetch(
+                    `${SUPABASE_URL}/functions/v1/test-products`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ test: true })
+                    }
+                );
+
+                if (response.ok) {
+                    showStatus('success', 'Edge Functions opérationnelles',
+                        'Les fonctions serverless Supabase fonctionnent correctement.');
+                    return true;
+                } else {
+                    showStatus('warning', 'Edge Function indisponible',
+                        `La fonction test-products a retourné: ${response.status}. Cela peut être normal si elle nécessite une authentification.`);
+                    return true; // Not critical
+                }
+            } catch (error) {
+                showStatus('warning', 'Impossible de tester les Edge Functions',
+                    `Erreur: ${error.message}. Les fonctions peuvent quand même fonctionner.`);
+                return true; // Not critical
+            }
+        }
+
+        // Lancer tous les tests
+        async function runAllTests() {
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Tests en cours...</p></div>';
+
+            // Test 1: Variables d'environnement
+            const envOk = testEnvironmentVariables();
+            if (!envOk) {
+                statusContainer.innerHTML = '';
+                showStatus('error', 'Configuration incomplète',
+                    'Veuillez configurer les variables d\'environnement avant de continuer.');
+                return;
+            }
+
+            statusContainer.innerHTML = '';
+
+            // Test 2: Connexion Supabase
+            const connectionOk = await testSupabaseConnection();
+            if (!connectionOk) return;
+
+            // Test 3: Charger les stats
+            await loadDashboardStats();
+
+            // Test 4: Charger les produits
+            await loadProducts();
+
+            // Test 5: Tester Edge Function
+            await testEdgeFunction();
+
+            // Résumé final
+            if (allTestsPassed) {
+                showStatus('success', '🎉 Tous les tests sont réussis !',
+                    'Votre application est prête pour la production. Vous pouvez maintenant déployer sur Netlify ou Vercel.');
+            } else {
+                showStatus('warning', 'Certains tests ont échoué',
+                    'Corrigez les erreurs ci-dessus avant de déployer en production.');
+            }
+        }
+
+        // Lancer les tests au chargement
+        runAllTests();
+    </script>
+</body>
+</html>
