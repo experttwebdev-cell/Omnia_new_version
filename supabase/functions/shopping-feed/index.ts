@@ -37,15 +37,46 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Récupérer le vendeur
+    const { data: seller, error: sellerError } = await supabase
+      .from('sellers')
+      .select('*')
+      .eq('id', sellerId)
+      .single();
+
+    if (sellerError) {
+      console.error('Erreur récupération vendeur:', sellerError);
+      throw new Error('Vendeur non trouvé');
+    }
+
+    // Vérifier que le vendeur a un statut actif ou en essai
+    if (seller.status !== 'active' && seller.status !== 'trial') {
+      throw new Error('Vendeur non actif');
+    }
+
+    // Récupérer l'abonnement du vendeur
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .in('status', ['active', 'trial'])
+      .single();
+
+    if (subscriptionError) {
+      console.error('Erreur récupération abonnement:', subscriptionError);
+      throw new Error('Abonnement non trouvé ou inactif');
+    }
+
     // Récupérer les produits du vendeur
-    const { data: products, error } = await supabase
+    const { data: products, error: productsError } = await supabase
       .from('shopify_products')
       .select('*')
       .eq('user_id', sellerId)
       .eq('status', 'active');
 
-    if (error) {
-      throw new Error(`Erreur lors de la récupération des produits: ${error.message}`);
+    if (productsError) {
+      console.error('Erreur récupération produits:', productsError);
+      throw new Error('Erreur lors de la récupération des produits');
     }
 
     // Générer le XML Google Shopping
@@ -60,9 +91,16 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Error in edge function:", error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
     });
   }
 });
@@ -70,16 +108,23 @@ serve(async (req) => {
 function generateGoogleShoppingXML(products: any[]): string {
   const itemsXML = products.map(product => `
     <item>
-      <id>${product.id}</id>
-      <title>${escapeXML(product.title)}</title>
-      <description>${escapeXML(product.description || '')}</description>
-      <link>https://omnia.sale/products/${product.handle}</link>
-      <image_link>${product.image_url}</image_link>
-      <availability>${product.inventory > 0 ? 'in stock' : 'out of stock'}</availability>
-      <price>${product.price} EUR</price>
-      <brand>${escapeXML(product.vendor || 'Unknown')}</brand>
-      <condition>new</condition>
-      <google_product_category>${escapeXML(product.category || '')}</google_product_category>
+      <g:id>${product.id}</g:id>
+      <g:title>${escapeXML(product.title)}</g:title>
+      <g:description>${escapeXML(product.description || product.body_html?.replace(/<[^>]*>/g, '').substring(0, 500) || '')}</g:description>
+      <g:link>https://omnia.sale/products/${product.handle}</g:link>
+      <g:image_link>${product.image_url}</g:image_link>
+      <g:availability>${product.inventory > 0 ? 'in stock' : 'out of stock'}</g:availability>
+      <g:price>${product.price} EUR</g:price>
+      <g:sale_price>${product.compare_at_price || product.price} EUR</g:sale_price>
+      <g:brand>${escapeXML(product.vendor || 'Unknown')}</g:brand>
+      <g:condition>new</g:condition>
+      <g:google_product_category>${escapeXML(product.category || 'Home & Garden')}</g:google_product_category>
+      <g:product_type>${escapeXML(product.product_type || '')}</g:product_type>
+      <g:shipping>
+        <g:country>FR</g:country>
+        <g:service>Standard</g:service>
+        <g:price>0 EUR</g:price>
+      </g:shipping>
     </item>
   `).join('');
 
