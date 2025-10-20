@@ -75,13 +75,13 @@ Deno.serve(async (req) => {
 
     if (planError) throw new Error("Plan not found: " + planError.message);
 
-    // Calculate price based on billing period
-    const amount = billing_period === "annual" ? 
-      parseFloat(plan.price_annual) : 
-      parseFloat(plan.price_monthly);
+    // Get the appropriate Stripe Price ID based on billing period
+    const stripePriceId = billing_period === "annual" || billing_period === "yearly"
+      ? plan.stripe_price_id_yearly
+      : plan.stripe_price_id_monthly;
 
-    if (isNaN(amount) || amount <= 0) {
-      throw new Error("Invalid plan pricing");
+    if (!stripePriceId) {
+      throw new Error(`Stripe Price ID not configured for ${billing_period} billing on plan ${plan.name}`);
     }
 
     // Create or get Stripe customer
@@ -104,31 +104,16 @@ Deno.serve(async (req) => {
         .eq("id", user.id);
     }
 
-    // Create Stripe Checkout Session
+    // Create Stripe Checkout Session using pre-configured Price IDs
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "subscription",
       customer: customerId,
       client_reference_id: user.id,
-      
+
       line_items: [
         {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: plan.name,
-              description: `${plan.name} Plan - ${billing_period === "annual" ? "Facturation annuelle" : "Facturation mensuelle"}`,
-              metadata: {
-                plan_id: plan.id,
-                features: JSON.stringify(plan.features || [])
-              }
-            },
-            unit_amount: Math.round(amount * 100),
-            recurring: {
-              interval: billing_period === "annual" ? "year" : "month",
-              interval_count: 1
-            }
-          },
+          price: stripePriceId,
           quantity: 1
         }
       ],
@@ -147,8 +132,7 @@ Deno.serve(async (req) => {
           plan_id: plan_id,
           billing_period: billing_period,
           plan_name: plan.name
-        },
-        trial_period_days: plan.trial_days || 14
+        }
       },
 
       // Custom success and cancel URLs
