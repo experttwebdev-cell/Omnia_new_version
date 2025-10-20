@@ -40,7 +40,12 @@ import {
   Cloud,
   Workflow,
   Gem,
-  Cube
+  Cube,
+  Brain,
+  Orbit,
+  Atom,
+  CircuitBoard,
+  CpuIcon
 } from 'lucide-react';
 
 // Mock data for plans - UPDATED WITH NEW PRICING AND FEATURES
@@ -142,7 +147,7 @@ const mockPlans = [
       extra_tokens_price: '0.05€/1K',
       google_shopping: 'Export illimité + optimisation IA',
       seo_audit: 'Quotidien',
-      features_included: ['Toutes les fonctionnalités', +' Support Prioritaire', 'Formation Personnalisée', 'API Complète']
+      features_included: ['Toutes les fonctionnalités', 'Support Prioritaire', 'Formation Personnalisée', 'API Complète']
     },
     stripe_price_id: 'price_enterprise',
     description: 'Entreprise avec tout illimité',
@@ -209,13 +214,13 @@ export function PricingLandingPage() {
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case 'starter':
-        return <Cube className="w-8 h-8" />;
+        return <Atom className="w-8 h-8" />;
       case 'professional':
-        return <Gem className="w-8 h-8" />;
+        return <Brain className="w-8 h-8" />;
       case 'enterprise':
-        return <Crown className="w-8 h-8" />;
+        return <Orbit className="w-8 h-8" />;
       default:
-        return <ShoppingBag className="w-8 h-8" />;
+        return <Cpu className="w-8 h-8" />;
     }
   };
 
@@ -223,30 +228,30 @@ export function PricingLandingPage() {
     switch (planId) {
       case 'starter':
         return {
-          gradient: 'from-green-500 to-emerald-500',
-          light: 'from-green-50 to-emerald-50',
-          border: 'border-green-200',
-          text: 'text-green-600',
-          bg: 'bg-gradient-to-r from-green-500 to-emerald-500',
-          glow: 'shadow-lg shadow-green-500/25'
+          gradient: 'from-cyan-500 to-blue-500',
+          light: 'from-cyan-50 to-blue-50',
+          border: 'border-cyan-200',
+          text: 'text-cyan-600',
+          bg: 'bg-gradient-to-r from-cyan-500 to-blue-500',
+          glow: 'shadow-lg shadow-cyan-500/25'
         };
       case 'professional':
         return {
-          gradient: 'from-blue-500 to-purple-500',
-          light: 'from-blue-50 to-purple-50',
-          border: 'border-blue-200',
-          text: 'text-blue-600',
-          bg: 'bg-gradient-to-r from-blue-500 to-purple-500',
-          glow: 'shadow-lg shadow-blue-500/25'
-        };
-      case 'enterprise':
-        return {
-          gradient: 'from-purple-600 to-pink-600',
+          gradient: 'from-purple-500 to-pink-500',
           light: 'from-purple-50 to-pink-50',
           border: 'border-purple-200',
           text: 'text-purple-600',
-          bg: 'bg-gradient-to-r from-purple-600 to-pink-600',
+          bg: 'bg-gradient-to-r from-purple-500 to-pink-500',
           glow: 'shadow-lg shadow-purple-500/25'
+        };
+      case 'enterprise':
+        return {
+          gradient: 'from-orange-500 to-red-500',
+          light: 'from-orange-50 to-red-50',
+          border: 'border-orange-200',
+          text: 'text-orange-600',
+          bg: 'bg-gradient-to-r from-orange-500 to-red-500',
+          glow: 'shadow-lg shadow-orange-500/25'
         };
       default:
         return {
@@ -270,8 +275,8 @@ export function PricingLandingPage() {
   const featureCategories = [
     {
       id: 'all',
-      name: 'Toutes les fonctionnalités',
-      icon: Workflow,
+      name: 'Toutes les solutions',
+      icon: CircuitBoard,
       count: 8
     },
     {
@@ -296,80 +301,62 @@ export function PricingLandingPage() {
 
   const allFeatures = [
     {
-      icon: Sparkles,
-      title: 'Optimisation SEO IA Avancée',
-      description: 'Descriptions optimisées automatiquement, balises meta intelligentes, analyse concurrentielle',
-      gradient: 'from-blue-500 to-cyan-500',
+      icon: Brain,
+      title: 'Cerveau IA Omni-Connecté',
+      description: 'Réseau neuronal avancé qui analyse et optimise simultanément tous les aspects de votre e-commerce',
+      gradient: 'from-purple-500 to-pink-500',
       category: 'optimisation',
       plans: ['starter', 'professional', 'enterprise'],
-      highlight: false,
+      highlight: true,
       benefit: '+45% de trafic organique'
     },
     {
-      icon: MessageCircle,
-      title: 'Assistant Client 24/7',
-      description: 'Chatbot IA intelligent, réponses contextuelles, support multilingue automatique',
-      gradient: 'from-green-500 to-emerald-500',
-      category: 'support',
-      plans: ['starter', 'professional', 'enterprise'],
-      highlight: false,
-      benefit: '-65% de charge support'
-    },
-    {
-      icon: ShoppingCart,
-      title: 'Google Shopping Automatique',
-      description: 'Export automatique des produits, optimisation des prix, gestion des campagnes shopping',
-      gradient: 'from-orange-500 to-red-500',
+      icon: Orbit,
+      title: 'Orbit Marketing Intelligence',
+      description: 'Système orbital qui synchronise automatiquement tous vos canaux marketing en temps réel',
+      gradient: 'from-blue-500 to-cyan-500',
       category: 'marketing',
       plans: ['professional', 'enterprise'],
       highlight: true,
-      benefit: '+35% de ROI publicitaire'
+      benefit: '-65% de charge marketing'
     },
     {
-      icon: BarChart,
-      title: 'Analytics Prédictifs',
-      description: 'Tableaux de bord temps réel, insights personnalisés, recommandations automatisées',
-      gradient: 'from-purple-500 to-pink-500',
+      icon: Atom,
+      title: 'Noyau Atomique de Données',
+      description: 'Traitement quantique des données client pour une personnalisation infinie',
+      gradient: 'from-green-500 to-emerald-500',
       category: 'optimisation',
       plans: ['professional', 'enterprise'],
+      highlight: false,
+      benefit: 'Personnalisation 99% précise'
+    },
+    {
+      icon: Cpu,
+      title: 'Processeur Prédictif Quantique',
+      description: 'Anticipez les tendances du marché 6 mois à l\'avance avec notre IA quantique',
+      gradient: 'from-orange-500 to-red-500',
+      category: 'optimisation',
+      plans: ['enterprise'],
       highlight: true,
       benefit: 'Décisions 3x plus rapides'
     },
     {
-      icon: FileText,
-      title: 'Générateur de Contenu IA',
-      description: 'Articles de blog optimisés SEO, descriptions produits, campagnes de contenu automatiques',
-      gradient: 'from-yellow-500 to-amber-500',
-      category: 'marketing',
+      icon: CircuitBoard,
+      title: 'Réseau Neural Commerce',
+      description: 'Connectivité totale entre vos produits, clients et marchés en temps réel',
+      gradient: 'from-indigo-500 to-purple-500',
+      category: 'support',
       plans: ['starter', 'professional', 'enterprise'],
-      benefit: 'Contenu illimité généré'
+      benefit: 'Connectivité 100% temps réel'
     },
     {
-      icon: Target,
-      title: 'Campagnes Marketing IA',
-      description: 'Segmentation automatique, personalisation en temps réel, optimisation des canaux',
-      gradient: 'from-red-500 to-pink-500',
+      icon: Zap,
+      title: 'Énergie Marketing Automatisée',
+      description: 'Campagnes auto-générées qui s\'adaptent dynamiquement au comportement client',
+      gradient: 'from-yellow-500 to-amber-500',
       category: 'marketing',
       plans: ['professional', 'enterprise'],
       benefit: 'Conversion +28%'
-    },
-    {
-      icon: Tag,
-      title: 'Catégorisation Intelligente',
-      description: 'Organisation automatique des produits, tags intelligents, taxonomie optimisée',
-      gradient: 'from-indigo-500 to-blue-500',
-      category: 'optimisation',
-      plans: ['starter', 'professional', 'enterprise'],
-      benefit: 'Navigation +40% efficace'
-    },
-    {
-      icon: Headphones,
-      title: 'Support Prioritaire',
-      description: 'Accès direct aux experts, résolution garantie, accompagnement personnalisé',
-      gradient: 'from-teal-500 to-cyan-500',
-      category: 'support',
-      plans: ['enterprise'],
-      benefit: 'Support dédié 24/7'
     }
   ];
 
@@ -384,7 +371,7 @@ export function PricingLandingPage() {
       company: 'Mode & Style Paris',
       role: 'Directrice E-commerce',
       rating: 5,
-      text: 'Le plan Professional a transformé notre business. Passé de Starter à Professional en 2 mois tellement les résultats étaient là.',
+      text: 'L\'IA Omnia a complètement transformé notre approche. C\'est comme avoir une équipe de 50 experts IA 24/7.',
       metric: 'ROI 4x en 60 jours'
     },
     {
@@ -392,7 +379,7 @@ export function PricingLandingPage() {
       company: 'TechImport',
       role: 'Fondateur',
       rating: 5,
-      text: 'Commencé avec Starter à 9.99€, maintenant en Enterprise. La scalabilité est impressionnante.',
+      text: 'La solution la plus avancée que j\'ai vue. L\'IA prédictive a anticipé des tendances que personne n\'avait vues.',
       metric: 'Chiffre 5x en 1 an'
     },
     {
@@ -400,57 +387,56 @@ export function PricingLandingPage() {
       company: 'Beauté Nature',
       role: 'Responsable Marketing',
       rating: 5,
-      text: 'Le support Enterprise est exceptionnel. Notre équipe est accompagnée au quotidien.',
+      text: 'Le cerveau IA Omnia synchronise parfaitement tous nos canaux. Plus besoin de 5 outils différents.',
       metric: 'Satisfaction client 98%'
     }
   ];
 
   const faqs = [
     {
-      question: "Puis-je changer de plan à tout moment ?",
-      answer: "Oui, vous pouvez upgrade ou downgrade votre plan à tout moment. La différence est facturée au prorata."
+      question: "En quoi Omnia AI est-elle différente des autres solutions ?",
+      answer: "Omnia AI utilise une architecture neuronale unique qui connecte simultanément tous les aspects de votre e-commerce, créant un écosystème intelligent et auto-optimisé plutôt que des outils séparés."
     },
     {
-      question: "Y a-t-il un engagement ?",
-      answer: "Non, tous nos plans sont sans engagement. Vous pouvez annuler à tout moment sans frais."
+      question: "L'IA peut-elle vraiment tout gérer ?",
+      answer: "Notre système Omnia fonctionne comme un cerveau digital central qui orchestre l'ensemble de votre e-commerce, de l'optimisation produit au marketing prédictif, en passant par le service client automatisé."
     },
     {
-      question: "Le plan Starter inclut-il le support ?",
-      answer: "Oui, le plan Starter inclut le support par email. Professional ajoute le chat et Enterprise le support téléphonique dédié."
-    },
-    {
-      question: "Puis-je essayer gratuitement ?",
-      answer: "Oui, tous les plans incluent un essai gratuit de 14 jours sans engagement."
+      question: "Quelle est la courbe d'apprentissage ?",
+      answer: "Grâce à notre interface neuronale intuitive, vous verrez des résultats dès les premières heures. Le système apprend et s'adapte continuellement à votre business."
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header avec nouveau logo 3D */}
+      {/* Header avec logo futuriste Omnia AI */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-gray-200/80 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              {/* Nouveau logo 3D stylé */}
-              <div className="relative">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/25 transform rotate-12 hover:rotate-0 transition-transform duration-500">
-                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-400 rounded-xl flex items-center justify-center shadow-inner">
-                    <Cube className="w-6 h-6 text-white filter drop-shadow-lg" />
+              {/* Nouveau logo futuriste Omnia AI */}
+              <div className="relative group">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/25 transform group-hover:rotate-180 transition-transform duration-700">
+                  <div className="relative">
+                    <Brain className="w-6 h-6 text-white filter drop-shadow-lg" />
+                    <div className="absolute -inset-1 bg-cyan-400 rounded-full blur-sm opacity-50 animate-pulse"></div>
                   </div>
                 </div>
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-sm opacity-75 -z-10 animate-pulse"></div>
+                <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 to-cyan-500 rounded-2xl blur-md opacity-30 -z-10 group-hover:opacity-50 transition-opacity duration-300"></div>
+                {/* Effet d'orbite */}
+                <div className="absolute -inset-3 border-2 border-purple-400/30 rounded-3xl animate-spin-slow -z-20"></div>
               </div>
               <div>
-                <span className="text-2xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  CubeAI
+                <span className="text-2xl font-black bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                  Omnia AI
                 </span>
-                <div className="text-xs text-gray-500 -mt-1 font-medium">3D Commerce Intelligence</div>
+                <div className="text-xs text-gray-500 -mt-1 font-medium">Complete Neural Commerce</div>
               </div>
             </div>
             
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200">
-                Fonctionnalités
+                Solutions
               </a>
               <a href="#pricing" className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200">
                 Tarifs
@@ -469,7 +455,7 @@ export function PricingLandingPage() {
               </button>
               <button
                 onClick={() => handleSignUp('professional')}
-                className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600"
               >
                 <span className="text-white">Essai Gratuit 14j</span>
               </button>
@@ -478,41 +464,47 @@ export function PricingLandingPage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-        <div className="absolute inset-0 opacity-10">
+      {/* Hero Section Futuriste */}
+      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
+        {/* Effets de fond futuristes */}
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-            backgroundSize: '40px 40px'
+            backgroundImage: `
+              radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%)
+            `,
+            backgroundSize: '50% 50%, 60% 60%, 70% 70%'
           }} />
         </div>
 
-        {/* Effets 3D animés */}
-        <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute top-32 right-20 w-16 h-16 bg-gradient-to-br from-pink-500/20 to-cyan-500/20 rounded-full blur-lg animate-pulse delay-75"></div>
-        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-full blur-md animate-pulse delay-150"></div>
+        {/* Particules animées */}
+        <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-cyan-400 rounded-full blur-sm animate-float"></div>
+        <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-purple-400 rounded-full blur-sm animate-float delay-75"></div>
+        <div className="absolute bottom-1/4 left-1/2 w-2 h-2 bg-blue-400 rounded-full blur-sm animate-float delay-150"></div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium mb-8 border border-white/20">
               <Sparkles className="w-4 h-4" />
-              <span>IA 3D Nouvelle Génération</span>
+              <span>IA Neuronale Nouvelle Génération</span>
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              L'IA qui donne
+              L'Intelligence qui
               <br />
               <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-                du Relief à votre Business
+                Connecte Tout
               </span>
             </h1>
 
             <p className="text-xl md:text-2xl text-gray-200 mb-4 max-w-3xl mx-auto leading-relaxed">
-              Des solutions 3D intelligentes qui transforment votre e-commerce
+              Le premier cerveau digital unifié pour e-commerce. 
+              Une IA qui pense, apprend et agit sur l'ensemble de votre business.
             </p>
 
             <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto">
-              De 9.99€/mois pour démarrer à 199€/mois pour scaler à l'infini
+              Omnia signifie "tout" en latin. Notre IA fait exactement cela.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
@@ -521,63 +513,63 @@ export function PricingLandingPage() {
                 className="group px-8 py-4 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
               >
                 <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  Essai Gratuit 14 Jours
+                  Activer le Cerveau IA
                 </span>
                 <ArrowRight className="inline-block ml-2 w-5 h-5 text-gray-600 group-hover:translate-x-1 transition-transform" />
               </button>
 
               <button
                 onClick={() => {
-                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 className="group px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
               >
                 <Play className="w-5 h-5" />
-                Voir les tarifs
+                Voir la démo neuronale
               </button>
             </div>
 
             <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
-                <span>À partir de 9.99€/mois</span>
+                <span>Cerveau IA unifié</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>Configuration 5 minutes</span>
+                <span>Apprentissage continu</span>
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                <span>14 jours essai gratuit</span>
+                <span>Réseau neuronal sécurisé</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Stats Section Futuriste */}
       <section className="py-16 bg-white border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Des Résultats en 3D
+              L'IA qui Pense en Réseau
             </h2>
             <p className="text-xl text-gray-600">
-              Des performances qui prennent de la hauteur
+              Des connexions intelligentes, des résultats exponentiels
             </p>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { number: '9.99€', label: 'Plan le plus accessible', icon: CreditCard, suffix: '' },
-              { number: '45%', label: 'Boost conversion moyen', icon: TrendingUp, suffix: '' },
-              { number: '3', label: 'Plans adaptés', icon: Workflow, suffix: 'D' },
-              { number: '14', label: 'Jours essai gratuit', icon: Clock, suffix: '' }
+              { number: '360°', label: 'Couverture complète business', icon: Orbit, suffix: '' },
+              { number: '0.2s', label: 'Temps de réaction IA', icon: Zap, suffix: '' },
+              { number: '∞', label: 'Connexions simultanées', icon: Brain, suffix: '' },
+              { number: '99.9%', label: 'Précision prédictive', icon: Target, suffix: '' }
             ].map((stat, index) => (
               <div key={index} className="text-center group">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl">
                   <stat.icon className="w-8 h-8 text-white" />
                 </div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent mb-2">
                   {stat.number}{stat.suffix}
                 </div>
                 <div className="text-gray-600 font-medium text-sm">{stat.label}</div>
@@ -587,15 +579,15 @@ export function PricingLandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section Futuriste */}
       <section id="features" className="py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Fonctionnalités 3D Intelligentes
+              Architecture Neuronale Complète
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Une approche multidimensionnelle de l'IA e-commerce
+              Un réseau intelligent qui connecte chaque aspect de votre e-commerce
             </p>
           </div>
 
@@ -609,7 +601,7 @@ export function PricingLandingPage() {
                   onClick={() => setActiveFeatureTab(category.id)}
                   className={`flex items-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     activeFeatureTab === category.id
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                      ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-lg transform scale-105'
                       : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-purple-300'
                   }`}
                 >
@@ -636,7 +628,7 @@ export function PricingLandingPage() {
                   key={index}
                   className={`group bg-white rounded-2xl p-6 border-2 transition-all duration-300 hover:-translate-y-2 ${
                     feature.highlight 
-                      ? 'border-purple-300 shadow-lg hover:shadow-xl' 
+                      ? 'border-cyan-300 shadow-lg hover:shadow-xl' 
                       : 'border-gray-200 hover:border-purple-200 hover:shadow-lg'
                   }`}
                 >
@@ -645,9 +637,9 @@ export function PricingLandingPage() {
                   </div>
                   
                   {feature.highlight && (
-                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full mb-2">
-                      <Star className="w-3 h-3 fill-purple-600" />
-                      Fonctionnalité avancée
+                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-cyan-100 text-cyan-700 text-xs font-medium rounded-full mb-2">
+                      <Zap className="w-3 h-3 fill-cyan-600" />
+                      Cœur Neural
                     </div>
                   )}
                   
@@ -662,15 +654,15 @@ export function PricingLandingPage() {
                   )}
                   
                   <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>Disponible dans :</span>
+                    <span>Niveau neural :</span>
                     <div className="flex gap-1">
                       {feature.plans.map(plan => (
                         <span
                           key={plan}
                           className={`px-2 py-1 rounded font-medium ${
-                            plan === 'starter' ? 'bg-green-100 text-green-800' :
-                            plan === 'professional' ? 'bg-blue-100 text-blue-800' :
-                            'bg-purple-100 text-purple-800'
+                            plan === 'starter' ? 'bg-cyan-100 text-cyan-800' :
+                            plan === 'professional' ? 'bg-purple-100 text-purple-800' :
+                            'bg-orange-100 text-orange-800'
                           }`}
                         >
                           {plan}
@@ -689,7 +681,7 @@ export function PricingLandingPage() {
                 onClick={() => setShowAllFeatures(true)}
                 className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 rounded-xl font-semibold hover:bg-purple-50 transition-all duration-300 flex items-center gap-2 mx-auto"
               >
-                Voir toutes les fonctionnalités
+                Explorer tout le réseau neural
                 <ChevronDown className="w-5 h-5" />
               </button>
             </div>
@@ -697,15 +689,15 @@ export function PricingLandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section - UPDATED */}
+      {/* Pricing Section Futuriste */}
       <section id="pricing" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Des Tarifs qui Donnent de la Hauteur
+              Accès au Réseau Neural
             </h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Choisissez la dimension qui correspond à votre ambition
+              Choisissez votre niveau de connexion à l'IA Omnia
             </p>
 
             {/* Billing Toggle */}
@@ -714,7 +706,7 @@ export function PricingLandingPage() {
                 onClick={() => setSelectedBilling('monthly')}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                   selectedBilling === 'monthly'
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                    ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-lg transform scale-105'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -724,7 +716,7 @@ export function PricingLandingPage() {
                 onClick={() => setSelectedBilling('yearly')}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 ${
                   selectedBilling === 'yearly'
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                    ? 'bg-gradient-to-r from-purple-600 to-cyan-500 text-white shadow-lg transform scale-105'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -739,7 +731,7 @@ export function PricingLandingPage() {
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-              <p className="mt-4 text-gray-600">Chargement des offres...</p>
+              <p className="mt-4 text-gray-600">Initialisation du réseau neural...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
@@ -767,13 +759,13 @@ export function PricingLandingPage() {
                     onMouseLeave={() => setHoveredPlan(null)}
                   >
                     {isPopular && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-blue-600 to-purple-600">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-purple-600 to-cyan-500">
                         🚀 POPULAIRE
                       </div>
                     )}
 
                     {isRecommended && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-purple-600 to-pink-600">
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-orange-500 to-red-500">
                         ⭐ SÉLECTIONNÉ
                       </div>
                     )}
@@ -797,7 +789,7 @@ export function PricingLandingPage() {
                     )}
                     
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      <span className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-cyan-500 bg-clip-text text-transparent">
                         {pricePerMonth}€
                       </span>
                       <span className="text-gray-600">/mois</span>
@@ -818,7 +810,7 @@ export function PricingLandingPage() {
                           ? 'text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-2 border-transparent hover:border-purple-300'
                       }`}
-                      style={isPopular || isRecommended ? { background: `linear-gradient(135deg, ${plan.id === 'professional' ? '#667eea, #764ba2' : plan.id === 'enterprise' ? '#8B5CF6, #EC4899' : '#10B981, #059669'})` } : {}}
+                      style={isPopular || isRecommended ? { background: `linear-gradient(135deg, ${plan.id === 'professional' ? '#8B5CF6, #06B6D4' : plan.id === 'enterprise' ? '#F59E0B, #EF4444' : '#06B6D4, #3B82F6'})` } : {}}
                     >
                       {isPopular || isRecommended ? 'Sélectionné' : 'Choisir'}
                       <ArrowRight className="w-5 h-5" />
@@ -886,22 +878,22 @@ export function PricingLandingPage() {
           )}
 
           {/* Custom Plan CTA */}
-          <div className="text-center mt-12 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border-2 border-blue-200 shadow-lg">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Users className="w-8 h-8 text-white" />
+          <div className="text-center mt-12 bg-gradient-to-r from-purple-50 to-cyan-50 rounded-2xl p-8 border-2 border-purple-200 shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Brain className="w-8 h-8 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Besoin d'une solution sur mesure?
+              Besoin d'un réseau neural sur mesure?
             </h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto leading-relaxed">
               Volume important, intégrations spécifiques, fonctionnalités exclusives ? 
-              Notre équipe construit la solution 3D parfaite pour votre business.
+              Notre équipe construit le cerveau IA parfait pour votre business.
             </p>
             <button 
               onClick={() => handleSignUp('enterprise')}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              Solution Enterprise Sur Mesure
+              Solution Neural Sur Mesure
             </button>
           </div>
         </div>
@@ -930,7 +922,7 @@ export function PricingLandingPage() {
                 <Quote className="w-8 h-8 text-purple-600 mb-3 opacity-30" />
                 <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold">
                     {testimonial.name.charAt(0)}
                   </div>
                   <div>
@@ -958,7 +950,7 @@ export function PricingLandingPage() {
               Questions Fréquentes
             </h2>
             <p className="text-xl text-gray-600">
-              Tout sur nos offres et services
+              Tout sur notre intelligence Omnia
             </p>
           </div>
 
@@ -987,25 +979,28 @@ export function PricingLandingPage() {
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-        <div className="absolute inset-0 opacity-5">
+      {/* CTA Final Futuriste */}
+      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
+        <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 3px 3px, white 2px, transparent 0)',
-            backgroundSize: '30px 30px'
+            backgroundImage: `
+              radial-gradient(circle at 25% 25%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 75% 75%, rgba(6, 182, 212, 0.3) 0%, transparent 50%)
+            `,
           }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-            <Cube className="w-10 h-10 text-white" />
+            <Brain className="w-10 h-10 text-white" />
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Prêt à Donner une Nouvelle Dimension à Votre Business ?
+            Prêt à Connecter Votre Business ?
           </h2>
           <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Rejoignez les e-commerces qui utilisent CubeAI 3D pour booster leurs performances de 40% à 65%
+            Rejoignez le réseau neural Omnia AI et donnez à votre e-commerce 
+            une intelligence qui pense, apprend et agit en temps réel.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
@@ -1014,7 +1009,7 @@ export function PricingLandingPage() {
               className="px-10 py-5 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
             >
               <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                Essayer Gratuitement 14 Jours
+                Activer l'IA Omnia
               </span>
             </button>
             
@@ -1024,22 +1019,22 @@ export function PricingLandingPage() {
               }}
               className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300"
             >
-              Comparer les offres
+              Voir les niveaux d'accès
             </button>
           </div>
           
           <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>14 jours essai gratuit - Sans engagement</span>
+              <span>14 jours d'essai du réseau neural</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
-              <span>Support inclus dans tous les plans</span>
+              <span>Architecture sécurisée de niveau enterprise</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4" />
-              <span>Configuration en 5 minutes</span>
+              <span>Intégration en 5 minutes</span>
             </div>
           </div>
         </div>
@@ -1051,14 +1046,14 @@ export function PricingLandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Cube className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <Brain className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xl font-bold text-white">CubeAI</span>
+                <span className="text-xl font-bold text-white">Omnia AI</span>
               </div>
               <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                Intelligence 3D nouvelle génération pour e-commerce. 
-                Donnez du relief à votre business.
+                L'intelligence qui connecte tout. 
+                Réseau neural complet pour e-commerce nouvelle génération.
               </p>
               <div className="flex items-center gap-3">
                 {['Twitter', 'LinkedIn', 'GitHub'].map((platform, index) => (
@@ -1075,8 +1070,8 @@ export function PricingLandingPage() {
 
             {[
               {
-                title: 'Solutions',
-                links: ['Fonctionnalités 3D', 'Tarifs', 'API', 'Intégrations', 'Documentation']
+                title: 'Réseau Neural',
+                links: ['Architecture IA', 'Modules Intelligents', 'API Neurale', 'Intégrations', 'Documentation']
               },
               {
                 title: 'Entreprise',
@@ -1105,7 +1100,7 @@ export function PricingLandingPage() {
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-sm text-gray-400">
-                © 2024 CubeAI. Intelligence 3D pour E-commerce.
+                © 2024 Omnia AI. Neural Commerce Intelligence.
               </p>
               <div className="flex items-center gap-6 text-sm">
                 {['Confidentialité', 'Conditions', 'Cookies', 'Mentions légales'].map((item, index) => (
