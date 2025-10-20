@@ -527,6 +527,7 @@ export function Settings() {
 function SubscriptionManagement({ seller }: { seller: any }) {
   const [plans, setPlans] = useState<any[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const [usage, setUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -535,18 +536,24 @@ function SubscriptionManagement({ seller }: { seller: any }) {
 
   const fetchData = async () => {
     try {
-      const [plansResult, subResult] = await Promise.all([
+      const [plansResult, subResult, usageResult] = await Promise.all([
         supabase.from('subscription_plans').select('*').order('price_monthly'),
         supabase
           .from('subscriptions')
           .select('*, subscription_plans(*)')
           .eq('seller_id', seller?.id)
           .in('status', ['active', 'trial'])
+          .maybeSingle(),
+        supabase
+          .from('subscription_usage')
+          .select('*')
+          .eq('seller_id', seller?.id)
           .maybeSingle()
       ]);
 
       if (plansResult.data) setPlans(plansResult.data);
       if (subResult.data) setCurrentSubscription(subResult.data);
+      if (usageResult.data) setUsage(usageResult.data);
     } catch (error) {
       console.error('Error fetching subscription data:', error);
     } finally {
@@ -604,6 +611,176 @@ function SubscriptionManagement({ seller }: { seller: any }) {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Usage & Limits Table */}
+      {currentPlan && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800">Limites et Consommation</h3>
+            <p className="text-sm text-gray-600 mt-1">Suivez votre utilisation par rapport aux limites de votre plan</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ressource
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Limite
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Utilisé
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Disponible
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {/* Products */}
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Produits
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.products_limit === -1 ? 'Illimité' : currentPlan.products_limit}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {usage?.products_count || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.products_limit === -1 ? 'Illimité' : Math.max(0, currentPlan.products_limit - (usage?.products_count || 0))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {currentPlan.products_limit === -1 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Illimité</span>
+                    ) : (usage?.products_count || 0) / currentPlan.products_limit > 0.9 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
+                    ) : (usage?.products_count || 0) / currentPlan.products_limit > 0.7 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Attention</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">OK</span>
+                    )}
+                  </td>
+                </tr>
+                {/* AI Enrichments */}
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    AI Enrichissements
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.ai_enrichments_limit === -1 ? 'Illimité' : `${currentPlan.ai_enrichments_limit}/mois`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {usage?.ai_enrichments_used || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.ai_enrichments_limit === -1 ? 'Illimité' : Math.max(0, currentPlan.ai_enrichments_limit - (usage?.ai_enrichments_used || 0))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {currentPlan.ai_enrichments_limit === -1 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Illimité</span>
+                    ) : (usage?.ai_enrichments_used || 0) / currentPlan.ai_enrichments_limit > 0.9 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
+                    ) : (usage?.ai_enrichments_used || 0) / currentPlan.ai_enrichments_limit > 0.7 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Attention</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">OK</span>
+                    )}
+                  </td>
+                </tr>
+                {/* Blog Articles */}
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Articles Blog
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.blog_articles_limit === -1 ? 'Illimité' : `${currentPlan.blog_articles_limit}/mois`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {usage?.blog_articles_used || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.blog_articles_limit === -1 ? 'Illimité' : Math.max(0, currentPlan.blog_articles_limit - (usage?.blog_articles_used || 0))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {currentPlan.blog_articles_limit === -1 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Illimité</span>
+                    ) : (usage?.blog_articles_used || 0) / currentPlan.blog_articles_limit > 0.9 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
+                    ) : (usage?.blog_articles_used || 0) / currentPlan.blog_articles_limit > 0.7 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Attention</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">OK</span>
+                    )}
+                  </td>
+                </tr>
+                {/* Chat Messages */}
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Messages Chat
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.chat_messages_limit === -1 ? 'Illimité' : `${currentPlan.chat_messages_limit}/mois`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {usage?.chat_messages_used || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.chat_messages_limit === -1 ? 'Illimité' : Math.max(0, currentPlan.chat_messages_limit - (usage?.chat_messages_used || 0))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {currentPlan.chat_messages_limit === -1 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Illimité</span>
+                    ) : (usage?.chat_messages_used || 0) / currentPlan.chat_messages_limit > 0.9 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
+                    ) : (usage?.chat_messages_used || 0) / currentPlan.chat_messages_limit > 0.7 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Attention</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">OK</span>
+                    )}
+                  </td>
+                </tr>
+                {/* SEO Optimizations */}
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Optimisations SEO
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.seo_optimizations_limit === -1 ? 'Illimité' : `${currentPlan.seo_optimizations_limit}/mois`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {usage?.seo_optimizations_used || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {currentPlan.seo_optimizations_limit === -1 ? 'Illimité' : Math.max(0, currentPlan.seo_optimizations_limit - (usage?.seo_optimizations_used || 0))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {currentPlan.seo_optimizations_limit === -1 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Illimité</span>
+                    ) : (usage?.seo_optimizations_used || 0) / currentPlan.seo_optimizations_limit > 0.9 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Critique</span>
+                    ) : (usage?.seo_optimizations_used || 0) / currentPlan.seo_optimizations_limit > 0.7 ? (
+                      <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Attention</span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">OK</span>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <p className="text-xs text-gray-600">
+              <strong>Note:</strong> Les limites mensuelles se réinitialisent au début de chaque période de facturation.
+            </p>
+          </div>
         </div>
       )}
 

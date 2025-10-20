@@ -23,6 +23,7 @@ import { SignUpPage } from './components/SignUpPage';
 import { UsageDashboard } from './components/UsageDashboard';
 import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 import { UsageTestPage } from './components/UsageTestPage';
+import GoogleMerchant from './components/GoogleMerchant';
 import { CartProvider } from './lib/cartContext';
 import { CacheProvider } from './lib/cache';
 import { AuthProvider, useAuth } from './lib/authContext';
@@ -52,7 +53,7 @@ import {
   Activity
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'usage-test' | 'super-admin' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'google-merchant' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'usage-test' | 'super-admin' | 'settings';
 type AppViewType = 'landing' | 'login' | 'signup' | 'app';
 
 interface LanguageContextType {
@@ -167,6 +168,7 @@ function MainApp() {
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
     { id: 'products' as ViewType, name: t.nav.products, icon: Package },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
+    { id: 'google-merchant' as ViewType, name: 'Google Merchant', icon: FileText },
     { id: 'usage-dashboard' as ViewType, name: 'Mon Abonnement', icon: Package },
     { id: 'settings' as ViewType, name: 'Paramètres', icon: Settings },
   ];
@@ -437,6 +439,7 @@ function MainApp() {
           {activeView === 'omniachat' && <OmniaChat />}
           {activeView === 'stores' && <StoreManager onImportStart={handleImportComplete} />}
           {activeView === 'google-shopping' && <GoogleShopping />}
+          {activeView === 'google-merchant' && <GoogleMerchant />}
           {activeView === 'seo-optimization' && <SeoOptimization />}
           {activeView === 'seo-alt-image' && <SeoAltImage />}
           {activeView === 'seo-tags' && <SeoTag />}
