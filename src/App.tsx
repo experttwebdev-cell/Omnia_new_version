@@ -4,6 +4,7 @@ import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
 import { Dashboard } from './components/Dashboard';
 import { OnboardingPage } from './components/OnboardingPage';
+import { supabase } from './lib/supabase';
 
 const LanguageContext = createContext<{
   language: string;
@@ -1193,9 +1194,10 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, seller, loading } = useAuth();
   const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'onboarding' | 'dashboard'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
+  const [hasStore, setHasStore] = useState<boolean | null>(null);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -1224,11 +1226,43 @@ function AppContent() {
   }, [user, loading]);
 
   useEffect(() => {
-    if (user && !loading && currentView === 'landing') {
-      window.location.hash = 'dashboard';
-      setCurrentView('dashboard');
+    const checkStoreConnection = async () => {
+      if (!seller?.id || loading) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('shopify_stores')
+          .select('id')
+          .eq('seller_id', seller.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking store:', error);
+          setHasStore(false);
+          return;
+        }
+
+        setHasStore(!!data);
+      } catch (err) {
+        console.error('Error checking store:', err);
+        setHasStore(false);
+      }
+    };
+
+    checkStoreConnection();
+  }, [seller, loading]);
+
+  useEffect(() => {
+    if (user && !loading && hasStore !== null && currentView === 'landing') {
+      if (!hasStore) {
+        window.location.hash = 'onboarding';
+        setCurrentView('onboarding');
+      } else {
+        window.location.hash = 'dashboard';
+        setCurrentView('dashboard');
+      }
     }
-  }, [user, loading, currentView]);
+  }, [user, loading, hasStore, currentView]);
 
   const handleSignUp = (planId: string) => {
     console.log('Sign up clicked with plan:', planId);
@@ -1277,10 +1311,17 @@ function AppContent() {
       setCurrentView('login');
       return null;
     }
-    return <OnboardingPage onComplete={() => {
-      window.location.hash = 'dashboard';
-      setCurrentView('dashboard');
-    }} />;
+    return <OnboardingPage
+      onComplete={() => {
+        window.location.hash = 'dashboard';
+        setCurrentView('dashboard');
+        setHasStore(true);
+      }}
+      onSkipToHome={() => {
+        window.location.hash = '';
+        setCurrentView('landing');
+      }}
+    />;
   }
 
   if (currentView === 'dashboard') {

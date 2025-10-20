@@ -5,9 +5,10 @@ import { useAuth } from '../lib/authContext';
 
 interface OnboardingPageProps {
   onComplete: () => void;
+  onSkipToHome?: () => void;
 }
 
-export function OnboardingPage({ onComplete }: OnboardingPageProps) {
+export function OnboardingPage({ onComplete, onSkipToHome }: OnboardingPageProps) {
   const { seller } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,11 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps) {
   };
 
   const handleSkip = () => {
-    onComplete();
+    if (onSkipToHome) {
+      onSkipToHome();
+    } else {
+      onComplete();
+    }
   };
 
   const handleFinish = () => {
