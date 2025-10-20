@@ -36,12 +36,16 @@ export function SignUpPage({ planId = 'starter', onLogin, onBack }: SignUpPagePr
     setLoading(true);
 
     try {
-      const { error } = await signUp(email, password, companyName, fullName);
+      const { error, sellerId } = await signUp(email, password, companyName, fullName, planId);
 
       if (error) {
         setError(error.message || 'Erreur lors de l\'inscription');
-      } else {
-        setSuccess(true);
+      } else if (sellerId) {
+        if (onSuccess) {
+          onSuccess(sellerId);
+        } else {
+          setSuccess(true);
+        }
       }
     } catch (err) {
       setError('Une erreur est survenue');

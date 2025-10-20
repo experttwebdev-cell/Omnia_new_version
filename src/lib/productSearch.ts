@@ -113,7 +113,8 @@ Retourne un objet JSON vide {} si tu ne détectes pas d'intention spécifique.`;
 // 🎯 FONCTION DE RECHERCHE PRINCIPALE
 export async function searchProducts(
   filters: ProductSearchFilters,
-  storeId?: string
+  storeId?: string,
+  sellerId?: string
 ): Promise<ProductSearchResult> {
   const startTime = Date.now();
   
@@ -140,6 +141,21 @@ export async function searchProducts(
     let query = supabase
       .from('shopify_products')
       .select('*', { count: 'exact' });
+
+    // Filtrer par seller_id (IMPORTANT pour multi-tenant)
+    if (sellerId) {
+      query = query.eq('seller_id', sellerId);
+    } else if (storeId) {
+      const { data: store } = await supabase
+        .from('shopify_stores')
+        .select('seller_id')
+        .eq('id', storeId)
+        .maybeSingle();
+
+      if (store?.seller_id) {
+        query = query.eq('seller_id', store.seller_id);
+      }
+    }
 
     // Appliquer les filtres de base
     query = applyBaseFilters(query, finalFilters, storeId);
