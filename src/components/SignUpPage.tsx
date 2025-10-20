@@ -52,6 +52,11 @@ interface Plan {
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
   const { signUp } = useAuth();
   const [step, setStep] = useState(1);
+
+  // Debug: log whenever step changes
+  useEffect(() => {
+    console.log('Current step:', step);
+  }, [step]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -195,27 +200,34 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     e.preventDefault();
     setError('');
 
+    console.log('Step 1 form submitted', { email, password, confirmPassword, companyName, fullName });
+
     // Validation
     if (!email || !password || !confirmPassword || !companyName || !fullName) {
+      console.log('Validation failed: missing fields');
       setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
+      console.log('Validation failed: invalid email');
       setError('Veuillez entrer une adresse email valide');
       return;
     }
 
     if (password.length < 6) {
+      console.log('Validation failed: password too short');
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
     if (password !== confirmPassword) {
+      console.log('Validation failed: passwords do not match');
       setError('Les mots de passe ne correspondent pas');
       return;
     }
 
+    console.log('Validation passed, moving to step 2');
     setStep(2);
   };
 
