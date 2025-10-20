@@ -307,42 +307,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      // 2. Récupérer la session pour le checkout Stripe
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError('Erreur de session utilisateur');
-        setLoading(false);
-        return;
-      }
+      // 2. Signup successful - redirect to dashboard to start trial
+      // User can start using the platform immediately with trial period
+      setSuccess(true);
 
-      // 3. Créer la session Stripe Checkout
-      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          plan_id: selectedPlanId,
-          billing_period: billingCycle,
-          success_url: `${window.location.origin}/#dashboard?checkout=success`,
-          cancel_url: `${window.location.origin}/#signup?step=2`
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la création de la session Stripe');
-      }
-
-      const result = await response.json();
-
-      if (!result.success || !result.url) {
-        throw new Error(result.error || 'Erreur lors de la création de la session de paiement');
-      }
-
-      // 4. Redirection vers Stripe Checkout
-      window.location.href = result.url;
+      // Redirect to dashboard after short delay
+      setTimeout(() => {
+        window.location.href = '/#dashboard';
+      }, 2000);
 
     } catch (err) {
       console.error('Signup error:', err);
