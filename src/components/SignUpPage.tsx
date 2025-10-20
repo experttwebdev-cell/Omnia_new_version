@@ -774,3 +774,5 @@ export function SignUp() {
     </div>
   );
 }
+
+export { SignUp as SignUpPage };
