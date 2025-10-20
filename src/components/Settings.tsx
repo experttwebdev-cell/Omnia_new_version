@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity, MessageSquare, User, Mail, Building, Calendar } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Globe, Activity, MessageSquare, User, Mail, Building, Calendar, CreditCard, TrendingUp, Check, X } from 'lucide-react';
 import { Language } from '../lib/translations';
 import { LoadingAnimation } from './LoadingAnimation';
 import { useLanguage } from '../App';
@@ -26,7 +26,7 @@ interface UserProfile {
 export function Settings() {
   const { language, setLanguage, t } = useLanguage();
   const { seller, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'store' | 'chat' | 'diagnostics' | 'ai'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'store' | 'chat' | 'diagnostics' | 'ai' | 'subscription'>('profile');
   const [settings, setSettings] = useState<SettingsData>({
     enrichment_mode: 'manual',
     enrichment_frequency: 'manual',
@@ -213,6 +213,17 @@ export function Settings() {
             >
               <MessageSquare className="w-4 h-4 inline-block mr-2" />
               Chat IA
+            </button>
+            <button
+              onClick={() => setActiveTab('subscription')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'subscription'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <CreditCard className="w-4 h-4 inline-block mr-2" />
+              Abonnement
             </button>
             <button
               onClick={() => setActiveTab('ai')}
@@ -492,6 +503,10 @@ export function Settings() {
             </div>
           )}
 
+          {activeTab === 'subscription' && (
+            <SubscriptionManagement seller={seller} />
+          )}
+
           {activeTab === 'ai' && (
             <AiProviderConfig />
           )}
@@ -500,6 +515,178 @@ export function Settings() {
             <ConnectionDiagnostics />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionManagement({ seller }: { seller: any }) {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, [seller]);
+
+  const fetchData = async () => {
+    try {
+      const [plansResult, subResult] = await Promise.all([
+        supabase.from('subscription_plans').select('*').order('price_monthly'),
+        supabase
+          .from('subscriptions')
+          .select('*, subscription_plans(*)')
+          .eq('seller_id', seller?.id)
+          .in('status', ['active', 'trial'])
+          .maybeSingle()
+      ]);
+
+      if (plansResult.data) setPlans(plansResult.data);
+      if (subResult.data) setCurrentSubscription(subResult.data);
+    } catch (error) {
+      console.error('Error fetching subscription data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <LoadingAnimation type="data" message="Chargement..." />;
+  }
+
+  const currentPlan = currentSubscription?.subscription_plans;
+
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Gestion de l'abonnement</h2>
+        <p className="text-gray-600">Gérez votre plan et votre facturation</p>
+      </div>
+
+      {currentSubscription && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Plan Actuel</h3>
+              <p className="text-2xl font-bold text-blue-600 mb-2">{currentPlan?.name}</p>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-3xl font-bold text-gray-800">
+                  €{currentSubscription.billing_period === 'annual' ? currentPlan?.price_annual : currentPlan?.price_monthly}
+                </span>
+                <span className="text-gray-600">/ {currentSubscription.billing_period === 'annual' ? 'an' : 'mois'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  currentSubscription.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {currentSubscription.status === 'active' ? 'Actif' : 'Essai'}
+                </span>
+                {currentSubscription.billing_period === 'annual' && (
+                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                    Économie de 2 mois
+                  </span>
+                )}
+              </div>
+            </div>
+            <TrendingUp className="w-12 h-12 text-blue-500" />
+          </div>
+          {currentSubscription.trial_ends_at && (
+            <div className="mt-4 pt-4 border-t border-blue-200">
+              <p className="text-sm text-gray-600">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Période d'essai jusqu'au: {new Date(currentSubscription.trial_ends_at).toLocaleDateString('fr-FR')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Plans Disponibles</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {plans.map((plan) => {
+            const isCurrentPlan = currentPlan?.id === plan.id;
+            const isDowngrade = currentPlan && plan.price_monthly < currentPlan.price_monthly;
+            const isUpgrade = currentPlan && plan.price_monthly > currentPlan.price_monthly;
+
+            return (
+              <div
+                key={plan.id}
+                className={`rounded-lg border-2 p-6 ${
+                  isCurrentPlan
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-blue-300'
+                } transition-all`}
+              >
+                <h4 className="text-xl font-bold text-gray-800 mb-2">{plan.name}</h4>
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-3xl font-bold text-gray-900">€{plan.price_monthly}</span>
+                    <span className="text-gray-600">/mois</span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    ou €{plan.price_annual}/an
+                    <span className="block text-green-600 font-medium">Économisez 2 mois!</span>
+                  </div>
+                </div>
+
+                {plan.features && (
+                  <ul className="space-y-2 mb-6">
+                    {Object.entries(plan.features as Record<string, any>).slice(0, 5).map(([key, value]) => (
+                      <li key={key} className="flex items-start gap-2 text-sm text-gray-700">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>{String(value)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {isCurrentPlan ? (
+                  <button
+                    disabled
+                    className="w-full px-4 py-2 bg-gray-200 text-gray-500 rounded-lg font-medium cursor-not-allowed"
+                  >
+                    Plan Actuel
+                  </button>
+                ) : isUpgrade ? (
+                  <button
+                    onClick={() => alert('Upgrade vers ' + plan.name + '\n\nContactez le support ou utilisez Stripe pour mettre à niveau votre plan.')}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg font-medium transition shadow-lg"
+                  >
+                    Passer à ce plan
+                  </button>
+                ) : isDowngrade ? (
+                  <button
+                    onClick={() => alert('Downgrade vers ' + plan.name + '\n\nContactez le support pour rétrograder votre plan.')}
+                    className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition border border-gray-300"
+                  >
+                    Rétrograder
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => alert('Souscrire à ' + plan.name + '\n\nUtilisez la page de paiement Stripe pour souscrire.')}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-lg font-medium transition shadow-lg"
+                  >
+                    Choisir ce plan
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <h4 className="font-semibold text-yellow-900 mb-2">💳 Paiement via Stripe</h4>
+        <p className="text-sm text-yellow-800 mb-3">
+          Pour mettre à jour votre abonnement ou changer votre mode de facturation (mensuel/annuel),
+          vous serez redirigé vers notre page de paiement sécurisée Stripe.
+        </p>
+        <p className="text-sm text-yellow-800">
+          Les changements de plan prennent effet immédiatement et sont calculés au prorata.
+        </p>
       </div>
     </div>
   );

@@ -317,6 +317,46 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
         </div>
       )}
 
+      {/* Empty State for New Accounts */}
+      {stats.totalProducts === 0 && (
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 p-8 text-center mb-6">
+          <div className="max-w-2xl mx-auto">
+            <StoreIcon className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">Bienvenue sur votre Dashboard!</h2>
+            <p className="text-gray-600 mb-6">
+              Votre compte est prêt. Pour commencer, connectez votre boutique Shopify et importez vos produits.
+            </p>
+            <div className="bg-white rounded-lg p-6 mb-6 text-left">
+              <h3 className="font-semibold text-gray-800 mb-4">Pour démarrer:</h3>
+              <ol className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  <span className="text-gray-700">Allez dans <strong>Paramètres</strong></span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                  <span className="text-gray-700">Connectez votre boutique Shopify</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  <span className="text-gray-700">Importez vos produits</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                  <span className="text-gray-700">Enrichissez vos produits avec l'IA</span>
+                </li>
+              </ol>
+            </div>
+            <button
+              onClick={() => window.location.hash = '#settings'}
+              className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold rounded-lg transition shadow-lg"
+            >
+              Aller aux Paramètres
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -324,7 +364,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
           value={stats.totalProducts.toLocaleString()}
           icon={Package}
           color="blue"
-          trend={{ value: 8, positive: true }}
+          trend={stats.totalProducts > 0 ? { value: 8, positive: true } : undefined}
         />
         <StatCard
           title="AI Enriched"
