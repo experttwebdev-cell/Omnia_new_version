@@ -7,7 +7,7 @@ interface Seller {
   email: string;
   company_name: string;
   full_name: string;
-  role: 'seller' | 'super_admin';
+  role: 'seller' | 'superadmin';
   status: 'active' | 'trial' | 'suspended';
   trial_ends_at: string | null;
   stripe_customer_id: string | null;
@@ -166,20 +166,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           trial_ends_at: trialEndsAt.toISOString(),
         });
 
-      if (sellerError) return { error: sellerError };
+      if (sellerError) {
+        console.error('Error creating seller:', sellerError);
+        return { error: sellerError };
+      }
 
       const { error: subError } = await supabase
         .from('subscriptions')
         .insert({
           seller_id: data.user.id,
           plan_id: 'starter',
-          status: 'trialing',
+          status: 'trial',
           current_period_start: new Date().toISOString(),
           current_period_end: trialEndsAt.toISOString(),
           cancel_at_period_end: false,
         });
 
-      if (subError) return { error: subError };
+      if (subError) {
+        console.error('Error creating subscription:', subError);
+        return { error: subError };
+      }
+
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+
+      const { error: usageError } = await supabase
+        .from('usage_tracking')
+        .insert({
+          seller_id: data.user.id,
+          month: currentMonth.toISOString().split('T')[0],
+          products_count: 0,
+          optimizations_count: 0,
+          articles_count: 0,
+          chat_responses_count: 0,
+        });
+
+      if (usageError) {
+        console.error('Error creating usage tracking:', usageError);
+      }
     }
 
     return { error: null };

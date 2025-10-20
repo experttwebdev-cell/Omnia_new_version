@@ -82,7 +82,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     setError('');
 
     try {
-      const { error, sellerId } = await signUp(email, password, companyName, fullName, selectedPlanId);
+      const { error } = await signUp(email, password, companyName, fullName);
 
       if (error) {
         setError(error.message || 'Erreur lors de l\'inscription');
@@ -90,17 +90,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      if (sellerId) {
-        const selectedPlan = plans.find(p => p.id === selectedPlanId);
-        if (!selectedPlan) {
-          setError('Plan non trouvé');
-          setLoading(false);
-          return;
-        }
-
-        console.log('Redirecting to Stripe checkout...');
-        setSuccess(true);
-      }
+      setSuccess(true);
     } catch (err) {
       setError('Une erreur est survenue');
       setLoading(false);
@@ -181,161 +171,209 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{step === 1 ? 'Créer un compte' : 'Choisir votre forfait'}</h2>
-          <p className="text-gray-300 text-center mb-2">
+          <p className="text-gray-600 text-center mb-2">
             Essai gratuit de 14 jours
           </p>
-          <p className="text-sm text-blue-300 text-center mb-8">
+          <p className="text-sm text-blue-600 text-center mb-8">
             Aucune carte bancaire requise
           </p>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-200 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Choisir un forfait
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {PLANS.map((plan) => (
-                  <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      selectedPlan === plan.id
-                        ? 'border-blue-500 bg-blue-500/20'
-                        : 'border-white/20 bg-white/5 hover:border-white/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Package className="w-4 h-4 text-blue-400" />
-                      <span className="text-white font-semibold text-sm">{plan.name}</span>
-                    </div>
-                    <div className="text-gray-300 text-xs">{plan.price}</div>
-                    <div className="text-gray-400 text-xs">{plan.products}</div>
-                  </button>
-                ))}
+          {step === 1 && (
+            <form onSubmit={handleStep1Submit} className="space-y-6">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom complet
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Jean Dupont"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Nom complet
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Jean Dupont"
-                />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom de l'entreprise
+                </label>
+                <div className="relative">
+                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
+                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Ma Boutique"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Nom de l'entreprise
-              </label>
-              <div className="relative">
-                <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ma Boutique"
-                />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email professionnel
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="votre@email.com"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Email professionnel
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="votre@email.com"
-                />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mot de passe
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="••••••••"
-                />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirmer le mot de passe
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="••••••••"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Confirmer le mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="••••••••"
-                />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Étape suivante...
+                  </>
+                ) : (
+                  'Continuer'
+                )}
+              </button>
+            </form>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Choisir votre forfait
+                </label>
+                {loadingPlans ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {plans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => setSelectedPlanId(plan.id)}
+                        className={`p-5 rounded-xl border-2 transition-all text-left ${
+                          selectedPlanId === plan.id
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <Package className="w-6 h-6 text-purple-600" />
+                            <span className="text-lg font-bold text-gray-900">{plan.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-gray-900">{plan.price_monthly}€</div>
+                            <div className="text-xs text-gray-500">par mois</div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Check className="w-4 h-4 text-green-600" />
+                            {plan.max_products === -1 ? 'Produits illimités' : `${plan.max_products} produits`}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Check className="w-4 h-4 text-green-600" />
+                            {plan.max_optimizations_monthly === -1 ? 'Optimisations illimitées' : `${plan.max_optimizations_monthly} optimisations/mois`}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Check className="w-4 h-4 text-green-600" />
+                            {plan.max_articles_monthly === -1 ? 'Articles illimités' : `${plan.max_articles_monthly} articles IA/mois`}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              <button
+                onClick={handleStep2Submit}
+                disabled={loading || !selectedPlanId}
+                className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Création du compte...
+                  </>
+                ) : (
+                  'Commencer l\'essai gratuit'
+                )}
+              </button>
+
+              <p className="text-xs text-gray-500 text-center">
+                En créant un compte, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
+              </p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Création du compte...
-                </>
-              ) : (
-                'Commencer l\'essai gratuit'
-              )}
-            </button>
-
-            <p className="text-xs text-gray-400 text-center mt-4">
-              En créant un compte, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
-            </p>
-          </form>
+          )}
 
           <div className="mt-8 text-center">
-            <p className="text-gray-300">
+            <p className="text-gray-600">
               Déjà un compte?{' '}
               <button
                 onClick={onLogin}
-                className="text-blue-400 hover:text-blue-300 font-semibold transition"
+                className="font-semibold transition bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-purple-700"
               >
                 Se connecter
               </button>

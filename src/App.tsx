@@ -168,7 +168,7 @@ function MainApp() {
     { id: 'usage-dashboard' as ViewType, name: 'Mon Abonnement', icon: Package },
   ];
 
-  const adminNavigation = seller?.role === 'super_admin' ? [
+  const adminNavigation = seller?.role === 'superadmin' ? [
     { id: 'super-admin' as ViewType, name: 'Admin', icon: Settings },
   ] : [];
 
