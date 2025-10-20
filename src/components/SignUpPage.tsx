@@ -73,12 +73,20 @@ export function SignUp() {
 
   // Fetch subscription plans on mount
   useEffect(() => {
-    // Fetch subscription plans
+    // Fetch subscription plans with limits
     const fetchPlans = async () => {
       try {
         const { data, error } = await supabase
           .from('subscription_plans')
-          .select('*')
+          .select(`
+            *,
+            products_limit,
+            ai_enrichments_limit,
+            blog_articles_limit,
+            chat_messages_limit,
+            google_shopping_syncs_limit,
+            seo_optimizations_limit
+          `)
           .order('price_monthly');
 
         if (error) {
@@ -268,11 +276,13 @@ export function SignUp() {
       return;
     }
 
-    if (step < 3) {
+    // Step 1-3: Just navigate to next step
+    if (step < 4) {
       nextStep();
       return;
     }
 
+    // Step 4: Create account and redirect to Stripe
     setLoading(true);
 
     try {
