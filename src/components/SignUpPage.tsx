@@ -319,6 +319,11 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       const supabaseUrl = getEnvVar('SUPABASE_URL');
       const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY');
 
+      console.log('Creating Stripe checkout session...', {
+        plan_id: selectedPlanId,
+        billing_period: billingCycle
+      });
+
       const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/create-stripe-checkout`, {
         method: 'POST',
         headers: {
@@ -334,12 +339,25 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         })
       });
 
+      console.log('Checkout response status:', checkoutResponse.status);
+
       if (!checkoutResponse.ok) {
-        const errorData = await checkoutResponse.json();
-        throw new Error(errorData.error || 'Erreur lors de la création de la session de paiement');
+        let errorMessage = 'Erreur lors de la création de la session de paiement';
+        try {
+          const errorData = await checkoutResponse.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          errorMessage = `Erreur HTTP ${checkoutResponse.status}: ${checkoutResponse.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const checkoutData = await checkoutResponse.json();
+      let checkoutData;
+      try {
+        checkoutData = await checkoutResponse.json();
+      } catch (e) {
+        throw new Error('Réponse invalide du serveur de paiement');
+      }
 
       if (!checkoutData.url) {
         throw new Error('URL de paiement non reçue');
