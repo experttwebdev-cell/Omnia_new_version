@@ -75,20 +75,35 @@ export function SignUp() {
   useEffect(() => {
     if (seller) {
       window.location.href = '/dashboard';
+      return;
     }
 
     // Fetch subscription plans
     const fetchPlans = async () => {
-      const { data } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('price_monthly');
-      if (data) {
-        setPlans(data);
-        // Set default plan to first one
-        if (data.length > 0 && !form.selectedPlan) {
-          setForm(prev => ({ ...prev, selectedPlan: data[0].id }));
+      try {
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .select('*')
+          .order('price_monthly');
+
+        if (error) {
+          console.error('Error fetching plans:', error);
+          return;
         }
+
+        if (data && data.length > 0) {
+          console.log('Plans loaded:', data);
+          setPlans(data);
+          // Set default plan to first one if none selected
+          setForm(prev => {
+            if (!prev.selectedPlan) {
+              return { ...prev, selectedPlan: data[0].id };
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error('Error in fetchPlans:', error);
       }
     };
     fetchPlans();
@@ -725,7 +740,12 @@ export function SignUp() {
 
                 {/* Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {plans.map((plan) => {
+                  {plans.length === 0 ? (
+                    <div className="col-span-3 text-center py-8">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
+                      <p className="text-gray-600">Chargement des plans...</p>
+                    </div>
+                  ) : plans.map((plan) => {
                     const price = form.billingPeriod === 'annual' ? plan.price_annual : plan.price_monthly;
                     const isSelected = form.selectedPlan === plan.id;
 
@@ -752,7 +772,7 @@ export function SignUp() {
                           </div>
                           {form.billingPeriod === 'annual' && (
                             <p className="text-sm text-green-600 font-medium mt-1">
-                              Économisez €{(plan.price_monthly * 12) - plan.price_annual}/an
+                              Économisez €{((parseFloat(plan.price_monthly) * 12) - parseFloat(plan.price_annual)).toFixed(2)}/an
                             </p>
                           )}
                         </div>
