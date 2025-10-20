@@ -22,6 +22,7 @@ import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
 import { UsageDashboard } from './components/UsageDashboard';
 import { SuperAdminDashboard } from './components/SuperAdminDashboard';
+import { UsageTestPage } from './components/UsageTestPage';
 import { CartProvider } from './lib/cartContext';
 import { CacheProvider } from './lib/cache';
 import { AuthProvider, useAuth } from './lib/authContext';
@@ -46,10 +47,12 @@ import {
   Settings,
   MessageCircle,
   History,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  CreditCard,
+  Activity
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'super-admin' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'usage-test' | 'super-admin' | 'settings';
 type AppViewType = 'landing' | 'login' | 'signup' | 'app';
 
 interface LanguageContextType {
@@ -172,6 +175,7 @@ function MainApp() {
   const technicalNavigation = seller?.role === 'superadmin' ? [
     { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
     { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
+    { id: 'usage-test' as ViewType, name: 'Test Consommation', icon: Activity },
   ] : [];
 
   const adminNavigation = seller?.role === 'superadmin' ? [
@@ -455,6 +459,7 @@ function MainApp() {
             </div>
           )}
           {activeView === 'usage-dashboard' && <UsageDashboard />}
+          {activeView === 'usage-test' && <UsageTestPage />}
           {activeView === 'super-admin' && <SuperAdminDashboard />}
           {activeView === 'settings' && <SettingsComponent />}
         </div>
