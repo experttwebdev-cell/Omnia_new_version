@@ -30,7 +30,9 @@ import {
   Palette,
   Languages,
   ShoppingCart,
-  Cpu
+  Cpu,
+  Star,
+  Quote
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -330,6 +332,95 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Ils nous font confiance
+            </h2>
+            <p className="text-xl text-gray-600">
+              Découvrez ce que nos clients disent de nous
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Sophie Martin',
+                company: 'Déco Maison',
+                role: 'Directrice E-commerce',
+                avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'Omnia AI a transformé notre boutique en ligne. Nos ventes ont augmenté de 45% en 3 mois grâce aux optimisations SEO automatiques.'
+              },
+              {
+                name: 'Thomas Dubois',
+                company: 'TechStyle',
+                role: 'Fondateur',
+                avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'Le gain de temps est incroyable. Fini les descriptions produits à écrire manuellement. L\'IA génère du contenu de qualité en quelques secondes.'
+              },
+              {
+                name: 'Marie Lefebvre',
+                company: 'Mode & Style',
+                role: 'Responsable Marketing',
+                avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'Le chat intelligent a révolutionné notre service client. Nos clients obtiennent des réponses instantanées 24/7.'
+              },
+              {
+                name: 'Lucas Petit',
+                company: 'Sport & Passion',
+                role: 'CEO',
+                avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'ROI impressionnant. L\'investissement s\'est remboursé en moins d\'un mois grâce à l\'augmentation du trafic organique.'
+              },
+              {
+                name: 'Emma Bernard',
+                company: 'Beauté Naturelle',
+                role: 'E-commerce Manager',
+                avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'Interface intuitive et résultats mesurables. Nous voyons l\'impact direct sur nos conversions et notre visibilité.'
+              },
+              {
+                name: 'Pierre Moreau',
+                company: 'Maison & Jardin',
+                role: 'Directeur Digital',
+                avatar: 'https://images.pexels.com/photos/1516680/pexels-photo-1516680.jpeg?auto=compress&cs=tinysrgb&w=150',
+                rating: 5,
+                text: 'Support réactif et fonctionnalités constamment améliorées. C\'est l\'outil indispensable pour tout e-commerçant moderne.'
+              }
+            ].map((testimonial, index) => (
+              <div key={index} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <Quote className="w-8 h-8 text-purple-600 mb-3 opacity-30" />
+                <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.text}"</p>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={testimonial.avatar}
+                    alt={testimonial.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  <div>
+                    <div className="font-semibold text-gray-900">{testimonial.name}</div>
+                    <div className="text-sm text-gray-600">{testimonial.role}</div>
+                    <div className="text-sm font-medium text-purple-600">{testimonial.company}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

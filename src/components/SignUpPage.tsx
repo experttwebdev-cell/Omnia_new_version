@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingBag, Mail, Lock, Building, User, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { ShoppingBag, Mail, Lock, Building, User, AlertCircle, ArrowLeft, CheckCircle, Package } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 
 interface SignUpPageProps {
@@ -8,13 +8,21 @@ interface SignUpPageProps {
   onBack: () => void;
 }
 
-export function SignUpPage({ planId = 'starter', onLogin, onBack }: SignUpPageProps) {
+const PLANS = [
+  { id: 'starter', name: 'Starter', price: '29€/mois', products: '100 produits' },
+  { id: 'growth', name: 'Growth', price: '79€/mois', products: '500 produits' },
+  { id: 'pro', name: 'Pro', price: '199€/mois', products: '2000 produits' },
+  { id: 'enterprise', name: 'Enterprise', price: 'Sur devis', products: 'Illimité' }
+];
+
+export function SignUpPage({ planId: initialPlanId = 'starter', onLogin, onBack }: SignUpPageProps) {
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState(initialPlanId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -36,16 +44,12 @@ export function SignUpPage({ planId = 'starter', onLogin, onBack }: SignUpPagePr
     setLoading(true);
 
     try {
-      const { error, sellerId } = await signUp(email, password, companyName, fullName, planId);
+      const { error, sellerId } = await signUp(email, password, companyName, fullName, selectedPlan);
 
       if (error) {
         setError(error.message || 'Erreur lors de l\'inscription');
       } else if (sellerId) {
-        if (onSuccess) {
-          onSuccess(sellerId);
-        } else {
-          setSuccess(true);
-        }
+        setSuccess(true);
       }
     } catch (err) {
       setError('Une erreur est survenue');
@@ -124,6 +128,33 @@ export function SignUpPage({ planId = 'starter', onLogin, onBack }: SignUpPagePr
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">
+                Choisir un forfait
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {PLANS.map((plan) => (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlan(plan.id)}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      selectedPlan === plan.id
+                        ? 'border-blue-500 bg-blue-500/20'
+                        : 'border-white/20 bg-white/5 hover:border-white/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Package className="w-4 h-4 text-blue-400" />
+                      <span className="text-white font-semibold text-sm">{plan.name}</span>
+                    </div>
+                    <div className="text-gray-300 text-xs">{plan.price}</div>
+                    <div className="text-gray-400 text-xs">{plan.products}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-200 mb-2">
                 Nom complet

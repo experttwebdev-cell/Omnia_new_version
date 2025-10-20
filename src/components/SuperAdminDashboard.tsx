@@ -11,7 +11,10 @@ import {
   Ban,
   CheckCircle,
   Clock,
-  Crown
+  Crown,
+  Edit,
+  X,
+  Save
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/authContext';
@@ -48,6 +51,13 @@ export function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [editingQuota, setEditingQuota] = useState<string | null>(null);
+  const [quotaForm, setQuotaForm] = useState({
+    max_products: 0,
+    max_optimizations_monthly: 0,
+    max_articles_monthly: 0,
+    max_chat_responses_monthly: 0
+  });
 
   useEffect(() => {
     if (seller?.role === 'super_admin') {
@@ -125,6 +135,45 @@ export function SuperAdminDashboard() {
     } catch (error) {
       console.error('Error updating seller status:', error);
       alert('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const openQuotaEditor = async (sellerId: string) => {
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('seller_id', sellerId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (subscription) {
+      setQuotaForm({
+        max_products: subscription.max_products || 0,
+        max_optimizations_monthly: subscription.max_optimizations_monthly || 0,
+        max_articles_monthly: subscription.max_articles_monthly || 0,
+        max_chat_responses_monthly: subscription.max_chat_responses_monthly || 0
+      });
+      setEditingQuota(sellerId);
+    }
+  };
+
+  const saveQuota = async () => {
+    if (!editingQuota) return;
+
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update(quotaForm)
+        .eq('seller_id', editingQuota)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      setEditingQuota(null);
+      await loadData();
+    } catch (error) {
+      console.error('Error updating quota:', error);
+      alert('Erreur lors de la mise à jour des quotas');
     }
   };
 
@@ -314,13 +363,18 @@ export function SuperAdminDashboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                        <Eye className="w-4 h-4 text-gray-600" />
+                      <button
+                        onClick={() => openQuotaEditor(s.id)}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition"
+                        title="Modifier les quotas"
+                      >
+                        <Edit className="w-4 h-4 text-blue-600" />
                       </button>
                       {s.status === 'active' ? (
                         <button
                           onClick={() => updateSellerStatus(s.id, 'suspended')}
                           className="p-2 hover:bg-red-100 rounded-lg transition"
+                          title="Suspendre"
                         >
                           <Ban className="w-4 h-4 text-red-600" />
                         </button>
@@ -328,6 +382,7 @@ export function SuperAdminDashboard() {
                         <button
                           onClick={() => updateSellerStatus(s.id, 'active')}
                           className="p-2 hover:bg-green-100 rounded-lg transition"
+                          title="Activer"
                         >
                           <CheckCircle className="w-4 h-4 text-green-600" />
                         </button>
@@ -346,6 +401,89 @@ export function SuperAdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Quota Editor Modal */}
+      {editingQuota && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Modifier les Quotas</h3>
+              <button
+                onClick={() => setEditingQuota(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Produits
+                </label>
+                <input
+                  type="number"
+                  value={quotaForm.max_products}
+                  onChange={(e) => setQuotaForm({ ...quotaForm, max_products: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Optimisations SEO / Mois
+                </label>
+                <input
+                  type="number"
+                  value={quotaForm.max_optimizations_monthly}
+                  onChange={(e) => setQuotaForm({ ...quotaForm, max_optimizations_monthly: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Articles Blog / Mois
+                </label>
+                <input
+                  type="number"
+                  value={quotaForm.max_articles_monthly}
+                  onChange={(e) => setQuotaForm({ ...quotaForm, max_articles_monthly: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Réponses Chat / Mois
+                </label>
+                <input
+                  type="number"
+                  value={quotaForm.max_chat_responses_monthly}
+                  onChange={(e) => setQuotaForm({ ...quotaForm, max_chat_responses_monthly: parseInt(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingQuota(null)}
+                className="flex-1 px-6 py-3 border-2 border-gray-200 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveQuota}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition"
+              >
+                <Save className="w-5 h-5" />
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
