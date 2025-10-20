@@ -409,7 +409,7 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium mb-8">
               <Sparkles className="w-4 h-4" />
-              <span>Plateforme SaaS N°1 pour E-Commerce</span>
+              <span>Plateforme AI N°1 pour E-Commerce</span>
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6">
