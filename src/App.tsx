@@ -1320,7 +1320,11 @@ function AppContent() {
         window.location.hash = 'dashboard';
         setCurrentView('dashboard');
       }}
-      isLoggedIn={!!user}
+      onOnboarding={() => {
+        window.location.hash = 'onboarding';
+        setCurrentView('onboarding');
+      }}
+      isLoggedIn={!!user && !loading}
     />;
   }
 
@@ -1358,8 +1362,6 @@ function AppContent() {
       onSkipToHome={() => {
         window.location.hash = '';
         setCurrentView('landing');
-        // Force reload pour être sûr
-        setTimeout(() => window.location.reload(), 100);
       }}
     />;
   }
@@ -1380,7 +1382,11 @@ function AppContent() {
       window.location.hash = 'dashboard';
       setCurrentView('dashboard');
     }}
-    isLoggedIn={!!user}
+    onOnboarding={() => {
+      window.location.hash = 'onboarding';
+      setCurrentView('onboarding');
+    }}
+    isLoggedIn={!!user && !loading}
   />;
 }
 
