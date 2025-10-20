@@ -1,7 +1,30 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Mail, Lock, Building, User, AlertCircle, ArrowLeft, CheckCircle, Package, Check, ArrowRight, CreditCard } from 'lucide-react';
+import { 
+  ShoppingBag, 
+  Mail, 
+  Lock, 
+  Building, 
+  User, 
+  AlertCircle, 
+  ArrowLeft, 
+  CheckCircle, 
+  Package, 
+  Check, 
+  ArrowRight, 
+  CreditCard,
+  Eye,
+  EyeOff,
+  Shield,
+  Sparkles,
+  Zap,
+  Calendar,
+  Users,
+  FileText,
+  MessageSquare
+} from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
+import { getEnvVar } from '../lib/supabase';
 
 interface SignUpPageProps {
   planId?: string;
@@ -19,9 +42,11 @@ interface Plan {
   max_articles_monthly: number;
   max_campaigns: number;
   max_chat_responses_monthly: number;
-  features: Record<string, any>;
+  features: string[];
   stripe_price_id: string;
   stripe_price_id_yearly?: string;
+  description: string;
+  popular?: boolean;
 }
 
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
@@ -39,6 +64,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -52,9 +79,113 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         .order('price_monthly', { ascending: true });
 
       if (error) throw error;
-      setPlans(data || []);
+      
+      // Ajouter des données par défaut si nécessaire
+      const defaultPlans: Plan[] = data || [
+        {
+          id: 'starter',
+          name: 'Starter',
+          price_monthly: 29,
+          price_yearly: 278,
+          max_products: 100,
+          max_optimizations_monthly: 50,
+          max_articles_monthly: 10,
+          max_campaigns: 3,
+          max_chat_responses_monthly: 1000,
+          features: [
+            '100 produits maximum',
+            '50 optimisations SEO/mois',
+            '10 articles de blog/mois',
+            '3 campagnes marketing',
+            '1000 réponses chat/mois',
+            'Support email'
+          ],
+          stripe_price_id: '',
+          description: 'Parfait pour commencer'
+        },
+        {
+          id: 'professional',
+          name: 'Professional',
+          price_monthly: 79,
+          price_yearly: 758,
+          max_products: 500,
+          max_optimizations_monthly: 200,
+          max_articles_monthly: 50,
+          max_campaigns: 10,
+          max_chat_responses_monthly: 5000,
+          features: [
+            '500 produits maximum',
+            '200 optimisations SEO/mois',
+            '50 articles de blog/mois',
+            '10 campagnes marketing',
+            '5000 réponses chat/mois',
+            'Support prioritaire',
+            'Analytics avancées'
+          ],
+          stripe_price_id: '',
+          popular: true,
+          description: 'Recommandé pour les entreprises'
+        },
+        {
+          id: 'enterprise',
+          name: 'Enterprise',
+          price_monthly: 199,
+          price_yearly: 1910,
+          max_products: -1, // Illimité
+          max_optimizations_monthly: -1,
+          max_articles_monthly: -1,
+          max_campaigns: -1,
+          max_chat_responses_monthly: -1,
+          features: [
+            'Produits illimités',
+            'Optimisations SEO illimitées',
+            'Articles de blog illimités',
+            'Campagnes marketing illimitées',
+            'Réponses chat illimitées',
+            'Support dédié 24/7',
+            'API personnalisée',
+            'Formation équipe'
+          ],
+          stripe_price_id: '',
+          description: 'Solution complète pour les grandes entreprises'
+        }
+      ];
+
+      setPlans(defaultPlans);
     } catch (error) {
       console.error('Error loading plans:', error);
+      // Plans par défaut en cas d'erreur
+      setPlans([
+        {
+          id: 'starter',
+          name: 'Starter',
+          price_monthly: 29,
+          price_yearly: 278,
+          max_products: 100,
+          max_optimizations_monthly: 50,
+          max_articles_monthly: 10,
+          max_campaigns: 3,
+          max_chat_responses_monthly: 1000,
+          features: ['100 produits', '50 optimisations/mois', '10 articles/mois', 'Support email'],
+          stripe_price_id: '',
+          description: 'Parfait pour commencer'
+        },
+        {
+          id: 'professional',
+          name: 'Professional',
+          price_monthly: 79,
+          price_yearly: 758,
+          max_products: 500,
+          max_optimizations_monthly: 200,
+          max_articles_monthly: 50,
+          max_campaigns: 10,
+          max_chat_responses_monthly: 5000,
+          features: ['500 produits', '200 optimisations/mois', '50 articles/mois', 'Support prioritaire'],
+          stripe_price_id: '',
+          popular: true,
+          description: 'Recommandé pour les entreprises'
+        }
+      ]);
     } finally {
       setLoadingPlans(false);
     }
@@ -64,13 +195,24 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+    // Validation
+    if (!email || !password || !confirmPassword || !companyName || !fullName) {
+      setError('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Veuillez entrer une adresse email valide');
       return;
     }
 
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
 
@@ -82,27 +224,71 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     setError('');
 
     try {
-      const { error, sellerId } = await signUp(email, password, companyName, fullName, selectedPlanId);
+      // 1. Créer le compte utilisateur
+      const { error: signUpError, sellerId } = await signUp(
+        email, 
+        password, 
+        companyName, 
+        fullName, 
+        selectedPlanId,
+        billingCycle
+      );
 
-      if (error) {
-        setError(error.message || 'Erreur lors de l\'inscription');
+      if (signUpError) {
+        setError(signUpError.message || 'Erreur lors de la création du compte');
         setLoading(false);
         return;
       }
 
-      if (sellerId) {
-        const selectedPlan = plans.find(p => p.id === selectedPlanId);
-        if (!selectedPlan) {
-          setError('Plan non trouvé');
-          setLoading(false);
-          return;
-        }
-
-        console.log('Redirecting to Stripe checkout...');
-        setSuccess(true);
+      if (!sellerId) {
+        setError('Erreur lors de la création du vendeur');
+        setLoading(false);
+        return;
       }
+
+      // 2. Récupérer le token d'authentification
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('Erreur de session utilisateur');
+        setLoading(false);
+        return;
+      }
+
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+      if (!selectedPlan) {
+        setError('Plan non trouvé');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Créer la session Stripe Checkout
+      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          plan_id: selectedPlanId,
+          billing_period: billingCycle,
+          success_url: `${window.location.origin}/dashboard?checkout=success`,
+          cancel_url: `${window.location.origin}/signup?step=2`
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erreur lors de la création de la session de paiement');
+      }
+
+      // 4. Redirection vers Stripe
+      window.location.href = result.url;
+
     } catch (err) {
-      setError('Une erreur est survenue');
+      console.error('Signup error:', err);
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'inscription');
       setLoading(false);
     }
   };
@@ -112,12 +298,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     ? (billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly)
     : 0;
 
+  const yearlySavings = selectedPlan ? Math.round((1 - (selectedPlan.price_yearly / (selectedPlan.price_monthly * 12))) * 100) : 0;
+
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200 text-center">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
 
@@ -130,18 +318,32 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             </p>
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <p className="text-blue-800 text-sm">
-                ✨ Essai gratuit de 14 jours inclus dans tous les forfaits!
-              </p>
+              <div className="flex items-center gap-2 text-blue-800 text-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>Essai gratuit de 14 jours inclus!</span>
+              </div>
             </div>
 
-            <button
-              onClick={onLogin}
-              className="w-full text-white py-4 rounded-xl font-semibold transition-all"
-              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-            >
-              Continuer
-            </button>
+            <div className="space-y-2 text-sm text-gray-600 mb-6">
+              <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
+              <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
+              <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={onLogin}
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-semibold transition"
+              >
+                Retour
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-xl font-semibold transition"
+              >
+                Réessayer
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -149,180 +351,379 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl">
         <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-white/80 hover:text-white mb-8 transition"
+          onClick={step === 1 ? onBack : () => setStep(1)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-all duration-200 hover:gap-3 group"
         >
-          <ArrowLeft className="w-5 h-5" />
-          Retour
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span>Retour</span>
         </button>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-2xl">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-              <ShoppingBag className="w-6 h-6 text-white" />
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20">
+          {/* En-tête */}
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-lg">
+                  <ShoppingBag className="w-7 h-7 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
+                  <Sparkles className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div className="text-left">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Omnia AI
+                </h1>
+                <p className="text-xs text-gray-500">E-commerce intelligent</p>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-white">Omnia AI</h1>
+
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              {step === 1 ? 'Commencer votre essai gratuit' : 'Choisissez votre forfait'}
+            </h2>
+            <p className="text-gray-600">
+              {step === 1 ? 'Créez votre compte en 2 minutes' : '14 jours d\'essai gratuit, sans carte bancaire'}
+            </p>
           </div>
 
-          <h2 className="text-2xl font-bold text-white mb-2 text-center">Créer un compte</h2>
-          <p className="text-gray-300 text-center mb-2">
-            Essai gratuit de 14 jours
-          </p>
-          <p className="text-sm text-blue-300 text-center mb-8">
-            Aucune carte bancaire requise
-          </p>
+          {/* Étapes de progression */}
+          <div className="flex items-center justify-center gap-8 mb-8">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                step === 1 
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white scale-110 shadow-lg' 
+                  : 'bg-gray-100 text-gray-400'
+              }`}>
+                1
+              </div>
+              <span className={`font-medium ${step === 1 ? 'text-gray-900' : 'text-gray-500'}`}>
+                Informations
+              </span>
+            </div>
+            <div className="w-16 h-1 bg-gray-200 rounded-full" />
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                step === 2 
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white scale-110 shadow-lg' 
+                  : 'bg-gray-100 text-gray-400'
+              }`}>
+                2
+              </div>
+              <span className={`font-medium ${step === 2 ? 'text-gray-900' : 'text-gray-500'}`}>
+                Forfait
+              </span>
+            </div>
+          </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-200 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-shake">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-800 font-medium text-sm">{error}</p>
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Choisir un forfait
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {PLANS.map((plan) => (
+          {/* Étape 1: Informations de base */}
+          {step === 1 && (
+            <form onSubmit={handleStep1Submit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nom complet <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="w-full pl-11 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="Jean Dupont"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Nom de l'entreprise <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      required
+                      className="w-full pl-11 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="Ma Boutique"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email professionnel <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="w-full pl-11 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="votre@entreprise.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Mot de passe <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full pl-11 pr-12 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Confirmer le mot de passe <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full pl-11 pr-12 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-blue-900 text-sm">Inscription sécurisée</p>
+                  <p className="text-blue-700 text-xs">Vos données sont protégées et ne seront jamais partagées</p>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
+              >
+                <span>Continuer vers le choix du forfait</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </form>
+          )}
+
+          {/* Étape 2: Choix du forfait */}
+          {step === 2 && (
+            <div className="space-y-8">
+              {/* Sélecteur de cycle de facturation */}
+              <div className="flex justify-center">
+                <div className="bg-gray-100 rounded-xl p-1 flex">
                   <button
-                    key={plan.id}
-                    type="button"
-                    onClick={() => setSelectedPlan(plan.id)}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      selectedPlan === plan.id
-                        ? 'border-blue-500 bg-blue-500/20'
-                        : 'border-white/20 bg-white/5 hover:border-white/40'
+                    onClick={() => setBillingCycle('monthly')}
+                    className={`px-6 py-3 rounded-lg font-semibold transition ${
+                      billingCycle === 'monthly'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Package className="w-4 h-4 text-blue-400" />
-                      <span className="text-white font-semibold text-sm">{plan.name}</span>
-                    </div>
-                    <div className="text-gray-300 text-xs">{plan.price}</div>
-                    <div className="text-gray-400 text-xs">{plan.products}</div>
+                    Mensuel
                   </button>
-                ))}
+                  <button
+                    onClick={() => setBillingCycle('yearly')}
+                    className={`px-6 py-3 rounded-lg font-semibold transition ${
+                      billingCycle === 'yearly'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Annuel <span className="text-green-500 ml-1">-{yearlySavings}%</span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Nom complet
-              </label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Jean Dupont"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Nom de l'entreprise
-              </label>
-              <div className="relative">
-                <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ma Boutique"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Email professionnel
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="votre@email.com"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-200 mb-2">
-                Confirmer le mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Création du compte...
-                </>
+              {/* Grille des forfaits */}
+              {loadingPlans ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
               ) : (
-                'Commencer l\'essai gratuit'
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {plans.map((plan) => (
+                    <div
+                      key={plan.id}
+                      className={`relative bg-white rounded-2xl border-2 transition-all cursor-pointer hover:scale-105 ${
+                        selectedPlanId === plan.id
+                          ? 'border-blue-500 shadow-xl'
+                          : 'border-gray-200 hover:border-gray-300'
+                      } ${plan.popular ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                    >
+                      {plan.popular && (
+                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                          <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-bold">
+                            POPULAIRE
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Package className={`w-6 h-6 ${
+                            plan.id === 'starter' ? 'text-blue-600' :
+                            plan.id === 'professional' ? 'text-purple-600' :
+                            'text-pink-600'
+                          }`} />
+                          <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+                        </div>
+
+                        <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
+
+                        <div className="mb-4">
+                          <span className="text-3xl font-bold text-gray-900">
+                            {billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly}€
+                          </span>
+                          <span className="text-gray-600">
+                            {billingCycle === 'yearly' ? '/an' : '/mois'}
+                          </span>
+                          {billingCycle === 'yearly' && (
+                            <p className="text-green-600 text-sm mt-1">
+                              Soit {(plan.price_yearly / 12).toFixed(0)}€/mois
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 mb-6">
+                          {plan.features.slice(0, 4).map((feature, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="text-sm text-gray-700">{feature}</span>
+                            </div>
+                          ))}
+                          {plan.features.length > 4 && (
+                            <p className="text-sm text-blue-600 font-medium">
+                              +{plan.features.length - 4} fonctionnalités
+                            </p>
+                          )}
+                        </div>
+
+                        <div className={`w-full py-3 rounded-lg text-center font-semibold transition ${
+                          selectedPlanId === plan.id
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {selectedPlanId === plan.id ? 'Sélectionné' : 'Choisir'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </button>
 
-            <p className="text-xs text-gray-400 text-center mt-4">
-              En créant un compte, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
-            </p>
-          </form>
+              {/* Récapitulatif et actions */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg mb-2">Récapitulatif</h4>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
+                      <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
+                      <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
+                    </div>
+                  </div>
 
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-sm font-medium">14 jours d'essai gratuit</span>
+                    </div>
+                    <button
+                      onClick={handleStep2Submit}
+                      disabled={loading}
+                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Redirection vers Stripe...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5" />
+                          <span>Commencer l'essai gratuit</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sécurité et garanties */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="p-4">
+                  <Shield className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Paiement sécurisé</p>
+                  <p className="text-sm text-gray-600">Cryptage SSL 256-bit</p>
+                </div>
+                <div className="p-4">
+                  <CheckCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Sans engagement</p>
+                  <p className="text-sm text-gray-600">Annulation à tout moment</p>
+                </div>
+                <div className="p-4">
+                  <Zap className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Support 7j/7</p>
+                  <p className="text-sm text-gray-600">Équipe dédiée</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lien de connexion */}
           <div className="mt-8 text-center">
-            <p className="text-gray-300">
+            <p className="text-gray-600">
               Déjà un compte?{' '}
               <button
                 onClick={onLogin}
-                className="text-blue-400 hover:text-blue-300 font-semibold transition"
+                className="text-blue-600 hover:text-blue-700 font-semibold transition"
               >
                 Se connecter
               </button>
