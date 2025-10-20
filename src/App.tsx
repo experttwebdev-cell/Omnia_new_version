@@ -1358,6 +1358,8 @@ function AppContent() {
       onSkipToHome={() => {
         window.location.hash = '';
         setCurrentView('landing');
+        // Force reload pour être sûr
+        setTimeout(() => window.location.reload(), 100);
       }}
     />;
   }
