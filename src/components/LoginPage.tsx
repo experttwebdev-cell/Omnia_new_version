@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { ShoppingBag, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
+import { 
+  ShoppingBag, 
+  Mail, 
+  Lock, 
+  AlertCircle, 
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Shield,
+  Sparkles,
+  Zap,
+  CheckCircle
+} from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 
 interface LoginPageProps {
@@ -13,121 +25,317 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // Validation basique
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Veuillez entrer une adresse email valide');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await signIn(email, password);
 
       if (error) {
-        setError(error.message || 'Erreur lors de la connexion');
+        setError(error.message || 'Email ou mot de passe incorrect');
       }
     } catch (err) {
-      setError('Une erreur est survenue');
+      setError('Une erreur inattendue est survenue');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleForgotPassword = () => {
+    // Implémentation future de la récupération de mot de passe
+    alert('Fonctionnalité de récupération de mot de passe à venir');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Bouton retour */}
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-all duration-200 hover:gap-3 group"
         >
-          <ArrowLeft className="w-5 h-5" />
-          Retour
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span>Retour à l'accueil</span>
         </button>
 
-        <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-              <ShoppingBag className="w-6 h-6 text-white" />
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20">
+          {/* En-tête avec logo */}
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-lg">
+                  <ShoppingBag className="w-7 h-7 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
+                  <Sparkles className="w-3 h-3 text-white" />
+                </div>
+              </div>
+              <div className="text-left">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Omnia AI
+                </h1>
+                <p className="text-xs text-gray-500">E-commerce intelligent</p>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Omnia AI</h1>
+
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Content de vous revoir !</h2>
+            <p className="text-gray-600">
+              Accédez à votre tableau de bord personnalisé
+            </p>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Connexion</h2>
-          <p className="text-gray-600 text-center mb-8">
-            Accédez à votre tableau de bord
-          </p>
+          {/* Bannière de sécurité */}
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-900 text-sm">Connexion sécurisée</p>
+              <p className="text-blue-700 text-xs">Vos données sont protégées par un chiffrement de niveau bancaire</p>
+            </div>
+          </div>
 
+          {/* Message d'erreur */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-shake">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-red-800 text-sm">{error}</p>
+              <div>
+                <p className="text-red-800 font-medium text-sm">{error}</p>
+                <p className="text-red-700 text-xs mt-1">
+                  Vérifiez vos identifiants ou{' '}
+                  <button 
+                    onClick={handleForgotPassword}
+                    className="underline font-medium hover:text-red-800"
+                  >
+                    réinitialisez votre mot de passe
+                  </button>
+                </p>
+              </div>
             </div>
           )}
 
+          {/* Formulaire */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Champ email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Adresse email
+                <span className="text-red-500 ml-1">*</span>
               </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className={`w-5 h-5 transition-colors ${
+                    error ? 'text-red-500' : 'text-gray-400 group-focus-within:text-blue-500'
+                  }`} />
+                </div>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError('');
+                  }}
                   required
-                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-4 py-4 bg-white border-2 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition-all duration-200 ${
+                    error 
+                      ? 'border-red-300 bg-red-50 focus:border-red-500' 
+                      : 'border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                  }`}
                   placeholder="votre@email.com"
+                  disabled={loading}
                 />
               </div>
             </div>
 
+            {/* Champ mot de passe */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Mot de passe
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className={`w-5 h-5 transition-colors ${
+                    error ? 'text-red-500' : 'text-gray-400 group-focus-within:text-blue-500'
+                  }`} />
+                </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError('');
+                  }}
                   required
-                  className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className={`w-full pl-10 pr-12 py-4 bg-white border-2 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none transition-all duration-200 ${
+                    error 
+                      ? 'border-red-300 bg-red-50 focus:border-red-500' 
+                      : 'border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                  }`}
                   placeholder="••••••••"
+                  disabled={loading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
+            {/* Case à cocher "Se souvenir de moi" */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="sr-only"
+                    disabled={loading}
+                  />
+                  <div className={`w-5 h-5 border-2 rounded transition-all duration-200 ${
+                    rememberMe 
+                      ? 'bg-blue-600 border-blue-600' 
+                      : 'bg-white border-gray-300'
+                  }`}>
+                    {rememberMe && (
+                      <CheckCircle className="w-4 h-4 text-white absolute top-0.5 left-0.5" />
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-gray-700 select-none">Se souvenir de moi</span>
+              </label>
+            </div>
+
+            {/* Bouton de connexion */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+              className="w-full text-white py-4 rounded-xl font-bold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 relative overflow-hidden group"
+              style={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                backgroundSize: '200% 200%'
+              }}
             >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Connexion...
-                </>
-              ) : (
-                'Se connecter'
-              )}
+              {/* Animation de fond */}
+              <div 
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{
+                  background: 'linear-gradient(135deg, #764ba2 0%, #f093fb 50%, #667eea 100%)',
+                  backgroundSize: '200% 200%',
+                  animation: 'gradientShift 3s ease infinite'
+                }}
+              />
+              
+              {/* Contenu du bouton */}
+              <span className="relative z-10 flex items-center gap-2">
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Connexion en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    <span>Se connecter</span>
+                  </>
+                )}
+              </span>
             </button>
           </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Pas encore de compte?{' '}
-              <button
-                onClick={onSignUp}
-                className="font-semibold transition bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-purple-700"
-              >
-                Créer un compte
-              </button>
+          {/* Séparateur */}
+          <div className="my-8 flex items-center">
+            <div className="flex-1 border-t border-gray-200"></div>
+            <span className="px-4 text-sm text-gray-500">ou</span>
+            <div className="flex-1 border-t border-gray-200"></div>
+          </div>
+
+          {/* Lien vers inscription */}
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">
+              Nouveau sur Omnia AI ?
             </p>
+            <button
+              onClick={onSignUp}
+              disabled={loading}
+              className="w-full border-2 border-gray-200 text-gray-700 py-4 rounded-xl font-semibold transition-all duration-300 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-5 h-5" />
+              Créer un compte gratuit
+            </button>
+          </div>
+
+          {/* Informations de sécurité */}
+          <div className="mt-8 text-center">
+            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <Shield className="w-3 h-3" />
+                <span>SSL Sécurisé</span>
+              </div>
+              <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+              <div className="flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                <span>RGPD Compliant</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Copyright */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500">
+            © 2024 Omnia AI. Tous droits réservés.
+          </p>
+        </div>
       </div>
+
+      {/* Styles d'animation */}
+      <style jsx>{`
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
