@@ -658,14 +658,29 @@ export function SignUp() {
               </div>
             )}
 
-            {/* Step 3: Terms and Conditions */}
+            {/* Step 3: Subscription Selection */}
             {step === 3 && (
               <div className="space-y-6 animate-fade-in">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Essai gratuit de 14 jours</h3>
-                  <p className="text-blue-800 text-sm">
-                    Profitez de toutes les fonctionnalités premium pendant 14 jours. Aucune carte de crédit requise.
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
+                  <h3 className="font-bold text-gray-900 mb-3 text-lg">Choisissez votre formule d'abonnement</h3>
+                  <p className="text-gray-700 text-sm mb-4">
+                    Sélectionnez votre forfait (Starter, Professional ou Enterprise) et choisissez entre la facturation mensuelle ou annuelle. Vous pourrez changer de plan à tout moment.
                   </p>
+                  <div className="bg-white rounded-lg p-4 border-2 border-blue-300 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1">
+                        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">Paiement requis après l'inscription</p>
+                        <p className="text-sm text-gray-600">
+                          Après avoir créé votre compte, vous devrez choisir votre plan d'abonnement et effectuer le paiement via Stripe pour activer votre accès complet.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
