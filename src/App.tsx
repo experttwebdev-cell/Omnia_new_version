@@ -49,7 +49,94 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+
+// Mock data for plans
+const mockPlans = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price_monthly: 49,
+    max_products: 500,
+    max_optimizations_monthly: 1000,
+    max_articles_monthly: 10,
+    max_campaigns: 3,
+    max_chat_responses_monthly: 500,
+    features: {
+      analytics: 'Basique',
+      support: 'Email',
+      api: false,
+      backup: false,
+      support_chat: true,
+      support_phone: false,
+      dedicated_manager: false,
+      custom_training: false,
+      sla: false,
+      data_export: false,
+      full_api: false
+    },
+    stripe_price_id: 'price_starter',
+    description: 'Parfait pour les petites boutiques qui débutent avec l\'IA',
+    popular: false,
+    best_value: false,
+    recommended: false
+  },
+  {
+    id: 'professional',
+    name: 'Professional',
+    price_monthly: 99,
+    max_products: 5000,
+    max_optimizations_monthly: 10000,
+    max_articles_monthly: 50,
+    max_campaigns: 10,
+    max_chat_responses_monthly: 5000,
+    features: {
+      analytics: 'Avancé',
+      support: 'Prioritaire',
+      api: true,
+      backup: true,
+      support_chat: true,
+      support_phone: true,
+      dedicated_manager: false,
+      custom_training: true,
+      sla: true,
+      data_export: true,
+      full_api: true
+    },
+    stripe_price_id: 'price_professional',
+    description: 'Idéal pour les e-commerces en croissance avec un volume important',
+    popular: true,
+    best_value: true,
+    recommended: false
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price_monthly: 299,
+    max_products: -1,
+    max_optimizations_monthly: -1,
+    max_articles_monthly: -1,
+    max_campaigns: -1,
+    max_chat_responses_monthly: -1,
+    features: {
+      analytics: 'Entreprise',
+      support: 'Dédié 24/7',
+      api: true,
+      backup: true,
+      support_chat: true,
+      support_phone: true,
+      dedicated_manager: true,
+      custom_training: true,
+      sla: true,
+      data_export: true,
+      full_api: true
+    },
+    stripe_price_id: 'price_enterprise',
+    description: 'Solution complète pour les grandes entreprises et marketplaces',
+    popular: false,
+    best_value: false,
+    recommended: true
+  }
+];
 
 interface Plan {
   id: string;
@@ -75,7 +162,7 @@ interface PricingLandingPageProps {
 
 export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [activeFeatureTab, setActiveFeatureTab] = useState('all');
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
@@ -83,140 +170,15 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
   const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
   useEffect(() => {
-    loadPlans();
-  }, []);
-
-  const loadPlans = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('price_monthly', { ascending: true });
-
-      if (error) {
-        console.error('Supabase error:', error);
-        // Fallback to mock data if Supabase fails
-        setPlans(getMockPlans());
-      } else {
-        // Enhance plans with additional properties
-        const enhancedPlans = (data || []).map((plan, index) => ({
-          ...plan,
-          description: getPlanDescription(plan.id),
-          popular: index === 1,
-          best_value: index === 1,
-          recommended: index === 2
-        }));
-        setPlans(enhancedPlans);
-      }
-    } catch (error) {
-      console.error('Error loading plans:', error);
-      // Fallback to mock data
-      setPlans(getMockPlans());
-    } finally {
+    // Simulate loading plans
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setPlans(mockPlans);
       setLoading(false);
-    }
-  };
-
-  // Mock data fallback
-  const getMockPlans = (): Plan[] => [
-    {
-      id: 'starter',
-      name: 'Starter',
-      price_monthly: 49,
-      max_products: 500,
-      max_optimizations_monthly: 1000,
-      max_articles_monthly: 10,
-      max_campaigns: 3,
-      max_chat_responses_monthly: 500,
-      features: {
-        analytics: 'Basique',
-        support: 'Email',
-        api: false,
-        backup: false,
-        support_chat: true,
-        support_phone: false,
-        dedicated_manager: false,
-        custom_training: false,
-        sla: false,
-        data_export: false,
-        full_api: false
-      },
-      stripe_price_id: 'price_starter',
-      description: 'Parfait pour les petites boutiques qui débutent avec l\'IA',
-      popular: false,
-      best_value: false,
-      recommended: false
-    },
-    {
-      id: 'professional',
-      name: 'Professional',
-      price_monthly: 99,
-      max_products: 5000,
-      max_optimizations_monthly: 10000,
-      max_articles_monthly: 50,
-      max_campaigns: 10,
-      max_chat_responses_monthly: 5000,
-      features: {
-        analytics: 'Avancé',
-        support: 'Prioritaire',
-        api: true,
-        backup: true,
-        support_chat: true,
-        support_phone: true,
-        dedicated_manager: false,
-        custom_training: true,
-        sla: true,
-        data_export: true,
-        full_api: true
-      },
-      stripe_price_id: 'price_professional',
-      description: 'Idéal pour les e-commerces en croissance avec un volume important',
-      popular: true,
-      best_value: true,
-      recommended: false
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price_monthly: 299,
-      max_products: -1,
-      max_optimizations_monthly: -1,
-      max_articles_monthly: -1,
-      max_campaigns: -1,
-      max_chat_responses_monthly: -1,
-      features: {
-        analytics: 'Entreprise',
-        support: 'Dédié 24/7',
-        api: true,
-        backup: true,
-        support_chat: true,
-        support_phone: true,
-        dedicated_manager: true,
-        custom_training: true,
-        sla: true,
-        data_export: true,
-        full_api: true
-      },
-      stripe_price_id: 'price_enterprise',
-      description: 'Solution complète pour les grandes entreprises et marketplaces',
-      popular: false,
-      best_value: false,
-      recommended: true
-    }
-  ];
-
-  const getPlanDescription = (planId: string) => {
-    switch (planId) {
-      case 'starter':
-        return 'Parfait pour les petites boutiques qui débutent avec l\'IA';
-      case 'professional':
-        return 'Idéal pour les e-commerces en croissance avec un volume important';
-      case 'enterprise':
-        return 'Solution complète pour les grandes entreprises et marketplaces';
-      default:
-        return 'Solution adaptée à vos besoins';
-    }
-  };
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const getPlanIcon = (planId: string) => {
     switch (planId) {
