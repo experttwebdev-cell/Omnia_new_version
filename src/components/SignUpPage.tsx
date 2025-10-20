@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -45,7 +44,6 @@ interface PasswordStrength {
 }
 
 export function SignUp() {
-  const navigate = useNavigate();
   const { seller } = useAuth();
   const [form, setForm] = useState<SignUpForm>({
     email: '',
@@ -71,9 +69,9 @@ export function SignUp() {
   // Redirect if already authenticated
   useEffect(() => {
     if (seller) {
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     }
-  }, [seller, navigate]);
+  }, [seller]);
 
   // Validation rules
   const validationRules: ValidationRules = {
@@ -300,7 +298,7 @@ export function SignUp() {
         
         // Redirect to verification page or dashboard
         setTimeout(() => {
-          navigate('/verify-email');
+          window.location.href = '/verify-email';
         }, 3000);
       }
     } catch (error: any) {
@@ -680,13 +678,13 @@ export function SignUp() {
                     />
                     <span className="text-sm text-gray-700">
                       J'accepte les{' '}
-                      <Link to="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
+                      <a href="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
                         conditions d'utilisation
-                      </Link>{' '}
+                      </a>{' '}
                       et la{' '}
-                      <Link to="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
+                      <a href="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
                         politique de confidentialité
-                      </Link>
+                      </a>
                     </span>
                   </label>
                   {errors.acceptTerms && (
@@ -755,12 +753,12 @@ export function SignUp() {
           <div className="mt-8 pt-6 border-t border-gray-200 text-center">
             <p className="text-gray-600">
               Déjà un compte ?{' '}
-              <Link
-                to="/login"
+              <a
+                href="/login"
                 className="text-blue-600 hover:text-blue-700 font-semibold transition"
               >
                 Se connecter
-              </Link>
+              </a>
             </p>
           </div>
         </div>
