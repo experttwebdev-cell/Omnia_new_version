@@ -50,10 +50,13 @@ import {
   History,
   Settings as SettingsIcon,
   CreditCard,
-  Activity
+  Activity,
+  Upload,
+  User,
+  Receipt
 } from 'lucide-react';
 
-type ViewType = 'dashboard' | 'products' | 'stores' | 'google-shopping' | 'google-merchant' | 'product-search' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'usage-test' | 'super-admin' | 'settings';
+type ViewType = 'dashboard' | 'products' | 'product-search' | 'google-shopping' | 'google-shopping-feed' | 'google-shopping-push' | 'google-merchant' | 'seo-optimization' | 'seo-alt-image' | 'seo-tags' | 'seo-opportunities' | 'seo-articles' | 'seo-ai-blog' | 'seo-ai-campaigns' | 'ai-chat' | 'ai-chat-history' | 'ai-chat-settings' | 'omniachat' | 'usage-dashboard' | 'usage-test' | 'super-admin' | 'settings' | 'account' | 'billing';
 type AppViewType = 'landing' | 'login' | 'signup' | 'app';
 
 interface LanguageContextType {
@@ -75,8 +78,11 @@ function MainApp() {
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [seoExpanded, setSeoExpanded] = useState(true);
-  const [aiChatExpanded, setAiChatExpanded] = useState(true);
+  const [productsExpanded, setProductsExpanded] = useState(false);
+  const [googleShoppingExpanded, setGoogleShoppingExpanded] = useState(false);
+  const [seoExpanded, setSeoExpanded] = useState(false);
+  const [aiChatExpanded, setAiChatExpanded] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [language, setLanguage] = useState<Language>('en');
   const [languageLoaded, setLanguageLoaded] = useState(false);
@@ -162,20 +168,50 @@ function MainApp() {
     setSelectedProductId(productId);
   };
 
-  // Main navigation - sellers only see essential items
+  // Main navigation - nouvelle structure demandée
   const navigation = [
-    { id: 'dashboard' as ViewType, name: t.nav.dashboard, icon: LayoutDashboard },
-    { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
-    { id: 'products' as ViewType, name: t.nav.products, icon: Package },
-    { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
-    { id: 'google-merchant' as ViewType, name: 'Google Merchant', icon: FileText },
-    { id: 'usage-dashboard' as ViewType, name: 'Mon Abonnement', icon: Package },
-    { id: 'settings' as ViewType, name: 'Paramètres', icon: Settings },
+    { id: 'dashboard' as ViewType, name: '🧭 Dashboard SmartEcommerce.ai', icon: LayoutDashboard },
+  ];
+
+  // Products submenu
+  const productsSubItems = [
+    { id: 'products' as ViewType, name: 'Products', icon: Package },
+    { id: 'product-search' as ViewType, name: 'Product Search', icon: Search },
+  ];
+
+  // Google Shopping submenu
+  const googleShoppingSubItems = [
+    { id: 'google-shopping-feed' as ViewType, name: 'Shopping Feed', icon: FileText },
+    { id: 'google-shopping-push' as ViewType, name: 'Push to Shopify', icon: Upload },
+  ];
+
+  // SEO submenu
+  const seoSubItems = [
+    { id: 'seo-optimization' as ViewType, name: 'Optimization', icon: FileText },
+    { id: 'seo-alt-image' as ViewType, name: 'ALT Image', icon: ImageIcon },
+    { id: 'seo-tags' as ViewType, name: 'Tags', icon: TagIcon },
+    { id: 'seo-opportunities' as ViewType, name: 'Opportunities', icon: Lightbulb },
+    { id: 'seo-articles' as ViewType, name: 'Blog Articles', icon: BookOpen },
+    { id: 'seo-ai-blog' as ViewType, name: 'AI Blog', icon: Sparkles },
+    { id: 'seo-ai-campaigns' as ViewType, name: 'AI Campaigns', icon: Sparkles },
+  ];
+
+  // AI Chat submenu
+  const aiChatSubItems = [
+    { id: 'ai-chat' as ViewType, name: 'Chat OmnIA', icon: MessageCircle },
+    { id: 'ai-chat-history' as ViewType, name: 'Historique de conversation', icon: History },
+    { id: 'ai-chat-settings' as ViewType, name: 'Paramètres widget', icon: SettingsIcon },
+  ];
+
+  // Settings submenu
+  const settingsSubItems = [
+    { id: 'account' as ViewType, name: 'Détails du compte', icon: User },
+    { id: 'usage-dashboard' as ViewType, name: 'Abonnement', icon: CreditCard },
+    { id: 'billing' as ViewType, name: 'Facturation', icon: Receipt },
   ];
 
   // Technical/debug items - only for superadmin
   const technicalNavigation = seller?.role === 'superadmin' ? [
-    { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
     { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
     { id: 'usage-test' as ViewType, name: 'Test Consommation', icon: Activity },
   ] : [];
@@ -184,24 +220,11 @@ function MainApp() {
     { id: 'super-admin' as ViewType, name: 'Admin', icon: Settings },
   ] : [];
 
-  const seoSubItems = [
-    { id: 'seo-optimization' as ViewType, name: t.nav.seoOptimization, icon: FileText },
-    { id: 'seo-alt-image' as ViewType, name: t.nav.seoAltImage, icon: ImageIcon },
-    { id: 'seo-tags' as ViewType, name: t.nav.seoTags, icon: TagIcon },
-    { id: 'seo-opportunities' as ViewType, name: t.nav.seoOpportunities, icon: Lightbulb },
-    { id: 'seo-articles' as ViewType, name: t.nav.blogArticles, icon: BookOpen },
-    { id: 'seo-ai-blog' as ViewType, name: t.nav.aiBlog, icon: Sparkles },
-    { id: 'seo-ai-campaigns' as ViewType, name: 'AI Campaigns', icon: Sparkles },
-  ];
-
-  const aiChatSubItems = [
-    { id: 'ai-chat' as ViewType, name: 'Chat', icon: MessageCircle },
-    { id: 'ai-chat-history' as ViewType, name: 'Historique', icon: History },
-    { id: 'ai-chat-settings' as ViewType, name: 'Paramètres', icon: SettingsIcon },
-  ];
-
+  const isProductsView = activeView === 'products' || activeView === 'product-search';
+  const isGoogleShoppingView = activeView === 'google-shopping-feed' || activeView === 'google-shopping-push';
   const isSeoView = activeView.startsWith('seo-');
   const isAiChatView = activeView.startsWith('ai-chat');
+  const isSettingsView = activeView === 'account' || activeView === 'usage-dashboard' || activeView === 'billing';
 
   if (!languageLoaded) {
     return (
@@ -224,7 +247,7 @@ function MainApp() {
           <div className="p-2 bg-white/20 rounded-lg">
             <ShoppingBag className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-white text-base">Product Catalogue</span>
+          <span className="font-bold text-white text-base">SmartEcommerce.ai</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -249,13 +272,14 @@ function MainApp() {
         <div className="p-6" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
-              <ShoppingBag className="w-6 h-6 text-white" />
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="font-bold text-white text-lg">Product Catalogue</h1>
+            <h1 className="font-bold text-white text-lg">SmartEcommerce.ai</h1>
           </div>
         </div>
 
         <nav className="p-4 space-y-1 flex-1 overflow-y-auto">
+          {/* Dashboard */}
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -279,6 +303,121 @@ function MainApp() {
             );
           })}
 
+          {/* Products Section */}
+          <div className="mt-2">
+            <button
+              onClick={() => setProductsExpanded(!productsExpanded)}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition ${
+                isProductsView
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Package className="w-5 h-5" />
+                <span className="font-medium">Products</span>
+              </div>
+              {productsExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+
+            {productsExpanded && (
+              <div className="mt-1 space-y-1">
+                {productsSubItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeView === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveView(item.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-lg transition text-sm ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Google Shopping Section */}
+          <div className="mt-2">
+            <button
+              onClick={() => setGoogleShoppingExpanded(!googleShoppingExpanded)}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition ${
+                isGoogleShoppingView
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="font-medium">Google Shopping</span>
+              </div>
+              {googleShoppingExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+
+            {googleShoppingExpanded && (
+              <div className="mt-1 space-y-1">
+                {googleShoppingSubItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeView === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveView(item.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-lg transition text-sm ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Google Merchant (standalone) */}
+          <button
+            onClick={() => {
+              setActiveView('google-merchant');
+              setSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+              activeView === 'google-merchant'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            <span className="font-medium">Google Merchant</span>
+          </button>
+
+          {/* SEO Section */}
           <div className="mt-2">
             <button
               onClick={() => setSeoExpanded(!seoExpanded)}
@@ -290,7 +429,7 @@ function MainApp() {
             >
               <div className="flex items-center gap-3">
                 <Search className="w-5 h-5" />
-                <span className="font-medium">{t.nav.seo}</span>
+                <span className="font-medium">SEO</span>
               </div>
               {seoExpanded ? (
                 <ChevronDown className="w-4 h-4" />
@@ -327,6 +466,7 @@ function MainApp() {
             )}
           </div>
 
+          {/* AI Chat Section */}
           <div className="mt-2">
             <button
               onClick={() => setAiChatExpanded(!aiChatExpanded)}
@@ -350,6 +490,55 @@ function MainApp() {
             {aiChatExpanded && (
               <div className="mt-1 space-y-1">
                 {aiChatSubItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeView === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveView(item.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-lg transition text-sm ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Settings Section */}
+          <div className="mt-2">
+            <button
+              onClick={() => setSettingsExpanded(!settingsExpanded)}
+              className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition ${
+                isSettingsView
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Settings className="w-5 h-5" />
+                <span className="font-medium">Paramètres</span>
+              </div>
+              {settingsExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+
+            {settingsExpanded && (
+              <div className="mt-1 space-y-1">
+                {settingsSubItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeView === item.id;
 
@@ -437,8 +626,8 @@ function MainApp() {
           )}
           {activeView === 'product-search' && <ProductSearch />}
           {activeView === 'omniachat' && <OmniaChat />}
-          {activeView === 'stores' && <StoreManager onImportStart={handleImportComplete} />}
-          {activeView === 'google-shopping' && <GoogleShopping />}
+          {activeView === 'google-shopping-feed' && <GoogleShopping />}
+          {activeView === 'google-shopping-push' && <GoogleShopping onPushToShopify={true} />}
           {activeView === 'google-merchant' && <GoogleMerchant />}
           {activeView === 'seo-optimization' && <SeoOptimization />}
           {activeView === 'seo-alt-image' && <SeoAltImage />}
@@ -464,7 +653,8 @@ function MainApp() {
           {activeView === 'usage-dashboard' && <UsageDashboard />}
           {activeView === 'usage-test' && <UsageTestPage />}
           {activeView === 'super-admin' && <SuperAdminDashboard />}
-          {activeView === 'settings' && <SettingsComponent />}
+          {activeView === 'account' && <SettingsComponent />}
+          {activeView === 'billing' && <SettingsComponent />}
         </div>
       </main>
 
