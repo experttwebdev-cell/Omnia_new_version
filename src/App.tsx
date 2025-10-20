@@ -1176,3 +1176,5 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
     </div>
   );
 }
+
+export default PricingLandingPage;
