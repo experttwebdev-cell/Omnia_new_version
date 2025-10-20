@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Check,
   Sparkles,
@@ -39,8 +38,7 @@ import {
   Bot,
   Cloud,
   Workflow,
-  Gem,
-  Cube
+  Box
 } from 'lucide-react';
 
 // Mock data for plans - UPDATED WITH NEW PRICING AND FEATURES
@@ -175,8 +173,14 @@ interface Plan {
   extra_features?: string;
 }
 
-export function PricingLandingPage() {
-  const navigate = useNavigate();
+interface PricingLandingPageProps {
+  onSignUp: (planId: string) => void;
+  onLogin: () => void;
+  onDashboard?: () => void;
+  isLoggedIn?: boolean;
+}
+
+export function PricingLandingPage({ onSignUp, onLogin, onDashboard, isLoggedIn }: PricingLandingPageProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -185,16 +189,6 @@ export function PricingLandingPage() {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
-  // Fonctions de navigation
-  const handleLogin = () => {
-    console.log('Navigation vers login');
-    navigate('/login');
-  };
-
-  const handleSignUp = (planId: string = 'professional') => {
-    console.log('Navigation vers signup avec plan:', planId);
-    navigate(`/signup/${planId}`);
-  };
 
   useEffect(() => {
     setLoading(true);
@@ -209,9 +203,9 @@ export function PricingLandingPage() {
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case 'starter':
-        return <Cube className="w-8 h-8" />;
+        return <Box className="w-8 h-8" />;
       case 'professional':
-        return <Gem className="w-8 h-8" />;
+        return <Zap className="w-8 h-8" />;
       case 'enterprise':
         return <Crown className="w-8 h-8" />;
       default:
@@ -435,7 +429,7 @@ export function PricingLandingPage() {
               <div className="relative">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/25 transform rotate-12 hover:rotate-0 transition-transform duration-500">
                   <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-400 rounded-xl flex items-center justify-center shadow-inner">
-                    <Cube className="w-6 h-6 text-white filter drop-shadow-lg" />
+                    <Box className="w-6 h-6 text-white filter drop-shadow-lg" />
                   </div>
                 </div>
                 <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-sm opacity-75 -z-10 animate-pulse"></div>
@@ -461,18 +455,29 @@ export function PricingLandingPage() {
             </nav>
 
             <div className="flex items-center gap-4">
-              <button
-                onClick={handleLogin}
-                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-              >
-                Connexion
-              </button>
-              <button
-                onClick={() => handleSignUp('professional')}
-                className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <span className="text-white">Essai Gratuit 14j</span>
-              </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={onDashboard}
+                  className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <span className="text-white">Mon Dashboard</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={onLogin}
+                    className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    onClick={() => onSignUp('professional')}
+                    className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <span className="text-white">Essai Gratuit 14j</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -517,7 +522,7 @@ export function PricingLandingPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <button
-                onClick={() => handleSignUp('professional')}
+                onClick={() => onSignUp('professional')}
                 className="group px-8 py-4 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
               >
                 <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
@@ -812,7 +817,7 @@ export function PricingLandingPage() {
                     )}
 
                     <button
-                      onClick={() => handleSignUp(plan.id)}
+                      onClick={() => onSignUp(plan.id)}
                       className={`w-full py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 mb-8 ${
                         isPopular || isRecommended
                           ? 'text-white shadow-lg hover:shadow-xl transform hover:scale-105'
@@ -897,8 +902,8 @@ export function PricingLandingPage() {
               Volume important, intégrations spécifiques, fonctionnalités exclusives ? 
               Notre équipe construit la solution 3D parfaite pour votre business.
             </p>
-            <button 
-              onClick={() => handleSignUp('enterprise')}
+            <button
+              onClick={() => onSignUp('enterprise')}
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               Solution Enterprise Sur Mesure
@@ -998,7 +1003,7 @@ export function PricingLandingPage() {
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-            <Cube className="w-10 h-10 text-white" />
+            <Box className="w-10 h-10 text-white" />
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -1010,7 +1015,7 @@ export function PricingLandingPage() {
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <button
-              onClick={() => handleSignUp('professional')}
+              onClick={() => onSignUp('professional')}
               className="px-10 py-5 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
             >
               <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
@@ -1052,7 +1057,7 @@ export function PricingLandingPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Cube className="w-6 h-6 text-white" />
+                  <Box className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-xl font-bold text-white">CubeAI</span>
               </div>
