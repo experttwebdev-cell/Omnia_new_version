@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { AuthProvider } from './lib/authContext';
+import { LoginPage } from './components/LoginPage';
+import { SignUpPage } from './components/SignUpPage';
 import {
   Check,
   Sparkles,
@@ -1177,7 +1180,7 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
   );
 }
 
-function App() {
+function AppContent() {
   const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
 
@@ -1202,53 +1205,32 @@ function App() {
 
   if (currentView === 'signup') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="p-4">
-          <button
-            onClick={handleBackToLanding}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
-            ← Retour
-          </button>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h1 className="text-2xl font-bold mb-4">Inscription - Plan {selectedPlan}</h1>
-            <p className="text-gray-600">Cette fonctionnalité sera bientôt disponible.</p>
-            <p className="text-sm text-gray-500 mt-4">
-              Le système d'inscription complet avec Stripe sera activé après le déploiement.
-            </p>
-          </div>
-        </div>
-      </div>
+      <SignUpPage
+        planId={selectedPlan}
+        onLogin={handleLogin}
+        onBack={handleBackToLanding}
+      />
     );
   }
 
   if (currentView === 'login') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="p-4">
-          <button
-            onClick={handleBackToLanding}
-            className="text-blue-600 hover:text-blue-800 font-medium"
-          >
-            ← Retour
-          </button>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h1 className="text-2xl font-bold mb-4">Connexion</h1>
-            <p className="text-gray-600">Cette fonctionnalité sera bientôt disponible.</p>
-            <p className="text-sm text-gray-500 mt-4">
-              Le système de connexion sera activé après le déploiement.
-            </p>
-          </div>
-        </div>
-      </div>
+      <LoginPage
+        onSignUp={() => handleSignUp('professional')}
+        onBack={handleBackToLanding}
+      />
     );
   }
 
   return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
 
 export default App;
