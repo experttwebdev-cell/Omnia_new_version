@@ -78,7 +78,7 @@ export function OnboardingPage({ onComplete, onSkipToHome }: OnboardingPageProps
         <div className="max-w-2xl w-full">
           <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12">
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg transform hover:scale-105 transition-transform duration-300">
                 <Sparkles className="w-10 h-10 text-white" />
               </div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -89,35 +89,42 @@ export function OnboardingPage({ onComplete, onSkipToHome }: OnboardingPageProps
               </p>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border border-blue-200">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-500" />
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-8 border-2 border-blue-200 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-4 text-lg">
                 Ce qui est inclus dans votre essai:
               </h3>
-              <ul className="space-y-2 text-gray-700">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Enrichissement IA illimité pendant 14 jours</span>
+              <ul className="space-y-3 text-gray-700">
+                <li className="flex items-start gap-3 group">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base">Enrichissement IA illimité pendant 14 jours</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Optimisation SEO automatique</span>
+                <li className="flex items-start gap-3 group">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base">Optimisation SEO automatique</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Assistant chat IA pour vos clients</span>
+                <li className="flex items-start gap-3 group">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base">Assistant chat IA pour vos clients</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span>Génération d'articles de blog</span>
+                <li className="flex items-start gap-3 group">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base">Génération d'articles de blog</span>
                 </li>
               </ul>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <button
                 onClick={() => setStep(2)}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg"
               >
                 Connecter ma boutique Shopify
                 <ArrowRight className="w-5 h-5" />
@@ -125,13 +132,13 @@ export function OnboardingPage({ onComplete, onSkipToHome }: OnboardingPageProps
 
               <button
                 onClick={handleSkip}
-                className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-300"
+                className="w-full py-4 bg-white text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 border-2 border-gray-200 hover:border-gray-300"
               >
                 Je ferai ça plus tard
               </button>
             </div>
 
-            <p className="text-center text-sm text-gray-500 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6 font-medium">
               Aucun paiement pendant 14 jours • Annulation à tout moment
             </p>
           </div>
