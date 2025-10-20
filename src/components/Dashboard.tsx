@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../App';
+import { useAuth } from '../lib/authContext';
 import { useNotifications, NotificationSystem } from './NotificationSystem';
 import {
   Package,
@@ -68,6 +69,7 @@ interface DashboardProps {
 
 export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }: DashboardProps) {
   const { t } = useLanguage();
+  const { seller } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,11 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
   const { notifications, addNotification, dismissNotification } = useNotifications();
 
   const fetchDashboardData = useCallback(async () => {
+    if (!seller) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setError('');
       const isRefreshing = !loading;
