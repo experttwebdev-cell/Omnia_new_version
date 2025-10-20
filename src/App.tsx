@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
 import { Dashboard } from './components/Dashboard';
+import { OnboardingPage } from './components/OnboardingPage';
 
 const LanguageContext = createContext<{
   language: string;
@@ -1193,13 +1194,15 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'dashboard'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'onboarding' | 'dashboard'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
-      if (hash.startsWith('dashboard')) {
+      if (hash.startsWith('onboarding')) {
+        setCurrentView('onboarding');
+      } else if (hash.startsWith('dashboard')) {
         setCurrentView('dashboard');
       } else if (hash.startsWith('signup')) {
         setCurrentView('signup');
@@ -1266,6 +1269,18 @@ function AppContent() {
         onBack={handleBackToLanding}
       />
     );
+  }
+
+  if (currentView === 'onboarding') {
+    if (!user && !loading) {
+      window.location.hash = 'login';
+      setCurrentView('login');
+      return null;
+    }
+    return <OnboardingPage onComplete={() => {
+      window.location.hash = 'dashboard';
+      setCurrentView('dashboard');
+    }} />;
   }
 
   if (currentView === 'dashboard') {
