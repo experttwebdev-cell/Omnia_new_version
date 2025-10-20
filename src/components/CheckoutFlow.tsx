@@ -118,14 +118,44 @@ export function CheckoutFlow({ onClose }: CheckoutFlowProps) {
   const handleSubmitOrder = async () => {
     setLoading(true);
     setSubmitError('');
-    
+
     try {
       const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
       if (!supabaseUrl) throw new Error('Configuration Supabase manquante');
 
       const orderNum = `OM-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-shopify-order`, {
+      // Step 1: Create Stripe Payment Intent
+      const paymentResponse = await fetch(`${supabaseUrl}/functions/v1/create-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: total,
+          currency: cart?.currency || 'EUR',
+          customer_email: formData.email,
+          customer_name: `${formData.firstName} ${formData.lastName}`,
+          metadata: {
+            order_number: orderNum,
+            cart_id: cart?.id,
+            shipping_method: formData.shippingMethod
+          }
+        })
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResponse.ok || !paymentResult.success) {
+        throw new Error(paymentResult.error || 'Erreur lors de la création du paiement');
+      }
+
+      // Step 2: For now, simulate successful payment (in production, use Stripe Elements)
+      // In a real implementation, you'd integrate Stripe Elements here
+      console.log('Payment Intent created:', paymentResult.payment_intent_id);
+
+      // Step 3: Create order in database
+      const orderResponse = await fetch(`${supabaseUrl}/functions/v1/create-shopify-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -135,24 +165,21 @@ export function CheckoutFlow({ onClose }: CheckoutFlowProps) {
           customer: formData,
           shipping_method: formData.shippingMethod,
           payment_method: formData.paymentMethod,
-          order_number: orderNum
+          order_number: orderNum,
+          payment_intent_id: paymentResult.payment_intent_id
         })
       });
 
-      const result = await response.json();
+      const orderResult = await orderResponse.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors de la création de la commande');
-      }
-
-      if (!result.success) {
-        throw new Error(result.error || 'Échec de la création de la commande');
+      if (!orderResponse.ok || !orderResult.success) {
+        throw new Error(orderResult.error || 'Erreur lors de la création de la commande');
       }
 
       setOrderNumber(orderNum);
       setOrderConfirmed(true);
       await clearCart();
-      
+
     } catch (error) {
       console.error('Error submitting order:', error);
       setSubmitError(error instanceof Error ? error.message : 'Une erreur est survenue lors de la création de la commande');
