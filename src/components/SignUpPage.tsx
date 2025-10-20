@@ -316,15 +316,18 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      const supabaseUrl = getEnvVar('SUPABASE_URL');
-      const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY');
+      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+      const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+      const checkoutUrl = `${supabaseUrl}/functions/v1/create-stripe-checkout`;
 
       console.log('Creating Stripe checkout session...', {
         plan_id: selectedPlanId,
-        billing_period: billingCycle
+        billing_period: billingCycle,
+        url: checkoutUrl
       });
 
-      const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/create-stripe-checkout`, {
+      const checkoutResponse = await fetch(checkoutUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
