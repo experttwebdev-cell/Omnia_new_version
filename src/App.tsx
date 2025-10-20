@@ -1228,11 +1228,7 @@ function AppContent() {
       } else if (hash.startsWith('login')) {
         setCurrentView('login');
       } else if (hash === '') {
-        if (user && !loading) {
-          setCurrentView('dashboard');
-        } else {
-          setCurrentView('landing');
-        }
+        setCurrentView('landing');
       }
     };
 
