@@ -40,9 +40,9 @@ export function OnboardingPage({ onComplete, onSkipToHome }: OnboardingPageProps
         .insert({
           seller_id: seller.id,
           store_name: storeName || cleanStoreName,
-          shopify_domain: `${cleanStoreName}.myshopify.com`,
-          access_token: shopifyToken.trim(),
-          status: 'active'
+          store_url: `${cleanStoreName}.myshopify.com`,
+          api_token: shopifyToken.trim(),
+          is_active: true
         })
         .select()
         .single();
