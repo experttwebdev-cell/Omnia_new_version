@@ -1,137 +1,393 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Mail, Lock, Building, User, AlertCircle, ArrowLeft, CheckCircle, Package, Check, ArrowRight, CreditCard } from 'lucide-react';
-import { useAuth } from '../lib/authContext';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  Building,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  ArrowRight,
+  Shield,
+  Phone,
+  Globe
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/authContext';
 
-interface SignUpPageProps {
-  planId?: string;
-  onLogin: () => void;
-  onBack: () => void;
+// Validation types and utilities
+interface SignUpForm {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  full_name: string;
+  company_name: string;
+  phone: string;
+  website?: string;
+  acceptTerms: boolean;
+  acceptMarketing: boolean;
 }
 
-interface Plan {
-  id: string;
-  name: string;
-  price_monthly: number;
-  price_yearly: number;
-  max_products: number;
-  max_optimizations_monthly: number;
-  max_articles_monthly: number;
-  max_campaigns: number;
-  max_chat_responses_monthly: number;
-  features: Record<string, any>;
-  stripe_price_id: string;
-  stripe_price_id_yearly?: string;
+interface ValidationRules {
+  [key: string]: {
+    validate: (value: any, form?: SignUpForm) => boolean;
+    message: string;
+  };
 }
 
-export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
-  const { signUp } = useAuth();
-  const [step, setStep] = useState(1);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [selectedPlanId, setSelectedPlanId] = useState(initialPlanId || 'starter');
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [plans, setPlans] = useState<Plan[]>([]);
+interface PasswordStrength {
+  score: number;
+  feedback: string[];
+}
+
+export function SignUp() {
+  const navigate = useNavigate();
+  const { seller } = useAuth();
+  const [form, setForm] = useState<SignUpForm>({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    full_name: '',
+    company_name: '',
+    phone: '',
+    website: '',
+    acceptTerms: false,
+    acceptMarketing: false
+  });
+  const [errors, setErrors] = useState<Partial<SignUpForm>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof SignUpForm, boolean>>>({});
   const [loading, setLoading] = useState(false);
-  const [loadingPlans, setLoadingPlans] = useState(true);
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [] });
+  const [step, setStep] = useState(1);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Redirect if already authenticated
   useEffect(() => {
-    loadPlans();
-  }, []);
+    if (seller) {
+      navigate('/dashboard');
+    }
+  }, [seller, navigate]);
 
-  const loadPlans = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('price_monthly', { ascending: true });
-
-      if (error) throw error;
-      setPlans(data || []);
-    } catch (error) {
-      console.error('Error loading plans:', error);
-    } finally {
-      setLoadingPlans(false);
+  // Validation rules
+  const validationRules: ValidationRules = {
+    email: {
+      validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      message: 'Adresse email invalide'
+    },
+    password: {
+      validate: (value) => value.length >= 8 && /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value),
+      message: 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial'
+    },
+    confirmPassword: {
+      validate: (value, form) => value === form?.password,
+      message: 'Les mots de passe ne correspondent pas'
+    },
+    full_name: {
+      validate: (value) => value.trim().length >= 2,
+      message: 'Le nom complet doit contenir au moins 2 caractères'
+    },
+    company_name: {
+      validate: (value) => value.trim().length >= 2,
+      message: 'Le nom de l\'entreprise doit contenir au moins 2 caractères'
+    },
+    phone: {
+      validate: (value) => /^[\+]?[1-9][\d]{0,15}$/.test(value.replace(/\s/g, '')),
+      message: 'Numéro de téléphone invalide'
+    },
+    website: {
+      validate: (value) => !value || /^https?:\/\/.+\..+/.test(value),
+      message: 'URL de site web invalide'
+    },
+    acceptTerms: {
+      validate: (value) => value === true,
+      message: 'Vous devez accepter les conditions d\'utilisation'
     }
   };
 
-  const handleStep1Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  // Check password strength
+  const checkPasswordStrength = (password: string): PasswordStrength => {
+    const feedback: string[] = [];
+    let score = 0;
 
-    if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
-      return;
+    if (password.length >= 8) {
+      score += 1;
+    } else {
+      feedback.push('Au moins 8 caractères');
     }
 
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
-      return;
+    if (/[a-z]/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push('Une lettre minuscule');
     }
 
-    setStep(2);
+    if (/[A-Z]/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push('Une lettre majuscule');
+    }
+
+    if (/\d/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push('Un chiffre');
+    }
+
+    if (/[@$!%*?&]/.test(password)) {
+      score += 1;
+    } else {
+      feedback.push('Un caractère spécial (@$!%*?&)');
+    }
+
+    return { score, feedback };
   };
 
-  const handleStep2Submit = async () => {
-    setLoading(true);
-    setError('');
+  // Validate field
+  const validateField = (name: keyof SignUpForm, value: any): string => {
+    const rule = validationRules[name];
+    if (!rule) return '';
+    
+    if (!rule.validate(value, form)) {
+      return rule.message;
+    }
+    return '';
+  };
 
-    try {
-      const { error } = await signUp(email, password, companyName, fullName);
+  // Validate form step
+  const validateStep = (step: number): boolean => {
+    const stepFields: { [key: number]: (keyof SignUpForm)[] } = {
+      1: ['email', 'password', 'confirmPassword'],
+      2: ['full_name', 'company_name', 'phone', 'website'],
+      3: ['acceptTerms']
+    };
 
+    const fieldsToValidate = stepFields[step] || [];
+    const newErrors: Partial<SignUpForm> = {};
+
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, form[field]);
       if (error) {
-        setError(error.message || 'Erreur lors de l\'inscription');
-        setLoading(false);
-        return;
+        newErrors[field] = error;
       }
+    });
 
-      setSuccess(true);
-    } catch (err) {
-      setError('Une erreur est survenue');
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle input change
+  const handleChange = (field: keyof SignUpForm, value: any) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    setServerError(null);
+
+    // Real-time validation for touched fields
+    if (touched[field]) {
+      const error = validateField(field, value);
+      setErrors(prev => ({
+        ...prev,
+        [field]: error || undefined
+      }));
+    }
+
+    // Check password strength in real-time
+    if (field === 'password') {
+      setPasswordStrength(checkPasswordStrength(value));
+    }
+  };
+
+  // Handle blur
+  const handleBlur = (field: keyof SignUpForm) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const error = validateField(field, form[field]);
+    setErrors(prev => ({
+      ...prev,
+      [field]: error || undefined
+    }));
+  };
+
+  // Next step
+  const nextStep = () => {
+    if (validateStep(step)) {
+      setStep(prev => prev + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // Previous step
+  const prevStep = () => {
+    setStep(prev => prev - 1);
+    window.scrollTo(0, 0);
+  };
+
+  // Submit form
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setServerError(null);
+
+    if (!validateStep(step)) {
+      return;
+    }
+
+    if (step < 3) {
+      nextStep();
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            full_name: form.full_name,
+            company_name: form.company_name,
+            role: 'seller'
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create seller profile
+        const { error: sellerError } = await supabase
+          .from('sellers')
+          .insert([
+            {
+              id: authData.user.id,
+              email: form.email,
+              full_name: form.full_name,
+              company_name: form.company_name,
+              phone: form.phone,
+              website: form.website,
+              role: 'seller',
+              status: 'trial',
+              trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days trial
+            }
+          ]);
+
+        if (sellerError) throw sellerError;
+
+        // Create trial subscription
+        const { error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .insert([
+            {
+              seller_id: authData.user.id,
+              plan_id: 'trial',
+              status: 'active',
+              current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              max_products: 50,
+              max_optimizations_monthly: 100,
+              max_articles_monthly: 10,
+              max_chat_responses_monthly: 500
+            }
+          ]);
+
+        if (subscriptionError) throw subscriptionError;
+
+        setSuccess(true);
+        
+        // Redirect to verification page or dashboard
+        setTimeout(() => {
+          navigate('/verify-email');
+        }, 3000);
+      }
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      
+      // Handle specific Supabase errors
+      if (error.message.includes('already registered')) {
+        setServerError('Un compte existe déjà avec cette adresse email');
+      } else if (error.message.includes('invalid_email')) {
+        setServerError('Adresse email invalide');
+      } else if (error.message.includes('weak_password')) {
+        setServerError('Le mot de passe est trop faible');
+      } else {
+        setServerError('Une erreur est survenue lors de la création du compte. Veuillez réessayer.');
+      }
+    } finally {
       setLoading(false);
     }
   };
 
-  const selectedPlan = plans.find(p => p.id === selectedPlanId);
-  const selectedPrice = selectedPlan
-    ? (billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly)
-    : 0;
+  // Password strength indicator
+  const PasswordStrengthIndicator = () => {
+    if (!form.password) return null;
+
+    const strengthColors = [
+      'bg-red-500',
+      'bg-orange-500',
+      'bg-yellow-500',
+      'bg-blue-500',
+      'bg-green-500'
+    ];
+
+    const strengthLabels = [
+      'Très faible',
+      'Faible',
+      'Moyen',
+      'Fort',
+      'Très fort'
+    ];
+
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((index) => (
+            <div
+              key={index}
+              className={`h-2 flex-1 rounded-full transition-all ${
+                index <= passwordStrength.score
+                  ? strengthColors[passwordStrength.score - 1]
+                  : 'bg-gray-200'
+              }`}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">
+            Force du mot de passe: <strong>{strengthLabels[passwordStrength.score - 1] || 'Très faible'}</strong>
+          </span>
+        </div>
+        {passwordStrength.feedback.length > 0 && (
+          <div className="text-sm text-gray-600 space-y-1">
+            <p className="font-medium">Requis:</p>
+            <ul className="list-disc list-inside space-y-1">
+              {passwordStrength.feedback.map((item, index) => (
+                <li key={index} className="text-red-500">{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200 text-center">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
-              <CheckCircle className="w-10 h-10 text-white" />
-            </div>
-
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Compte créé avec succès!
-            </h2>
-
-            <p className="text-gray-600 mb-6">
-              Votre compte a été créé. Vous allez maintenant être redirigé vers le paiement sécurisé.
-            </p>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <p className="text-blue-800 text-sm">
-                ✨ Essai gratuit de 14 jours inclus dans tous les forfaits!
-              </p>
-            </div>
-
-            <button
-              onClick={onLogin}
-              className="w-full text-white py-4 rounded-xl font-semibold transition-all"
-              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-            >
-              Continuer
-            </button>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Compte créé avec succès !</h2>
+          <p className="text-gray-600 mb-6">
+            Un email de confirmation a été envoyé à <strong>{form.email}</strong>.
+            Veuillez vérifier votre boîte de réception pour activer votre compte.
+          </p>
+          <div className="animate-pulse text-sm text-blue-600">
+            Redirection en cours...
           </div>
         </div>
       </div>
@@ -139,246 +395,382 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl">
-        <button
-          onClick={step === 1 ? onBack : () => setStep(1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Retour
-        </button>
-
-        <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-              <ShoppingBag className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900">Omnia AI</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <span>Étape {step} sur 3</span>
+            <span>{Math.round((step / 3) * 100)}%</span>
           </div>
-
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${step === 1 ? 'text-white' : 'bg-gray-200 text-gray-600'}`} style={step === 1 ? { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' } : {}}>1</div>
-              <span className={`text-sm font-medium ${step === 1 ? 'text-gray-900' : 'text-gray-500'}`}>Informations</span>
-            </div>
-            <div className="w-12 h-0.5 bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${step === 2 ? 'text-white' : 'bg-gray-200 text-gray-600'}`} style={step === 2 ? { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' } : {}}>2</div>
-              <span className={`text-sm font-medium ${step === 2 ? 'text-gray-900' : 'text-gray-500'}`}>Forfait</span>
-            </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(step / 3) * 100}%` }}
+            />
           </div>
+        </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{step === 1 ? 'Créer un compte' : 'Choisir votre forfait'}</h2>
-          <p className="text-gray-600 text-center mb-2">
-            Essai gratuit de 14 jours
-          </p>
-          <p className="text-sm text-blue-600 text-center mb-8">
-            Aucune carte bancaire requise
-          </p>
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-red-800 text-sm">{error}</p>
+        {/* Form Container */}
+        <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 p-8">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-6 h-6 text-white" />
             </div>
-          )}
-
-          {step === 1 && (
-            <form onSubmit={handleStep1Submit} className="space-y-6">
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom complet
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Jean Dupont"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom de l'entreprise
-                </label>
-                <div className="relative">
-                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    required
-                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Ma Boutique"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email professionnel
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="votre@email.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mot de passe
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmer le mot de passe
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Étape suivante...
-                  </>
-                ) : (
-                  'Continuer'
-                )}
-              </button>
-            </form>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Choisir votre forfait
-                </label>
-                {loadingPlans ? (
-                  <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {plans.map((plan) => (
-                      <button
-                        key={plan.id}
-                        type="button"
-                        onClick={() => setSelectedPlanId(plan.id)}
-                        className={`p-5 rounded-xl border-2 transition-all text-left ${
-                          selectedPlanId === plan.id
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <Package className="w-6 h-6 text-purple-600" />
-                            <span className="text-lg font-bold text-gray-900">{plan.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-gray-900">{plan.price_monthly}€</div>
-                            <div className="text-xs text-gray-500">par mois</div>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-green-600" />
-                            {plan.max_products === -1 ? 'Produits illimités' : `${plan.max_products} produits`}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-green-600" />
-                            {plan.max_optimizations_monthly === -1 ? 'Optimisations illimitées' : `${plan.max_optimizations_monthly} optimisations/mois`}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-green-600" />
-                            {plan.max_articles_monthly === -1 ? 'Articles illimités' : `${plan.max_articles_monthly} articles IA/mois`}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={handleStep2Submit}
-                disabled={loading || !selectedPlanId}
-                className="w-full text-white py-4 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                style={{ background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Création du compte...
-                  </>
-                ) : (
-                  'Commencer l\'essai gratuit'
-                )}
-              </button>
-
-              <p className="text-xs text-gray-500 text-center">
-                En créant un compte, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-8 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer un compte</h1>
             <p className="text-gray-600">
-              Déjà un compte?{' '}
-              <button
-                onClick={onLogin}
-                className="font-semibold transition bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent hover:from-blue-700 hover:to-purple-700"
-              >
-                Se connecter
-              </button>
+              Rejoignez notre plateforme et boostez vos ventes
             </p>
           </div>
+
+          {serverError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-800 text-sm">{serverError}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Step 1: Account Information */}
+            {step === 1 && (
+              <div className="space-y-4 animate-fade-in">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Adresse Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      onBlur={() => handleBlur('email')}
+                      className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.email
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="votre@email.com"
+                    />
+                    {touched.email && !errors.email && form.email && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {errors.email && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mot de passe
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      onBlur={() => handleBlur('password')}
+                      className={`w-full pl-10 pr-10 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.password
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="Votre mot de passe"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <PasswordStrengthIndicator />
+                  {errors.password && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirmer le mot de passe
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={form.confirmPassword}
+                      onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                      onBlur={() => handleBlur('confirmPassword')}
+                      className={`w-full pl-10 pr-10 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.confirmPassword
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="Confirmez votre mot de passe"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Profile Information */}
+            {step === 2 && (
+              <div className="space-y-4 animate-fade-in">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom complet
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={form.full_name}
+                      onChange={(e) => handleChange('full_name', e.target.value)}
+                      onBlur={() => handleBlur('full_name')}
+                      className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.full_name
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="Votre nom complet"
+                    />
+                    {touched.full_name && !errors.full_name && form.full_name && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {errors.full_name && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.full_name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom de l'entreprise
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={form.company_name}
+                      onChange={(e) => handleChange('company_name', e.target.value)}
+                      onBlur={() => handleBlur('company_name')}
+                      className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.company_name
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="Votre entreprise"
+                    />
+                    {touched.company_name && !errors.company_name && form.company_name && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {errors.company_name && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.company_name}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Téléphone
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => handleChange('phone', e.target.value)}
+                      onBlur={() => handleBlur('phone')}
+                      className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.phone
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="+33 1 23 45 67 89"
+                    />
+                    {touched.phone && !errors.phone && form.phone && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {errors.phone && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.phone}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Site web (optionnel)
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="url"
+                      value={form.website}
+                      onChange={(e) => handleChange('website', e.target.value)}
+                      onBlur={() => handleBlur('website')}
+                      className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition ${
+                        errors.website
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
+                      placeholder="https://votre-site.com"
+                    />
+                    {touched.website && !errors.website && form.website && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                  </div>
+                  {errors.website && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.website}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Terms and Conditions */}
+            {step === 3 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Essai gratuit de 14 jours</h3>
+                  <p className="text-blue-800 text-sm">
+                    Profitez de toutes les fonctionnalités premium pendant 14 jours. Aucune carte de crédit requise.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.acceptTerms}
+                      onChange={(e) => handleChange('acceptTerms', e.target.checked)}
+                      className="mt-1 w-4 h-4 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      J'accepte les{' '}
+                      <Link to="/terms" className="text-blue-600 hover:text-blue-700 font-medium">
+                        conditions d'utilisation
+                      </Link>{' '}
+                      et la{' '}
+                      <Link to="/privacy" className="text-blue-600 hover:text-blue-700 font-medium">
+                        politique de confidentialité
+                      </Link>
+                    </span>
+                  </label>
+                  {errors.acceptTerms && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {errors.acceptTerms}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.acceptMarketing}
+                      onChange={(e) => handleChange('acceptMarketing', e.target.checked)}
+                      className="mt-1 w-4 h-4 text-blue-600 border-2 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Je souhaite recevoir des conseils marketing et des offres spéciales par email
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex gap-3 pt-4">
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  disabled={loading}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  Retour
+                </button>
+              )}
+              
+              <button
+                type={step === 3 ? 'submit' : 'button'}
+                onClick={step < 3 ? nextStep : undefined}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Création du compte...
+                  </>
+                ) : step === 3 ? (
+                  <>
+                    <Shield className="w-5 h-5" />
+                    Créer mon compte
+                  </>
+                ) : (
+                  <>
+                    Continuer
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+            <p className="text-gray-600">
+              Déjà un compte ?{' '}
+              <Link
+                to="/login"
+                className="text-blue-600 hover:text-blue-700 font-semibold transition"
+              >
+                Se connecter
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        {/* Security Notice */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-500 flex items-center justify-center gap-1">
+            <Shield className="w-3 h-3" />
+            Vos données sont sécurisées et cryptées
+          </p>
         </div>
       </div>
     </div>
