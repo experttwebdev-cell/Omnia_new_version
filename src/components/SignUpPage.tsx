@@ -362,12 +362,24 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         throw new Error('Réponse invalide du serveur de paiement');
       }
 
+      console.log('Checkout response data:', checkoutData);
+
+      if (!checkoutData.success) {
+        throw new Error(checkoutData.error || 'Échec de la création de la session de paiement');
+      }
+
       if (!checkoutData.url) {
         throw new Error('URL de paiement non reçue');
       }
 
       // 3. Rediriger vers Stripe Checkout
       console.log('Redirecting to Stripe Checkout:', checkoutData.url);
+
+      // Vérifier si la clé Stripe est en mode test
+      if (!checkoutData.url.includes('checkout.stripe.com')) {
+        throw new Error('Configuration Stripe invalide. Veuillez contacter le support.');
+      }
+
       window.location.href = checkoutData.url;
 
     } catch (err) {
