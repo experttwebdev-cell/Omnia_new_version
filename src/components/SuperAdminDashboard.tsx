@@ -1,25 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Package,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Ban,
-  CheckCircle,
-  Clock,
-  Crown,
-  Edit,
-  X,
-  Save,
-  RefreshCw,
-  MoreVertical,
-  AlertTriangle,
-  BarChart3
-} from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Package, Search, Filter, Download, Eye, Ban, CheckCircle, Clock, Crown, CreditCard as Edit, X, Save, RefreshCw, MoreVertical, AlertTriangle, BarChart3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/authContext';
 
