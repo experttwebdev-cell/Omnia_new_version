@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .insert({
           seller_id: data.user.id,
           plan_id: planId,
-          status: 'trialing',
+          status: 'trial',
           billing_period: billing,
           current_period_start: new Date().toISOString(),
           current_period_end: trialEndsAt.toISOString(),
