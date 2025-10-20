@@ -27,6 +27,8 @@ interface SignUpForm {
   company_name: string;
   phone: string;
   website?: string;
+  selectedPlan?: string;
+  billingPeriod: 'monthly' | 'annual';
   acceptTerms: boolean;
   acceptMarketing: boolean;
 }
@@ -45,6 +47,7 @@ interface PasswordStrength {
 
 export function SignUp() {
   const { seller } = useAuth();
+  const [plans, setPlans] = useState<any[]>([]);
   const [form, setForm] = useState<SignUpForm>({
     email: '',
     password: '',
@@ -53,6 +56,8 @@ export function SignUp() {
     company_name: '',
     phone: '',
     website: '',
+    selectedPlan: undefined,
+    billingPeriod: 'monthly',
     acceptTerms: false,
     acceptMarketing: false
   });
@@ -66,11 +71,27 @@ export function SignUp() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Redirect if already authenticated
+  // Fetch plans and redirect if already authenticated
   useEffect(() => {
     if (seller) {
       window.location.href = '/dashboard';
     }
+
+    // Fetch subscription plans
+    const fetchPlans = async () => {
+      const { data } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .order('price_monthly');
+      if (data) {
+        setPlans(data);
+        // Set default plan to first one
+        if (data.length > 0 && !form.selectedPlan) {
+          setForm(prev => ({ ...prev, selectedPlan: data[0].id }));
+        }
+      }
+    };
+    fetchPlans();
   }, [seller]);
 
   // Validation rules
@@ -106,6 +127,10 @@ export function SignUp() {
     acceptTerms: {
       validate: (value) => value === true,
       message: 'Vous devez accepter les conditions d\'utilisation'
+    },
+    selectedPlan: {
+      validate: (value) => !!value,
+      message: 'Veuillez sélectionner un plan d\'abonnement'
     }
   };
 
@@ -163,7 +188,7 @@ export function SignUp() {
     const stepFields: { [key: number]: (keyof SignUpForm)[] } = {
       1: ['email', 'password', 'confirmPassword'],
       2: ['full_name', 'company_name', 'phone', 'website'],
-      3: ['acceptTerms']
+      3: ['acceptTerms', 'selectedPlan']
     };
 
     const fieldsToValidate = stepFields[step] || [];
@@ -276,19 +301,20 @@ export function SignUp() {
 
         if (sellerError) throw sellerError;
 
-        // Create trial subscription
+        // Get selected plan details
+        const selectedPlanDetails = plans.find(p => p.id === form.selectedPlan);
+
+        // Create subscription
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
           .insert([
             {
               seller_id: authData.user.id,
-              plan_id: 'trial',
-              status: 'active',
-              current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-              max_products: 50,
-              max_optimizations_monthly: 100,
-              max_articles_monthly: 10,
-              max_chat_responses_monthly: 500
+              plan_id: form.selectedPlan,
+              status: 'trial',
+              billing_period: form.billingPeriod,
+              trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              current_period_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
             }
           ]);
 
@@ -663,22 +689,109 @@ export function SignUp() {
               <div className="space-y-6 animate-fade-in">
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-6">
                   <h3 className="font-bold text-gray-900 mb-3 text-lg">Choisissez votre formule d'abonnement</h3>
-                  <p className="text-gray-700 text-sm mb-4">
-                    Sélectionnez votre forfait (Starter, Professional ou Enterprise) et choisissez entre la facturation mensuelle ou annuelle. Vous pourrez changer de plan à tout moment.
+                  <p className="text-gray-700 text-sm">
+                    Sélectionnez votre forfait et votre période de facturation. Vous bénéficierez de 14 jours d'essai gratuit.
                   </p>
-                  <div className="bg-white rounded-lg p-4 border-2 border-blue-300 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-1">
-                        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                        </svg>
+                </div>
+
+                {/* Billing Period Toggle */}
+                <div className="flex justify-center">
+                  <div className="inline-flex rounded-lg border-2 border-gray-300 bg-white p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleChange('billingPeriod', 'monthly')}
+                      className={`px-6 py-2 rounded-md font-medium transition ${
+                        form.billingPeriod === 'monthly'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Mensuel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleChange('billingPeriod', 'annual')}
+                      className={`px-6 py-2 rounded-md font-medium transition relative ${
+                        form.billingPeriod === 'annual'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Annuel
+                      <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        -17%
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Plans Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {plans.map((plan) => {
+                    const price = form.billingPeriod === 'annual' ? plan.price_annual : plan.price_monthly;
+                    const isSelected = form.selectedPlan === plan.id;
+
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => handleChange('selectedPlan', plan.id)}
+                        className={`cursor-pointer rounded-lg border-2 p-5 transition-all ${
+                          isSelected
+                            ? 'border-blue-500 bg-blue-50 shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="text-lg font-bold text-gray-900">{plan.name}</h4>
+                          {isSelected && (
+                            <CheckCircle className="w-6 h-6 text-blue-600" />
+                          )}
+                        </div>
+                        <div className="mb-4">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold text-gray-900">€{price}</span>
+                            <span className="text-gray-600">/{form.billingPeriod === 'annual' ? 'an' : 'mois'}</span>
+                          </div>
+                          {form.billingPeriod === 'annual' && (
+                            <p className="text-sm text-green-600 font-medium mt-1">
+                              Économisez €{(plan.price_monthly * 12) - plan.price_annual}/an
+                            </p>
+                          )}
+                        </div>
+                        {plan.features && (
+                          <ul className="space-y-2">
+                            {Object.entries(plan.features as Record<string, any>).slice(0, 4).map(([key, value]) => (
+                              <li key={key} className="flex items-start gap-2 text-sm text-gray-700">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>{String(value)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 mb-1">Paiement requis après l'inscription</p>
-                        <p className="text-sm text-gray-600">
-                          Après avoir créé votre compte, vous devrez choisir votre plan d'abonnement et effectuer le paiement via Stripe pour activer votre accès complet.
-                        </p>
-                      </div>
+                    );
+                  })}
+                </div>
+
+                {errors.selectedPlan && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <XCircle className="w-4 h-4" />
+                    {errors.selectedPlan}
+                  </p>
+                )}
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-yellow-900 mb-1">14 jours d'essai gratuit</p>
+                      <p className="text-sm text-yellow-800">
+                        Vous ne serez pas facturé pendant la période d'essai. Après 14 jours, vous devrez effectuer le paiement via Stripe pour continuer.
+                      </p>
                     </div>
                   </div>
                 </div>
