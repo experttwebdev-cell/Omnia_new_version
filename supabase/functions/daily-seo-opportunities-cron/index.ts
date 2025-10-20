@@ -17,16 +17,46 @@ Deno.serve(async (req)=>{
     if (!openaiKey) throw new Error("OpenAI API key not configured");
     const supabase = createClient(supabaseUrl, supabaseKey);
     console.log("🚀 Starting Daily SEO Opportunities & Article Generation...");
-    // 1️⃣ Charger les produits
-    const { data: products, error: fetchError } = await supabase.from("shopify_products").select("id, title, category, sub_category, product_type, tags, seo_title, seo_description, ai_color, ai_material, image_url, body_html, price").limit(500);
-    if (fetchError) throw fetchError;
-    if (!products?.length) return respond(200, {
-      success: true,
-      message: "No products available."
-    });
-    console.log(`✅ Found ${products.length} products`);
-    // 2️⃣ Récupérer les infos de la boutique
-    const { data: store } = await supabase.from("shopify_stores").select("store_name, domain, language").limit(1).maybeSingle();
+
+    // 1️⃣ Get all sellers to process each separately
+    const { data: sellers, error: sellersError } = await supabase
+      .from("sellers")
+      .select("id")
+      .eq("role", "seller");
+
+    if (sellersError) throw sellersError;
+    if (!sellers?.length) {
+      return respond(200, { success: true, message: "No sellers found." });
+    }
+
+    const allResults = [];
+
+    // Process each seller separately for multi-tenant isolation
+    for (const seller of sellers) {
+      const sellerId = seller.id;
+      console.log(`\n🔄 Processing seller: ${sellerId}`);
+
+      // 2️⃣ Load products for THIS seller only
+      const { data: products, error: fetchError } = await supabase
+        .from("shopify_products")
+        .select("id, title, category, sub_category, product_type, tags, seo_title, seo_description, ai_color, ai_material, image_url, body_html, price, seller_id")
+        .eq("seller_id", sellerId)
+        .limit(500);
+
+      if (fetchError) throw fetchError;
+      if (!products?.length) {
+        console.log(`⚠️ No products for seller ${sellerId}`);
+        continue;
+      }
+      console.log(`✅ Found ${products.length} products for seller ${sellerId}`);
+
+      // 3️⃣ Get store info for THIS seller
+      const { data: store } = await supabase
+        .from("shopify_stores")
+        .select("store_name, domain, language")
+        .eq("seller_id", sellerId)
+        .limit(1)
+        .maybeSingle();
     const storeName = store?.store_name || "Notre boutique";
     const language = store?.language || "fr";
     // 3️⃣ Générer les opportunités avec GPT-4o-mini
@@ -97,6 +127,7 @@ Réponds uniquement en JSON valide.
         const relatedProducts = findRelatedProducts(products, opp);
         const productIds = relatedProducts.map((p)=>p.id);
         const { data: inserted, error: insertError } = await supabase.from("blog_opportunities").insert({
+          seller_id: sellerId,
           article_title: opp.article_title,
           meta_description: opp.meta_description,
           intro_excerpt: opp.intro_excerpt,
@@ -113,8 +144,8 @@ Réponds uniquement en JSON valide.
           generated_at: new Date().toISOString()
         }).select().single();
         if (insertError) throw insertError;
-        // 5️⃣ Générer l’article complet
-        const article = await generateArticleFromOpportunity(inserted, relatedProducts, supabase, openaiKey);
+        // 5️⃣ Générer l'article complet
+        const article = await generateArticleFromOpportunity(inserted, relatedProducts, supabase, openaiKey, sellerId);
         if (article.success) {
           await supabase.from("blog_opportunities").update({
             status: "published",
@@ -130,11 +161,19 @@ Réponds uniquement en JSON valide.
         console.error("❌ Error during opportunity/article creation:", err);
       }
     }
-    console.log("🎉 Daily SEO Opportunity job completed");
+
+      allResults.push({
+        seller_id: sellerId,
+        created: createdResults.length,
+        results: createdResults
+      });
+    } // End of seller loop
+
+    console.log("🎉 Daily SEO Opportunity job completed for all sellers");
     return respond(200, {
       success: true,
-      message: `${createdResults.length} articles generated and published.`,
-      results: createdResults
+      message: `Processed ${sellers.length} sellers, ${allResults.reduce((sum, r) => sum + r.created, 0)} total articles generated.`,
+      results: allResults
     });
   } catch (err) {
     console.error("💥 Global Error:", err);
@@ -147,7 +186,7 @@ Réponds uniquement en JSON valide.
 // ==============================
 // 🧠 Article Generation Function
 // ==============================
-async function generateArticleFromOpportunity(opportunity, products, supabase, openaiKey) {
+async function generateArticleFromOpportunity(opportunity, products, supabase, openaiKey, sellerId) {
   try {
     const productList = products.slice(0, 6).map((p)=>`${p.title} (${p.price}€)`).join(", ");
     const prompt = `
@@ -184,8 +223,9 @@ Style: professionnel, fluide, optimisé SEO.
     const result = await aiResponse.json();
     let html = result.choices[0].message.content.trim();
     html = html.replace(/^```html\n?/, "").replace(/```$/, "").trim();
-    const { data: article, error: insertError } = await supabase.from("blog_articles").insert([
+    const { data: article, error: insertError} = await supabase.from("blog_articles").insert([
       {
+        seller_id: sellerId,
         title: opportunity.article_title,
         content: html,
         meta_description: opportunity.meta_description,
