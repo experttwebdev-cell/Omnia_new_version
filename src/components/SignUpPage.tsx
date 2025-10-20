@@ -337,7 +337,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         body: JSON.stringify({
           plan_id: selectedPlanId,
           billing_period: billingCycle,
-          success_url: `${window.location.origin}/#onboarding?checkout=success`,
+          success_url: `${window.location.origin}/#dashboard?checkout=success`,
           cancel_url: `${window.location.origin}/#signup?checkout=cancelled`
         })
       });
