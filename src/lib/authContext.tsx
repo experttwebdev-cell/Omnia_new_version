@@ -150,6 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { error };
 
+    // If user already exists, Supabase returns success but user is null or session is empty
+    if (!data.user) {
+      return { error: { message: 'Un compte existe déjà avec cet email. Veuillez vous connecter.' } };
+    }
+
     if (data.user) {
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + 14);
@@ -168,6 +173,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (sellerError) {
         console.error('Error creating seller:', sellerError);
+        // If seller already exists, user should login instead
+        if (sellerError.code === '23505') { // Duplicate key error
+          return { error: { message: 'Un compte existe déjà avec cet email. Veuillez vous connecter.' } };
+        }
         return { error: sellerError };
       }
 
