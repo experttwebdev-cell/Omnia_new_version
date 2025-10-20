@@ -225,28 +225,32 @@ export function Settings() {
               <CreditCard className="w-4 h-4 inline-block mr-2" />
               Abonnement
             </button>
-            <button
-              onClick={() => setActiveTab('ai')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'ai'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <SettingsIcon className="w-4 h-4 inline-block mr-2" />
-              Fournisseurs IA
-            </button>
-            <button
-              onClick={() => setActiveTab('diagnostics')}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'diagnostics'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <RefreshCw className="w-4 h-4 inline-block mr-2" />
-              Diagnostics
-            </button>
+            {seller?.role === 'superadmin' && (
+              <>
+                <button
+                  onClick={() => setActiveTab('ai')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'ai'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <SettingsIcon className="w-4 h-4 inline-block mr-2" />
+                  Fournisseurs IA
+                </button>
+                <button
+                  onClick={() => setActiveTab('diagnostics')}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === 'diagnostics'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <RefreshCw className="w-4 h-4 inline-block mr-2" />
+                  Diagnostics
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
@@ -632,16 +636,44 @@ function SubscriptionManagement({ seller }: { seller: any }) {
                   </div>
                 </div>
 
-                {plan.features && (
-                  <ul className="space-y-2 mb-6">
-                    {Object.entries(plan.features as Record<string, any>).slice(0, 5).map(([key, value]) => (
-                      <li key={key} className="flex items-start gap-2 text-sm text-gray-700">
+                <ul className="space-y-2 mb-6 text-sm text-gray-700">
+                  {plan.name === 'Starter Lite' && (
+                    <>
+                      <li className="flex items-start gap-2">
                         <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span>{String(value)}</span>
+                        <span>Jusqu'à 100 produits</span>
                       </li>
-                    ))}
-                  </ul>
-                )}
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>Support par email</span>
+                      </li>
+                    </>
+                  )}
+                  {plan.name === 'Professional AI' && (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>Produits illimités</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>IA avancée + Chat</span>
+                      </li>
+                    </>
+                  )}
+                  {plan.name === 'Enterprise Commerce+' && (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>Tout de Professional +</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>Multi-boutiques</span>
+                      </li>
+                    </>
+                  )}
+                </ul>
 
                 {isCurrentPlan ? (
                   <button

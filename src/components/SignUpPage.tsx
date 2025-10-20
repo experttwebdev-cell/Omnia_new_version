@@ -71,13 +71,8 @@ export function SignUp() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Fetch plans and redirect if already authenticated
+  // Fetch subscription plans on mount
   useEffect(() => {
-    if (seller) {
-      window.location.href = '/dashboard';
-      return;
-    }
-
     // Fetch subscription plans
     const fetchPlans = async () => {
       try {
@@ -107,7 +102,7 @@ export function SignUp() {
       }
     };
     fetchPlans();
-  }, [seller]);
+  }, []);
 
   // Validation rules
   const validationRules: ValidationRules = {
@@ -739,9 +734,9 @@ export function SignUp() {
                 </div>
 
                 {/* Plans Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
                   {plans.length === 0 ? (
-                    <div className="col-span-3 text-center py-8">
+                    <div className="col-span-full text-center py-8">
                       <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-2" />
                       <p className="text-gray-600">Chargement des plans...</p>
                     </div>
@@ -753,25 +748,25 @@ export function SignUp() {
                       <div
                         key={plan.id}
                         onClick={() => handleChange('selectedPlan', plan.id)}
-                        className={`cursor-pointer rounded-lg border-2 p-5 transition-all ${
+                        className={`cursor-pointer rounded-xl border-2 p-6 transition-all ${
                           isSelected
-                            ? 'border-blue-500 bg-blue-50 shadow-lg'
+                            ? 'border-blue-500 bg-blue-50 shadow-xl scale-105'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <h4 className="text-lg font-bold text-gray-900">{plan.name}</h4>
+                        <div className="flex items-start justify-between mb-4">
+                          <h4 className="text-xl font-bold text-gray-900">{plan.name}</h4>
                           {isSelected && (
-                            <CheckCircle className="w-6 h-6 text-blue-600" />
+                            <CheckCircle className="w-6 h-6 text-blue-600 flex-shrink-0" />
                           )}
                         </div>
-                        <div className="mb-4">
+                        <div className="mb-6">
                           <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-gray-900">€{price}</span>
-                            <span className="text-gray-600">/{form.billingPeriod === 'annual' ? 'an' : 'mois'}</span>
+                            <span className="text-4xl font-bold text-gray-900">€{price}</span>
+                            <span className="text-gray-600 text-sm">/{form.billingPeriod === 'annual' ? 'an' : 'mois'}</span>
                           </div>
                           {form.billingPeriod === 'annual' && (
-                            <p className="text-sm text-green-600 font-medium mt-1">
+                            <p className="text-sm text-green-600 font-medium mt-2">
                               Économisez €{((parseFloat(plan.price_monthly) * 12) - parseFloat(plan.price_annual)).toFixed(2)}/an
                             </p>
                           )}

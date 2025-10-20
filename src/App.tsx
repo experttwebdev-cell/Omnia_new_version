@@ -158,15 +158,21 @@ function MainApp() {
     setSelectedProductId(productId);
   };
 
+  // Main navigation - sellers only see essential items
   const navigation = [
     { id: 'dashboard' as ViewType, name: t.nav.dashboard, icon: LayoutDashboard },
-    { id: 'products' as ViewType, name: t.nav.products, icon: Package },
-    { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
-    { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
     { id: 'stores' as ViewType, name: t.nav.stores, icon: Store },
+    { id: 'products' as ViewType, name: t.nav.products, icon: Package },
     { id: 'google-shopping' as ViewType, name: 'Google Shopping', icon: ShoppingBag },
     { id: 'usage-dashboard' as ViewType, name: 'Mon Abonnement', icon: Package },
+    { id: 'settings' as ViewType, name: 'Paramètres', icon: Settings },
   ];
+
+  // Technical/debug items - only for superadmin
+  const technicalNavigation = seller?.role === 'superadmin' ? [
+    { id: 'product-search' as ViewType, name: 'Recherche Produits', icon: Search },
+    { id: 'omniachat' as ViewType, name: 'OmniaChat', icon: Sparkles },
+  ] : [];
 
   const adminNavigation = seller?.role === 'superadmin' ? [
     { id: 'super-admin' as ViewType, name: 'Admin', icon: Settings },
@@ -365,6 +371,27 @@ function MainApp() {
         </nav>
 
         <div className="p-4 border-t border-gray-200 space-y-1">
+          {technicalNavigation.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveView(item.id);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.name}</span>
+              </button>
+            );
+          })}
           {adminNavigation.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
@@ -386,20 +413,6 @@ function MainApp() {
               </button>
             );
           })}
-          <button
-            onClick={() => {
-              setActiveView('settings');
-              setSidebarOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              activeView === 'settings'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="font-medium">{t.nav.settings}</span>
-          </button>
           <button
             onClick={() => signOut()}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition"
