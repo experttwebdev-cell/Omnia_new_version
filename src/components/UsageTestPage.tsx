@@ -72,18 +72,18 @@ export function UsageTestPage() {
       if (usageError) throw usageError;
       setUsage(usageData);
 
-      // Get plan limits
-      const { data: sellerData } = await supabase
-        .from('sellers')
-        .select('subscription_plan_id')
-        .eq('id', user.id)
+      // Get plan limits from subscription
+      const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('plan_id')
+        .eq('seller_id', user.id)
         .single();
 
-      if (sellerData) {
+      if (subscriptionData) {
         const { data: planData } = await supabase
           .from('subscription_plans')
           .select('*')
-          .eq('id', sellerData.subscription_plan_id)
+          .eq('id', subscriptionData.plan_id)
           .single();
 
         setPlan(planData);
