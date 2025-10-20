@@ -603,11 +603,11 @@ function SubscriptionManagement({ seller }: { seller: any }) {
             </div>
             <TrendingUp className="w-12 h-12 text-blue-500" />
           </div>
-          {currentSubscription.trial_ends_at && (
+          {seller?.trial_ends_at && seller?.status === 'trial' && (
             <div className="mt-4 pt-4 border-t border-blue-200">
               <p className="text-sm text-gray-600">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                Période d'essai jusqu'au: {new Date(currentSubscription.trial_ends_at).toLocaleDateString('fr-FR')}
+                Période d'essai jusqu'au: {new Date(seller.trial_ends_at).toLocaleDateString('fr-FR')}
               </p>
             </div>
           )}

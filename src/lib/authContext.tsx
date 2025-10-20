@@ -193,7 +193,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           billing_period: billing,
           current_period_start: new Date().toISOString(),
           current_period_end: trialEndsAt.toISOString(),
-          trial_ends_at: trialEndsAt.toISOString(),
           cancel_at_period_end: false,
         });
 
