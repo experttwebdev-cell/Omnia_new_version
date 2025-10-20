@@ -6,7 +6,8 @@ export default function GoogleMerchant() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const feedUrl = `${window.location.origin}/api/google-shopping-feed.xml?seller_id=${user?.id || 'YOUR_SELLER_ID'}`;
+  // Générer l'URL du flux selon le nouveau format
+  const feedUrl = `${window.location.origin}/Shoppingfeed/${user?.id || 'YOUR_SELLER_ID'}.xml`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(feedUrl);
@@ -62,6 +63,9 @@ export default function GoogleMerchant() {
                   )}
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Format: <code className="bg-gray-100 px-1 rounded">omnia.sale/Shoppingfeed/&#123;SELLER_ID&#125;.xml</code>
+              </p>
             </div>
 
             {/* Test Feed Button */}
@@ -176,6 +180,9 @@ export default function GoogleMerchant() {
                     <div className="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700 break-all">
                       {feedUrl}
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Format: <code className="bg-gray-100 px-1 rounded">omnia.sale/Shoppingfeed/VOTRE_ID.xml</code>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -234,6 +241,35 @@ export default function GoogleMerchant() {
             <h3 className="font-semibold text-gray-900">Compatibilité</h3>
           </div>
           <p className="text-sm text-gray-600">Compatible avec tous les pays et langues supportés par Google Merchant</p>
+        </div>
+      </div>
+
+      {/* Technical Details */}
+      <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">Détails Techniques</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Structure de l'URL</h4>
+            <div className="bg-white border border-gray-300 rounded p-3 font-mono text-xs">
+              {window.location.origin}/Shoppingfeed/
+              <span className="text-blue-600 font-bold">&#123;VOTRE_ID&#125;</span>
+              .xml
+            </div>
+            <p className="text-gray-600 mt-2">
+              Votre ID unique est automatiquement inclus dans l'URL pour identifier votre catalogue.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Exemples d'URL</h4>
+            <div className="space-y-2 text-xs">
+              <div className="bg-white border border-gray-300 rounded p-2 font-mono break-all">
+                {window.location.origin}/Shoppingfeed/abc123.xml
+              </div>
+              <div className="bg-white border border-gray-300 rounded p-2 font-mono break-all">
+                {window.location.origin}/Shoppingfeed/shop123.xml
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
