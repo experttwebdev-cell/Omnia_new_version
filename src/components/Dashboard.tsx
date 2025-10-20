@@ -84,91 +84,90 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       const isRefreshing = !loading;
       if (isRefreshing) setRefreshing(true);
 
-      // Fetch all data in parallel
-      const [
-        dashboardStatsResult,
-        productTypesResult,
-        enrichedProductsResult
-      ] = await Promise.all([
-        supabase.from('fast_dashboard_cache').select('*').maybeSingle(),
-        supabase.from('product_type_statistics_cache').select('*'),
-        supabase.from('shopify_products')
-          .select('*')
-          .eq('enrichment_status', 'enriched')
-          .order('last_enriched_at', { ascending: false })
-          .limit(100)
-      ]);
+      // Fetch all products for this seller
+      const { data: allProducts, error: productsError } = await supabase
+        .from('shopify_products')
+        .select('*')
+        .eq('seller_id', seller.id);
 
-      // Try to fetch performance metrics, but don't fail if table doesn't exist
-      let performanceResult = { data: null, error: null };
-      try {
-        performanceResult = await supabase.from('performance_metrics_cache').select('*').maybeSingle();
-      } catch (e) {
-        console.warn('Performance metrics not available:', e);
+      if (productsError) {
+        throw productsError;
       }
 
-      // Handle critical errors
-      const criticalErrors = [
-        dashboardStatsResult.error,
-        productTypesResult.error,
-        enrichedProductsResult.error
-      ].filter(error => error);
+      const products = allProducts || [];
 
-      if (criticalErrors.length > 0) {
-        console.error('Database errors:', criticalErrors);
-        throw new Error(`Failed to load dashboard data: ${criticalErrors[0]?.message}`);
-      }
+      // Calculate stats directly from products
+      const totalProducts = products.length;
+      const activeProducts = products.filter(p => p.status === 'active').length;
+      const lowStockProducts = products.filter(p => (p.inventory_quantity || 0) < 10 && (p.inventory_quantity || 0) > 0).length;
+      const totalInventory = products.reduce((sum, p) => sum + (p.inventory_quantity || 0), 0);
+      const uniqueVendors = new Set(products.map(p => p.vendor).filter(Boolean)).size;
+      const enrichedProducts = products.filter(p => p.enrichment_status === 'enriched').length;
+      const syncedProducts = products.filter(p => p.shopify_sync_status === 'synced').length;
+      const pendingSyncProducts = products.filter(p => p.shopify_sync_status === 'pending').length;
 
-      const statsData = dashboardStatsResult.data;
-      if (!statsData) {
-        throw new Error('Dashboard statistics not available');
-      }
+      // Calculate product types
+      const categoryCount = new Map<string, number>();
+      products.forEach(p => {
+        const cat = p.category || 'Uncategorized';
+        categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+      });
+      const productTypes = Array.from(categoryCount.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
 
-      const productTypes = (productTypesResult.data || []).map(pt => ({
-        type: pt.product_type || 'Uncategorized',
-        count: pt.product_count
+      // Performance metrics
+      const enrichedWithScores = products.filter(p => p.ai_confidence_score);
+      const avgScore = enrichedWithScores.length > 0
+        ? enrichedWithScores.reduce((sum, p) => sum + (p.ai_confidence_score || 0), 0) / enrichedWithScores.length
+        : 0;
+      const highConfidenceProducts = products.filter(p => (p.ai_confidence_score || 0) >= 0.8).length;
+
+      const performanceMetrics = {
+        syncSuccessRate: totalProducts > 0 ? (syncedProducts / totalProducts) * 100 : 0,
+        avgConfidenceScore: avgScore,
+        highConfidenceProducts
+      };
+
+      // Get enriched products for display
+      const enrichedProductsList = products
+        .filter(p => p.enrichment_status === 'enriched')
+        .sort((a, b) => {
+          const dateA = a.last_enriched_at ? new Date(a.last_enriched_at).getTime() : 0;
+          const dateB = b.last_enriched_at ? new Date(b.last_enriched_at).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 100);
+
+      // Fetch recent sync logs
+      const { data: syncLogs } = await supabase
+        .from('recent_sync_logs_view')
+        .select('*')
+        .limit(5);
+
+      const recentSyncs: SyncLog[] = (syncLogs || []).map(log => ({
+        id: log.id || '',
+        store_name: log.store_name || 'Unknown Store',
+        status: log.status || 'failed',
+        products_processed: log.products_processed || 0,
+        products_failed: log.products_failed || 0,
+        created_at: log.created_at || new Date().toISOString()
       }));
 
-      const products = enrichedProductsResult.data || [];
-      const performanceData = performanceResult.data;
-
-      // Mock recent syncs (replace with actual sync_logs data when available)
-      const mockRecentSyncs: SyncLog[] = [
-        {
-          id: '1',
-          store_name: 'Main Store',
-          status: 'success',
-          products_processed: 45,
-          products_failed: 2,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '2', 
-          store_name: 'Outlet Store',
-          status: 'processing',
-          products_processed: 23,
-          products_failed: 0,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-
-      setProducts(products);
+      setProducts(enrichedProductsList);
       setStats({
-        totalProducts: statsData.total_products || 0,
-        totalInventory: statsData.total_inventory || 0,
-        activeProducts: statsData.active_products || 0,
-        lowStockProducts: statsData.low_stock_products || 0,
-        uniqueVendors: statsData.unique_vendors || 0,
-        enrichedProducts: statsData.enriched_products || 0,
-        syncedProducts: statsData.synced_products || 0,
-        pendingSyncProducts: statsData.pending_sync_products || 0,
+        totalProducts,
+        totalInventory,
+        activeProducts,
+        lowStockProducts,
+        uniqueVendors,
+        enrichedProducts,
+        syncedProducts,
+        pendingSyncProducts,
         productTypes,
-        recentSyncs: mockRecentSyncs,
-        performanceMetrics: performanceData ? {
-          syncSuccessRate: performanceData.sync_success_rate || 0,
-          avgConfidenceScore: performanceData.avg_confidence_score || 0,
-          highConfidenceProducts: performanceData.high_confidence_products || 0
-        } : undefined
+        recentSyncs,
+        performanceMetrics
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -177,7 +176,7 @@ export function Dashboard({ onProductSelect, onViewAllProducts, onViewAllSyncs }
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loading]);
+  }, [seller?.id]);
 
   useEffect(() => {
     fetchDashboardData();
