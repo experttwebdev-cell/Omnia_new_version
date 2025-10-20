@@ -1,7 +1,18 @@
-import { useState, useEffect } from 'react';
-import { AuthProvider } from './lib/authContext';
+import { useState, useEffect, createContext, useContext } from 'react';
+import { AuthProvider, useAuth } from './lib/authContext';
 import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
+import { Dashboard } from './components/Dashboard';
+
+const LanguageContext = createContext<{
+  language: string;
+  setLanguage: (lang: string) => void;
+}>({
+  language: 'fr',
+  setLanguage: () => {}
+});
+
+export const useLanguage = () => useContext(LanguageContext);
 import {
   Check,
   Sparkles,
@@ -1181,21 +1192,56 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
 }
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login'>('landing');
+  const { user, loading } = useAuth();
+  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'dashboard'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash.startsWith('dashboard')) {
+        setCurrentView('dashboard');
+      } else if (hash.startsWith('signup')) {
+        setCurrentView('signup');
+      } else if (hash.startsWith('login')) {
+        setCurrentView('login');
+      } else if (hash === '') {
+        if (user && !loading) {
+          setCurrentView('dashboard');
+        } else {
+          setCurrentView('landing');
+        }
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [user, loading]);
+
+  useEffect(() => {
+    if (user && !loading && currentView === 'landing') {
+      window.location.hash = 'dashboard';
+      setCurrentView('dashboard');
+    }
+  }, [user, loading, currentView]);
 
   const handleSignUp = (planId: string) => {
     console.log('Sign up clicked with plan:', planId);
     setSelectedPlan(planId);
+    window.location.hash = 'signup';
     setCurrentView('signup');
   };
 
   const handleLogin = () => {
     console.log('Login clicked');
+    window.location.hash = 'login';
     setCurrentView('login');
   };
 
   const handleBackToLanding = () => {
+    window.location.hash = '';
     setCurrentView('landing');
   };
 
@@ -1222,13 +1268,26 @@ function AppContent() {
     );
   }
 
+  if (currentView === 'dashboard') {
+    if (!user && !loading) {
+      window.location.hash = 'login';
+      setCurrentView('login');
+      return null;
+    }
+    return <Dashboard />;
+  }
+
   return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
 }
 
 function App() {
+  const [language, setLanguage] = useState('fr');
+
   return (
     <AuthProvider>
-      <AppContent />
+      <LanguageContext.Provider value={{ language, setLanguage }}>
+        <AppContent />
+      </LanguageContext.Provider>
     </AuthProvider>
   );
 }
