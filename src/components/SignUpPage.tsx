@@ -301,9 +301,6 @@ export function SignUp() {
 
         if (sellerError) throw sellerError;
 
-        // Get selected plan details
-        const selectedPlanDetails = plans.find(p => p.id === form.selectedPlan);
-
         // Create subscription
         const { error: subscriptionError } = await supabase
           .from('subscriptions')
@@ -321,11 +318,12 @@ export function SignUp() {
         if (subscriptionError) throw subscriptionError;
 
         setSuccess(true);
-        
-        // Redirect to verification page or dashboard
+
+        // Redirect to dashboard
         setTimeout(() => {
-          window.location.href = '/verify-email';
-        }, 3000);
+          window.location.href = '#dashboard';
+          window.location.reload();
+        }, 2000);
       }
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -407,8 +405,8 @@ export function SignUp() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Compte créé avec succès !</h2>
           <p className="text-gray-600 mb-6">
-            Un email de confirmation a été envoyé à <strong>{form.email}</strong>.
-            Veuillez vérifier votre boîte de réception pour activer votre compte.
+            Votre compte <strong>{form.email}</strong> a été créé avec un essai gratuit de 14 jours.
+            Vous allez être redirigé vers votre dashboard...
           </p>
           <div className="animate-pulse text-sm text-blue-600">
             Redirection en cours...
@@ -758,16 +756,64 @@ export function SignUp() {
                             </p>
                           )}
                         </div>
-                        {plan.features && (
-                          <ul className="space-y-2">
-                            {Object.entries(plan.features as Record<string, any>).slice(0, 4).map(([key, value]) => (
-                              <li key={key} className="flex items-start gap-2 text-sm text-gray-700">
+                        <ul className="space-y-2 text-sm text-gray-700">
+                          {plan.name === 'Starter Lite' && (
+                            <>
+                              <li className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                <span>{String(value)}</span>
+                                <span>Jusqu'à 100 produits</span>
                               </li>
-                            ))}
-                          </ul>
-                        )}
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Support par email</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Optimisations SEO basiques</span>
+                              </li>
+                            </>
+                          )}
+                          {plan.name === 'Professional AI' && (
+                            <>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Produits illimités</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Support prioritaire</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>IA avancée + Chat client</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Blog automatique</span>
+                              </li>
+                            </>
+                          )}
+                          {plan.name === 'Enterprise Commerce+' && (
+                            <>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Tout de Professional +</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Support dédié 24/7</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>Multi-boutiques</span>
+                              </li>
+                              <li className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>API personnalisée</span>
+                              </li>
+                            </>
+                          )}
+                        </ul>
                       </div>
                     );
                   })}
