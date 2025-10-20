@@ -42,12 +42,49 @@ interface Plan {
   max_articles_monthly: number;
   max_campaigns: number;
   max_chat_responses_monthly: number;
-  features: string[];
+  features: string[] | Record<string, any>;
   stripe_price_id: string;
   stripe_price_id_yearly?: string;
   description: string;
   popular?: boolean;
 }
+
+// Helper function to convert features to display format
+const getFeaturesList = (plan: Plan): string[] => {
+  if (Array.isArray(plan.features)) {
+    return plan.features;
+  }
+
+  // Convert database JSONB features to readable strings
+  const features: string[] = [];
+
+  if (plan.id === 'starter') {
+    features.push(`Jusqu'à ${plan.max_products} produits`);
+    features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
+    features.push(`${plan.max_articles_monthly} article de blog/mois`);
+    features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
+    features.push('Support par email');
+  } else if (plan.id === 'professional') {
+    features.push(`Jusqu'à ${plan.max_products} produits`);
+    features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
+    features.push(`${plan.max_articles_monthly} articles de blog/mois`);
+    features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
+    features.push('Support prioritaire');
+    features.push('Analytics avancées');
+    features.push('API complète');
+  } else if (plan.id === 'enterprise') {
+    features.push('Produits illimités');
+    features.push('Optimisations SEO illimitées');
+    features.push('Articles de blog illimités');
+    features.push('Réponses chat illimitées');
+    features.push('Support dédié 24/7');
+    features.push('Analytics enterprise');
+    features.push('API personnalisée');
+    features.push('White label');
+  }
+
+  return features;
+};
 
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
   const { signUp } = useAuth();
@@ -84,9 +121,21 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         .order('price_monthly', { ascending: true });
 
       if (error) throw error;
-      
-      // Ajouter des données par défaut si nécessaire
-      const defaultPlans: Plan[] = data || [
+
+      // Use database data if available, otherwise fallback to defaults
+      if (data && data.length > 0) {
+        // Mark the professional plan as popular
+        const plansWithPopular = data.map(plan => ({
+          ...plan,
+          popular: plan.id === 'professional'
+        }));
+        setPlans(plansWithPopular);
+        setLoadingPlans(false);
+        return;
+      }
+
+      // Fallback to default plans if database is empty
+      const defaultPlans: Plan[] = [
         {
           id: 'starter',
           name: 'Starter',
@@ -615,15 +664,15 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                         </div>
 
                         <div className="space-y-2 mb-6">
-                          {plan.features.slice(0, 4).map((feature, index) => (
+                          {getFeaturesList(plan).slice(0, 4).map((feature, index) => (
                             <div key={index} className="flex items-center gap-2">
                               <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                               <span className="text-sm text-gray-700">{feature}</span>
                             </div>
                           ))}
-                          {plan.features.length > 4 && (
+                          {getFeaturesList(plan).length > 4 && (
                             <p className="text-sm text-blue-600 font-medium">
-                              +{plan.features.length - 4} fonctionnalités
+                              +{getFeaturesList(plan).length - 4} fonctionnalités
                             </p>
                           )}
                         </div>
