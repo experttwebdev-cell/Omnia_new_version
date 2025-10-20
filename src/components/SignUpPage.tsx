@@ -340,39 +340,37 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             </div>
 
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Compte créé avec succès!
+              Bienvenue sur Omnia AI!
             </h2>
 
             <p className="text-gray-600 mb-6">
-              Votre compte a été créé. Vous allez maintenant être redirigé vers le paiement sécurisé.
+              Votre essai gratuit de 14 jours commence maintenant. Redirection vers votre tableau de bord...
             </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-2 text-blue-800 text-sm">
-                <Sparkles className="w-4 h-4" />
-                <span>Essai gratuit de 14 jours inclus!</span>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6 mb-6">
+              <div className="flex items-center justify-center gap-2 text-blue-800 text-lg font-semibold mb-3">
+                <Sparkles className="w-5 h-5" />
+                <span>Essai gratuit de 14 jours</span>
+              </div>
+              <p className="text-sm text-gray-600 text-center">
+                Aucune carte bancaire requise. Explorez toutes les fonctionnalités gratuitement!
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+              <div className="space-y-2 text-sm text-gray-700">
+                <p><strong>Forfait sélectionné:</strong> {selectedPlan?.name}</p>
+                <p><strong>Facturation future:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Après l'essai: {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}
+                </p>
               </div>
             </div>
 
-            <div className="space-y-2 text-sm text-gray-600 mb-6">
-              <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
-              <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
-              <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={onLogin}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-semibold transition"
-              >
-                Retour
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-xl font-semibold transition"
-              >
-                Réessayer
-              </button>
+            <div className="flex items-center justify-center gap-2 text-gray-500">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-pink-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
             </div>
           </div>
         </div>
