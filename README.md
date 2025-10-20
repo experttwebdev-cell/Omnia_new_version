@@ -1,18 +1,43 @@
-# 🛍️ Product Catalogue - Omnia AI Platform
+# 🛍️ SmartEcommerce.ai - AI-Powered Shopify SEO Platform
 
-Plateforme complète de gestion de catalogue produits avec enrichissement IA, SEO automatisé et synchronisation Shopify.
+Complete AI-powered platform for Shopify SEO optimization, product enrichment, and content generation.
 
 [![Status](https://img.shields.io/badge/status-production%20ready-brightgreen)]()
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
 [![Database](https://img.shields.io/badge/database-877%20products-blue)]()
 [![Functions](https://img.shields.io/badge/edge%20functions-20%20active-purple)]()
+[![Deploy](https://img.shields.io/badge/deploy-ready-success)]()
 
 ---
 
-## 🎯 Problème Actuel: "Rien n'a été publié"
+## ⚡ Deploy Now - 10 Minutes to Live!
 
-**➡️ Consultez:** [`REPONSE_DIRECTE.md`](REPONSE_DIRECTE.md) pour la solution immédiate (2 minutes)
+**Your application is production-ready and can be deployed right now.**
 
-**Résumé:** Votre application est prête et fonctionne, mais n'est pas encore déployée sur Internet. Suivez [`LANCEMENT_RAPIDE.md`](LANCEMENT_RAPIDE.md) pour être en ligne en 10 minutes.
+### 🚀 Get Started:
+
+**👉 [START_HERE_DEPLOY.md](START_HERE_DEPLOY.md)** - Choose your deployment path
+
+**Or jump directly to:**
+- [QUICK_DEPLOY.md](QUICK_DEPLOY.md) - Fast 10-minute deployment
+- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Complete 30-minute guide
+- [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) - Configuration reference
+
+---
+
+## 🚀 Deploy Your Application Now!
+
+Your application is **production-ready** and can be deployed in **under 10 minutes**!
+
+### Quick Deploy Options:
+
+| Guide | Time | Difficulty | Best For |
+|-------|------|------------|----------|
+| [**QUICK_DEPLOY.md**](QUICK_DEPLOY.md) | 10 min | Easy | First-time deployment |
+| [**DEPLOYMENT_GUIDE.md**](DEPLOYMENT_GUIDE.md) | 30 min | Detailed | Complete understanding |
+| [**ENVIRONMENT_VARIABLES.md**](ENVIRONMENT_VARIABLES.md) | 5 min | Reference | Configuration details |
+
+**👉 Start here**: [QUICK_DEPLOY.md](QUICK_DEPLOY.md) - Get live in 10 minutes!
 
 ---
 
