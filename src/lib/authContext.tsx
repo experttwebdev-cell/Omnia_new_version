@@ -45,7 +45,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, companyName: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, companyName: string, fullName: string, selectedPlanId?: string, billingCycle?: 'monthly' | 'yearly') => Promise<{ error: any; sellerId?: string }>;
   signOut: () => Promise<void>;
   refreshSellerData: () => Promise<void>;
 }
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from('subscriptions')
           .select('*')
           .eq('seller_id', sellerData.id)
-          .eq('status', 'active')
+          .in('status', ['active', 'trialing'])
           .maybeSingle();
 
         if (subError) throw subError;
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, companyName: string, fullName: string) => {
+  const signUp = async (email: string, password: string, companyName: string, fullName: string, selectedPlanId?: string, billingCycle?: 'monthly' | 'yearly') => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -171,14 +171,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: sellerError };
       }
 
+      // Use selected plan or default to 'starter'
+      const planId = selectedPlanId || 'starter';
+      const billing = billingCycle || 'monthly';
+
       const { error: subError } = await supabase
         .from('subscriptions')
         .insert({
           seller_id: data.user.id,
-          plan_id: 'starter',
-          status: 'trial',
+          plan_id: planId,
+          status: 'trialing',
+          billing_period: billing,
           current_period_start: new Date().toISOString(),
           current_period_end: trialEndsAt.toISOString(),
+          trial_ends_at: trialEndsAt.toISOString(),
           cancel_at_period_end: false,
         });
 
@@ -205,6 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (usageError) {
         console.error('Error creating usage tracking:', usageError);
       }
+
+      return { error: null, sellerId: data.user.id };
     }
 
     return { error: null };
