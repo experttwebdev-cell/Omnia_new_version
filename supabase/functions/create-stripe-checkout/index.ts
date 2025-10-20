@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
       },
 
       subscription_data: {
+        trial_period_days: 14,
         metadata: {
           seller_id: user.id,
           plan_id: plan_id,
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
       // Custom text
       custom_text: {
         submit: {
-          message: `Vous allez être redirigé vers Stripe pour finaliser votre paiement.`
+          message: `Essai gratuit de 14 jours. Aucun paiement aujourd'hui - le premier débit aura lieu dans 14 jours.`
         }
       }
     });
