@@ -174,9 +174,11 @@ interface Plan {
 interface PricingLandingPageProps {
   onSignUp: (planId: string) => void;
   onLogin: () => void;
+  onDashboard?: () => void;
+  isLoggedIn?: boolean;
 }
 
-export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProps) {
+export function PricingLandingPage({ onSignUp, onLogin, onDashboard, isLoggedIn }: PricingLandingPageProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -490,19 +492,33 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
             </nav>
 
             <div className="flex items-center gap-4">
-              <button
-                onClick={onLogin}
-                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
-              >
-                Connexion
-              </button>
-              <button
-                onClick={() => onSignUp('professional')}
-                className="px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-              >
-                <span className="text-white">Essai Gratuit</span>
-              </button>
+              {isLoggedIn ? (
+                <>
+                  <button
+                    onClick={onDashboard}
+                    className="px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                  >
+                    <span className="text-white">Mon Dashboard</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={onLogin}
+                    className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200"
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    onClick={() => onSignUp('professional')}
+                    className="px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                  >
+                    <span className="text-white">Essai Gratuit</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1198,6 +1214,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'onboarding' | 'dashboard'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
   const [hasStore, setHasStore] = useState<boolean | null>(null);
+  const [hasProducts, setHasProducts] = useState<boolean | null>(null);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -1226,43 +1243,60 @@ function AppContent() {
   }, [user, loading]);
 
   useEffect(() => {
-    const checkStoreConnection = async () => {
+    const checkStoreAndProducts = async () => {
       if (!seller?.id || loading) return;
 
       try {
-        const { data, error } = await supabase
+        // Check if user has a store
+        const { data: storeData, error: storeError } = await supabase
           .from('shopify_stores')
           .select('id')
           .eq('seller_id', seller.id)
           .maybeSingle();
 
-        if (error) {
-          console.error('Error checking store:', error);
+        if (storeError) {
+          console.error('Error checking store:', storeError);
           setHasStore(false);
+          setHasProducts(false);
           return;
         }
 
-        setHasStore(!!data);
+        setHasStore(!!storeData);
+
+        // Check if user has products
+        const { count, error: productsError } = await supabase
+          .from('shopify_products')
+          .select('id', { count: 'exact', head: true })
+          .eq('seller_id', seller.id);
+
+        if (productsError) {
+          console.error('Error checking products:', productsError);
+          setHasProducts(false);
+          return;
+        }
+
+        setHasProducts((count || 0) > 0);
       } catch (err) {
-        console.error('Error checking store:', err);
+        console.error('Error checking store/products:', err);
         setHasStore(false);
+        setHasProducts(false);
       }
     };
 
-    checkStoreConnection();
+    checkStoreAndProducts();
   }, [seller, loading]);
 
   useEffect(() => {
-    if (user && !loading && hasStore !== null && currentView === 'landing') {
+    if (user && !loading && hasStore !== null && hasProducts !== null && currentView === 'landing') {
+      // Si pas de store, go to onboarding
       if (!hasStore) {
         window.location.hash = 'onboarding';
         setCurrentView('onboarding');
-      } else {
-        window.location.hash = 'dashboard';
-        setCurrentView('dashboard');
       }
+      // Si store mais pas de produits, reste sur landing
+      // Si store et produits, reste aussi sur landing (l'utilisateur ira manuellement au dashboard)
     }
-  }, [user, loading, hasStore, currentView]);
+  }, [user, loading, hasStore, hasProducts, currentView]);
 
   const handleSignUp = (planId: string) => {
     console.log('Sign up clicked with plan:', planId);
@@ -1283,7 +1317,15 @@ function AppContent() {
   };
 
   if (currentView === 'landing') {
-    return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
+    return <PricingLandingPage
+      onSignUp={handleSignUp}
+      onLogin={handleLogin}
+      onDashboard={() => {
+        window.location.hash = 'dashboard';
+        setCurrentView('dashboard');
+      }}
+      isLoggedIn={!!user}
+    />;
   }
 
   if (currentView === 'signup') {
@@ -1333,7 +1375,15 @@ function AppContent() {
     return <Dashboard />;
   }
 
-  return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
+  return <PricingLandingPage
+    onSignUp={handleSignUp}
+    onLogin={handleLogin}
+    onDashboard={() => {
+      window.location.hash = 'dashboard';
+      setCurrentView('dashboard');
+    }}
+    isLoggedIn={!!user}
+  />;
 }
 
 function App() {
