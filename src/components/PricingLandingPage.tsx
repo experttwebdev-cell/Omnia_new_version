@@ -70,7 +70,7 @@ const mockPlans = [
       seo_audit: 'Mensuel'
     },
     stripe_price_id: 'price_essentiel',
-    description: 'Démarrez avec l\'IA pour booster vos ventes',
+    description: 'Solution complète pour démarrer avec l\'IA',
     popular: false,
     best_value: false,
     recommended: false,
@@ -104,7 +104,7 @@ const mockPlans = [
       seo_audit: 'Hebdomadaire'
     },
     stripe_price_id: 'price_performance',
-    description: 'Solution complète pour maximiser votre croissance',
+    description: 'Plateforme tout-en-1 pour maximiser votre croissance',
     popular: true,
     best_value: true,
     recommended: false,
@@ -138,7 +138,7 @@ const mockPlans = [
       seo_audit: 'Quotidien'
     },
     stripe_price_id: 'price_enterprise',
-    description: 'Excellence opérationnelle pour les leaders du marché',
+    description: 'Solution enterprise complète pour les leaders',
     popular: false,
     best_value: false,
     recommended: true,
@@ -176,12 +176,14 @@ export function PricingLandingPage() {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
-  // Fonctions de navigation
+  // Fonctions de navigation - VÉRIFIÉES
   const handleLogin = () => {
+    console.log('Navigation vers login');
     navigate('/login');
   };
 
-  const handleSignUp = (planId: string) => {
+  const handleSignUp = (planId: string = 'performance') => {
+    console.log('Navigation vers signup avec plan:', planId);
     navigate(`/signup/${planId}`);
   };
 
@@ -247,7 +249,7 @@ export function PricingLandingPage() {
     return value.toLocaleString('fr-FR');
   };
 
-  // Features data
+  // Features data - Orienté solution complète
   const featureCategories = [
     {
       id: 'all',
@@ -278,79 +280,79 @@ export function PricingLandingPage() {
   const allFeatures = [
     {
       icon: Sparkles,
-      title: 'Enrichissement IA Intelligent',
-      description: 'Transformez vos fiches produits avec descriptions optimisées, attributs extraits et images analysées par IA',
+      title: 'Enrichissement IA Intelligent - Tout-en-un',
+      description: 'Solution complète : descriptions optimisées, attributs extraits, analyse d\'images et optimisation automatique',
       gradient: 'from-blue-500 to-cyan-500',
       category: 'optimisation',
       plans: ['essentiel', 'performance', 'enterprise'],
       highlight: true,
-      benefit: '+45% de conversion produit'
+      benefit: 'Solution complète : +45% de conversion'
     },
     {
       icon: Search,
-      title: 'SEO Automatique Multi-Canal',
-      description: 'Optimisation automatique pour Google, meta tags intelligents, et audit SEO continu pour dominer les résultats',
+      title: 'SEO Automatique Multi-Canal - Intégré',
+      description: 'Plateforme unifiée : optimisation Google, meta tags intelligents, audit SEO et tracking en temps réel',
       gradient: 'from-purple-500 to-pink-500',
       category: 'marketing',
       plans: ['essentiel', 'performance', 'enterprise'],
       highlight: true,
-      benefit: '+60% de trafic organique'
+      benefit: 'Solution intégrée : +60% de trafic'
     },
     {
       icon: ShoppingCart,
-      title: 'Google Shopping IA',
-      description: 'Export automatique vers Google Shopping avec optimisation des flux produits et gestion intelligente des campagnes',
+      title: 'Google Shopping IA - Automatisé',
+      description: 'Solution tout-en-1 : export automatique, optimisation des flux, gestion intelligente des campagnes',
       gradient: 'from-orange-500 to-red-500',
       category: 'marketing',
       plans: ['performance', 'enterprise'],
       highlight: true,
-      benefit: '+35% de ROI publicitaire'
+      benefit: 'Plateforme unifiée : +35% de ROI'
     },
     {
       icon: MessageCircle,
-      title: 'Assistant Vente IA',
-      description: 'Chat intelligent qui convertit les visiteurs en clients avec recommandations personnalisées et support automatisé',
+      title: 'Assistant Vente IA - Complet',
+      description: 'Solution intégrée : chat intelligent, recommandations personnalisées, support automatisé et analytics',
       gradient: 'from-green-500 to-emerald-500',
       category: 'automation',
       plans: ['performance', 'enterprise'],
       highlight: true,
-      benefit: '+28% de taux de conversion'
+      benefit: 'Solution complète : +28% de conversion'
     },
     {
       icon: FileText,
-      title: 'Générateur de Contenu Stratégique',
-      description: 'Créez automatiquement des articles de blog optimisés SEO et du contenu qui ranke et convertit',
+      title: 'Générateur de Contenu Stratégique - Intégré',
+      description: 'Plateforme tout-en-1 : création automatique d\'articles SEO, campagnes de contenu et optimisation',
       gradient: 'from-yellow-500 to-amber-500',
       category: 'marketing',
       plans: ['essentiel', 'performance', 'enterprise'],
-      benefit: '+3x plus de contenu'
+      benefit: 'Solution unifiée : +3x plus de contenu'
     },
     {
       icon: BarChart,
-      title: 'Analytics Prédictifs',
-      description: 'Tableaux de bord intelligents avec insights actionnables et recommandations basées sur l\'IA',
+      title: 'Analytics Prédictifs - Complet',
+      description: 'Solution intégrée : tableaux de bord intelligents, insights actionnables et recommandations IA',
       gradient: 'from-teal-500 to-cyan-500',
       category: 'optimisation',
       plans: ['performance', 'enterprise'],
-      benefit: 'Décisions data-driven'
+      benefit: 'Plateforme complète : décisions data-driven'
     },
     {
       icon: Target,
-      title: 'Campagnes Marketing Automatisées',
-      description: 'Lancez et optimisez automatiquement vos campagnes cross-canal avec l\'IA',
+      title: 'Campagnes Marketing Automatisées - Tout-en-un',
+      description: 'Solution unifiée : lancement et optimisation automatique des campagnes cross-canal',
       gradient: 'from-red-500 to-pink-500',
       category: 'automation',
       plans: ['performance', 'enterprise'],
-      benefit: '-70% de temps de gestion'
+      benefit: 'Solution intégrée : -70% de temps'
     },
     {
       icon: Tag,
-      title: 'Catégorisation & Tags IA',
-      description: 'Organisation automatique de votre catalogue avec taxonomie intelligente et tags optimisés SEO',
+      title: 'Catégorisation & Tags IA - Automatique',
+      description: 'Plateforme complète : organisation automatique du catalogue avec taxonomie intelligente',
       gradient: 'from-indigo-500 to-blue-500',
       category: 'optimisation',
       plans: ['essentiel', 'performance', 'enterprise'],
-      benefit: 'Navigation +40% efficace'
+      benefit: 'Solution tout-en-1 : navigation +40% efficace'
     }
   ];
 
@@ -358,49 +360,46 @@ export function PricingLandingPage() {
     ? allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab)
     : allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab).slice(0, 6);
 
-  // Testimonials
+  // Testimonials - Orienté solution complète
   const testimonials = [
     {
       name: 'Marie Dubois',
       company: 'Mode & Style Paris',
       role: 'Directrice E-commerce',
-      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150',
       rating: 5,
-      text: 'OmnIA a transformé notre business. En 3 mois, +65% de trafic SEO et +40% de ventes grâce à l\'optimisation automatique.',
-      metric: '+40% de ventes'
+      text: 'La plateforme tout-en-1 OmnIA a remplacé 5 outils différents. Solution complète qui a boosté nos ventes de 40%.',
+      metric: 'Solution complète : +40% de ventes'
     },
     {
       name: 'Thomas Martin',
       company: 'TechImport',
       role: 'Fondateur',
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
       rating: 5,
-      text: 'La plateforme tout-en-1 qui remplace 5 outils. L\'IA génère du contenu de qualité qui convertit vraiment.',
-      metric: '-60% de coûts outils'
+      text: 'Enfin une solution intégrée qui gère tout : SEO, Google Shopping, contenu IA. Plus besoin de jongler entre les outils.',
+      metric: 'Plateforme unifiée : -60% de coûts'
     },
     {
       name: 'Sophie Lambert',
       company: 'Beauté Nature',
       role: 'Responsable Marketing',
-      avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150',
       rating: 5,
-      text: 'Google Shopping automatisé avec optimisation IA : notre ROI publicitaire a explosé de +35% en 2 mois.',
-      metric: '+35% ROI ads'
+      text: 'Solution tout-en-1 exceptionnelle. Tout est automatisé et intégré : de l\'optimisation produit au marketing.',
+      metric: 'Solution intégrée : +35% ROI'
     }
   ];
 
   const faqs = [
     {
-      question: "Comment fonctionne l'essai gratuit de 14 jours ?",
-      answer: "L'essai gratuit vous donne accès à toutes les fonctionnalités du plan choisi pendant 14 jours. Aucune carte bancaire n'est requise pour commencer. Vous pouvez annuler à tout moment pendant la période d'essai."
+      question: "OmnIA est-elle vraiment une solution tout-en-1 ?",
+      answer: "Absolument. OmnIA intègre l'optimisation produit IA, le SEO automatique, Google Shopping, la génération de contenu, l'analytics et le chat intelligent dans une seule plateforme unifiée. Plus besoin de multiples outils."
     },
     {
-      question: "Puis-je changer de plan à tout moment ?",
-      answer: "Oui, vous pouvez passer à un plan supérieur à tout moment. Le changement vers un plan inférieur est possible à la fin de votre cycle de facturation actuel."
+      question: "Comment la solution complète améliore-t-elle mon ROI ?",
+      answer: "En unifiant toutes les fonctionnalités, vous éliminez les coûts de multiples abonnements, réduisez le temps de formation et bénéficiez d'une intégration parfaite entre tous les modules. Nos clients voient un ROI 2x à 10x supérieur."
     },
     {
-      question: "Quelles plateformes e-commerce sont compatibles ?",
-      answer: "OmnIA s'intègre avec Shopify, WooCommerce, PrestaShop, Magento et toutes les plateformes compatibles avec notre API REST."
+      question: "Puis-je migrer depuis mes outils actuels ?",
+      answer: "Oui, notre plateforme tout-en-1 intègre des connecteurs pour importer vos données depuis tous les outils e-commerce courants. Notre équipe vous accompagne dans la migration complète."
     }
   ];
 
@@ -412,19 +411,19 @@ export function PricingLandingPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl shadow-lg bg-gradient-to-r from-blue-600 to-purple-600">
-                <ShoppingBag className="w-6 h-6 text-white" />
+                <Bot className="w-6 h-6 text-white" />
               </div>
               <div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   OmnIA
                 </span>
-                <div className="text-xs text-gray-500 -mt-1">Plateforme E-commerce IA</div>
+                <div className="text-xs text-gray-500 -mt-1">Solution E-commerce Tout-en-1</div>
               </div>
             </div>
             
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200">
-                Fonctionnalités
+                Solutions
               </a>
               <a href="#pricing" className="text-gray-700 hover:text-purple-600 font-medium transition-colors duration-200">
                 Tarifs
@@ -452,9 +451,9 @@ export function PricingLandingPage() {
         </div>
       </header>
 
-      {/* Hero Section - Couleurs modifiées */}
-      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="absolute inset-0 opacity-5">
+      {/* Hero Section - Discours solution complète */}
+      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+        <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
             backgroundSize: '40px 40px'
@@ -468,23 +467,24 @@ export function PricingLandingPage() {
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium mb-8 border border-white/20">
               <Sparkles className="w-4 h-4" />
-              <span>Plateforme SaaS N°1 pour E-Commerce</span>
+              <span>Solution Tout-en-1 N°1 pour E-Commerce</span>
             </div>
 
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Transformez Votre
+              La Plateforme Complète
               <br />
               <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                Catalogue Produits
+                Tout-en-1 IA
               </span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-slate-200 mb-4 max-w-3xl mx-auto leading-relaxed">
-              Intelligence artificielle avancée pour optimiser automatiquement vos produits, générer du contenu SEO et booster vos ventes
+            <p className="text-xl md:text-2xl text-gray-200 mb-4 max-w-3xl mx-auto leading-relaxed">
+              Une seule plateforme qui unifie l'optimisation produit IA, le SEO automatique, 
+              Google Shopping, le contenu généré et l'analytics prédictif
             </p>
 
-            <p className="text-lg text-slate-300 mb-10 max-w-2xl mx-auto">
-              Enrichissement IA, SEO, Google Shopping, Chat intelligent, Blog automatique et bien plus...
+            <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto">
+              Solution intégrée complète : arrêtez de jongler entre 5 outils. Tout dans une seule plateforme unifiée.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
@@ -492,10 +492,10 @@ export function PricingLandingPage() {
                 onClick={() => handleSignUp('performance')}
                 className="group px-8 py-4 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
               >
-                <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                   Essai Gratuit 14 Jours
                 </span>
-                <ArrowRight className="inline-block ml-2 w-5 h-5 text-slate-600 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="inline-block ml-2 w-5 h-5 text-gray-600 group-hover:translate-x-1 transition-transform" />
               </button>
 
               <button
@@ -509,18 +509,18 @@ export function PricingLandingPage() {
               </button>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
-                <span>Aucune carte bancaire requise</span>
+                <span>Solution complète tout-en-1</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>Installation en 2 minutes</span>
+                <span>Intégration en 2 minutes</span>
               </div>
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                <span>Garantie satisfait ou remboursé</span>
+                <span>Plateforme unifiée</span>
               </div>
             </div>
           </div>
@@ -530,12 +530,20 @@ export function PricingLandingPage() {
       {/* Stats Section */}
       <section className="py-16 bg-white border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              La Solution Complète Qui Transforme
+            </h2>
+            <p className="text-xl text-gray-600">
+              Une plateforme unifiée, des résultats exceptionnels
+            </p>
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { number: '12+', label: 'Fonctionnalités IA', icon: Sparkles, suffix: '' },
-              { number: '99.9', label: 'Uptime Garanti', icon: Server, suffix: '%' },
-              { number: '24/7', label: 'Support Disponible', icon: Headphones, suffix: '' },
-              { number: '2', label: 'Installation', icon: Clock, suffix: 'min' }
+              { number: '1', label: 'Plateforme Tout-en-1', icon: Workflow, suffix: '' },
+              { number: '8', label: 'Modules Intégrés', icon: Bot, suffix: '+' },
+              { number: '40%', label: 'Croissance Moyenne', icon: TrendingUp, suffix: '' },
+              { number: '5', label: 'Outils Remplacés', icon: Check, suffix: '' }
             ].map((stat, index) => (
               <div key={index} className="text-center group">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -544,22 +552,22 @@ export function PricingLandingPage() {
                 <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
                   {stat.number}{stat.suffix}
                 </div>
-                <div className="text-gray-600 font-medium">{stat.label}</div>
+                <div className="text-gray-600 font-medium text-sm">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Discours solution intégrée */}
       <section id="features" className="py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Une Solution Complète
+              La Plateforme Tout-en-1 Complète
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Tout ce dont vous avez besoin pour dominer votre marché, dans une seule plateforme
+              8 modules intégrés dans une seule solution unifiée pour votre e-commerce
             </p>
           </div>
 
@@ -611,7 +619,7 @@ export function PricingLandingPage() {
                   {feature.highlight && (
                     <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full mb-2">
                       <Star className="w-3 h-3 fill-purple-600" />
-                      Top performance
+                      Solution intégrée
                     </div>
                   )}
                   
@@ -626,7 +634,7 @@ export function PricingLandingPage() {
                   )}
                   
                   <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>Disponible sur :</span>
+                    <span>Module intégré dans :</span>
                     <div className="flex gap-1">
                       {feature.plans.map(plan => (
                         <span
@@ -653,7 +661,7 @@ export function PricingLandingPage() {
                 onClick={() => setShowAllFeatures(true)}
                 className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 rounded-xl font-semibold hover:bg-purple-50 transition-all duration-300 flex items-center gap-2 mx-auto"
               >
-                Découvrir toutes nos solutions
+                Découvrir tous les modules
                 <ChevronDown className="w-5 h-5" />
               </button>
             </div>
@@ -666,10 +674,10 @@ export function PricingLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Ils Ont Transformé Leur Business
+              Ils Ont Adopté La Solution Complète
             </h2>
             <p className="text-xl text-gray-600">
-              Des résultats réels, mesurables et reproductibles
+              Des e-commerces qui ont unifié leur stack avec OmnIA
             </p>
           </div>
 
@@ -709,10 +717,10 @@ export function PricingLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Des Tarifs Adaptés à Votre Croissance
+              Une Solution Complète à Prix Unique
             </h2>
             <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-              Choisissez le plan qui correspond à vos besoins. Tous les plans incluent notre essai gratuit de 14 jours.
+              Choisissez votre formule tout-en-1. Tous les plans incluent la plateforme complète.
             </p>
 
             {/* Billing Toggle */}
@@ -746,7 +754,7 @@ export function PricingLandingPage() {
           {loading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-              <p className="mt-4 text-gray-600">Chargement des offres...</p>
+              <p className="mt-4 text-gray-600">Chargement des solutions...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
@@ -775,13 +783,13 @@ export function PricingLandingPage() {
                   >
                     {isBestValue && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-blue-600 to-purple-600">
-                        ⭐ Meilleur ROI
+                        ⭐ Solution Optimale
                       </div>
                     )}
 
                     {plan.recommended && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-violet-600 to-purple-600">
-                        🏆 Recommandé
+                        🏆 Solution Enterprise
                       </div>
                     )}
 
@@ -828,7 +836,7 @@ export function PricingLandingPage() {
                       style={isPopular ? { background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' } : {}}
                     >
                       <Rocket className="w-5 h-5" />
-                      Démarrer l'essai gratuit
+                      Essayer la solution complète
                       <ArrowRight className="w-5 h-5" />
                     </button>
 
@@ -841,7 +849,7 @@ export function PricingLandingPage() {
                             <span className="font-semibold text-gray-900">
                               {formatLimit(plan.max_products)}
                             </span>
-                            <span className="text-gray-600"> produits maximum</span>
+                            <span className="text-gray-600"> produits</span>
                           </div>
                         </div>
 
@@ -851,7 +859,7 @@ export function PricingLandingPage() {
                             <span className="font-semibold text-gray-900">
                               {formatLimit(plan.max_optimizations_monthly)}
                             </span>
-                            <span className="text-gray-600"> optimisations IA/mois</span>
+                            <span className="text-gray-600"> optimisations/mois</span>
                           </div>
                         </div>
 
@@ -861,7 +869,7 @@ export function PricingLandingPage() {
                             <span className="font-semibold text-gray-900">
                               {formatLimit(plan.max_articles_monthly)}
                             </span>
-                            <span className="text-gray-600"> articles blog/mois</span>
+                            <span className="text-gray-600"> articles/mois</span>
                           </div>
                         </div>
                       </div>
@@ -898,10 +906,13 @@ export function PricingLandingPage() {
             </h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto leading-relaxed">
               Volume important, intégrations spécifiques, fonctionnalités exclusives ? 
-              Notre équipe construit la solution parfaite pour votre business.
+              Notre équipe construit la solution tout-en-1 parfaite pour votre business.
             </p>
-            <button className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
-              Obtenir un devis personnalisé
+            <button 
+              onClick={() => handleSignUp('enterprise')}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
+              Solution Enterprise Sur Mesure
             </button>
           </div>
         </div>
@@ -915,7 +926,7 @@ export function PricingLandingPage() {
               Questions Fréquentes
             </h2>
             <p className="text-xl text-gray-600">
-              Tout ce que vous devez savoir sur OmnIA
+              Tout sur notre solution tout-en-1
             </p>
           </div>
 
@@ -945,7 +956,7 @@ export function PricingLandingPage() {
       </section>
 
       {/* CTA Final */}
-      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
             backgroundImage: 'radial-gradient(circle at 3px 3px, white 2px, transparent 0)',
@@ -959,10 +970,11 @@ export function PricingLandingPage() {
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Prêt à Transformer Votre E-commerce?
+            Prêt à Tout Unifier ?
           </h2>
-          <p className="text-xl text-slate-200 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Rejoignez les centaines de marchands qui utilisent OmnIA pour optimiser leurs catalogues produits
+          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Rejoignez les e-commerces qui utilisent la solution tout-en-1 OmnIA 
+            pour booster leurs ventes de 40% à 65% en 3 mois
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
@@ -970,8 +982,8 @@ export function PricingLandingPage() {
               onClick={() => handleSignUp('performance')}
               className="px-10 py-5 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
             >
-              <span className="bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                Commencer Gratuitement
+              <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                Essayer la Solution Complète
               </span>
             </button>
             
@@ -985,18 +997,18 @@ export function PricingLandingPage() {
             </button>
           </div>
           
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>Essai gratuit 14 jours</span>
+              <span>Solution complète - 14 jours gratuits</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
-              <span>Sans engagement</span>
+              <span>Plateforme tout-en-1</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4" />
-              <span>Annulation à tout moment</span>
+              <span>Modules intégrés</span>
             </div>
           </div>
         </div>
@@ -1009,12 +1021,13 @@ export function PricingLandingPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-2 rounded-lg shadow-lg bg-gradient-to-r from-blue-600 to-purple-600">
-                  <ShoppingBag className="w-5 h-5 text-white" />
+                  <Bot className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold text-white">OmnIA</span>
               </div>
               <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                Plateforme SaaS d'optimisation catalogue produits alimentée par l'intelligence artificielle.
+                Solution e-commerce tout-en-1 alimentée par l'intelligence artificielle.
+                Plateforme complète unifiée.
               </p>
               <div className="flex items-center gap-3">
                 {[
@@ -1035,7 +1048,7 @@ export function PricingLandingPage() {
 
             {[
               {
-                title: 'Produit',
+                title: 'Solution',
                 links: ['Fonctionnalités', 'Tarifs', 'Documentation', 'API', 'Intégrations', 'Statut']
               },
               {
@@ -1065,7 +1078,7 @@ export function PricingLandingPage() {
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-sm text-gray-400">
-                © 2024 OmnIA. Tous droits réservés.
+                © 2024 OmnIA. Solution Tout-en-1 E-commerce.
               </p>
               <div className="flex items-center gap-6 text-sm">
                 {['Confidentialité', 'Conditions', 'Cookies', 'Mentions légales'].map((item, index) => (
