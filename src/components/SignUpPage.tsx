@@ -307,14 +307,47 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      // 2. Signup successful - redirect to dashboard to start trial
-      // User can start using the platform immediately with trial period
-      setSuccess(true);
+      // 2. Créer une session Stripe Checkout
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
 
-      // Redirect to dashboard after short delay
-      setTimeout(() => {
-        window.location.href = '/#dashboard';
-      }, 2000);
+      if (authError || !session) {
+        setError('Erreur d\'authentification');
+        setLoading(false);
+        return;
+      }
+
+      const supabaseUrl = getEnvVar('SUPABASE_URL');
+      const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY');
+
+      const checkoutResponse = await fetch(`${supabaseUrl}/functions/v1/create-stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({
+          plan_id: selectedPlanId,
+          billing_period: billingCycle,
+          success_url: `${window.location.origin}/#dashboard?checkout=success`,
+          cancel_url: `${window.location.origin}/#signup?checkout=cancelled`
+        })
+      });
+
+      if (!checkoutResponse.ok) {
+        const errorData = await checkoutResponse.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la session de paiement');
+      }
+
+      const checkoutData = await checkoutResponse.json();
+
+      if (!checkoutData.url) {
+        throw new Error('URL de paiement non reçue');
+      }
+
+      // 3. Rediriger vers Stripe Checkout
+      console.log('Redirecting to Stripe Checkout:', checkoutData.url);
+      window.location.href = checkoutData.url;
 
     } catch (err) {
       console.error('Signup error:', err);
