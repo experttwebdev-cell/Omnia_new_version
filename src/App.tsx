@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider } from './lib/authContext';
 import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
+import { EmailVerification } from './components/EmailVerification';
 import {
   Check,
   Sparkles,
@@ -1181,8 +1182,16 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
 }
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'verify-email'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<string>('professional');
+
+  // Check if URL contains verify-email route
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes('/verify-email')) {
+      setCurrentView('verify-email');
+    }
+  }, []);
 
   const handleSignUp = (planId: string) => {
     console.log('Sign up clicked with plan:', planId);
@@ -1198,6 +1207,22 @@ function AppContent() {
   const handleBackToLanding = () => {
     setCurrentView('landing');
   };
+
+  const handleVerificationSuccess = () => {
+    // After successful verification, redirect to login
+    setCurrentView('login');
+    // Clear the URL hash
+    window.location.hash = '';
+  };
+
+  if (currentView === 'verify-email') {
+    return (
+      <EmailVerification
+        onSuccess={handleVerificationSuccess}
+        onBack={handleBackToLanding}
+      />
+    );
+  }
 
   if (currentView === 'landing') {
     return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;

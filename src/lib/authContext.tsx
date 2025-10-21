@@ -220,6 +220,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating usage tracking:', usageError);
       }
 
+      // Send verification email
+      try {
+        const verificationToken = crypto.randomUUID();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-verification-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+          },
+          body: JSON.stringify({
+            email,
+            userId: data.user.id,
+            verificationToken,
+            userName: fullName,
+            companyName,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send verification email:', await emailResponse.text());
+        } else {
+          console.log('✅ Verification email sent successfully');
+        }
+      } catch (emailError) {
+        console.error('Error sending verification email:', emailError);
+        // Don't block signup if email fails
+      }
+
       return { error: null, sellerId: data.user.id };
     }
 
