@@ -649,4 +649,90 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
                         <div className={`w-full py-3 rounded-lg text-center font-semibold transition ${
                           selectedPlanId === plan.id
-                            ? 'bg-gradient-to-r from-blue-600
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {selectedPlanId === plan.id ? 'Sélectionné' : 'Choisir'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Récapitulatif et actions */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg mb-2">Récapitulatif</h4>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
+                      <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
+                      <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-green-600">
+                      <Calendar className="w-4 h-4" />
+                      <span className="text-sm font-medium">14 jours d'essai gratuit</span>
+                    </div>
+                    <button
+                      onClick={handleStep2Submit}
+                      disabled={loading}
+                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Redirection vers Stripe...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5" />
+                          <span>Commencer l'essai gratuit</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sécurité et garanties */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="p-4">
+                  <Shield className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Paiement sécurisé</p>
+                  <p className="text-sm text-gray-600">Cryptage SSL 256-bit</p>
+                </div>
+                <div className="p-4">
+                  <CheckCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Sans engagement</p>
+                  <p className="text-sm text-gray-600">Annulation à tout moment</p>
+                </div>
+                <div className="p-4">
+                  <Zap className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Support 7j/7</p>
+                  <p className="text-sm text-gray-600">Équipe dédiée</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lien de connexion */}
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              Déjà un compte?{' '}
+              <button
+                onClick={onLogin}
+                className="text-blue-600 hover:text-blue-700 font-semibold transition"
+              >
+                Se connecter
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
