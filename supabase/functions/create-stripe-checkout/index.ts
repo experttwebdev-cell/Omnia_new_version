@@ -80,9 +80,28 @@ Deno.serve(async (req) => {
       ? plan.stripe_price_id_yearly
       : plan.stripe_price_id_monthly;
 
+    // Enhanced validation with helpful error messages
     if (!stripePriceId) {
-      throw new Error(`Stripe Price ID not configured for ${billing_period} billing on plan ${plan.name}`);
+      console.error(`❌ Stripe Price ID missing for plan: ${plan.name}, billing: ${billing_period}`);
+      console.error(`   Monthly Price ID: ${plan.stripe_price_id_monthly || 'NOT SET'}`);
+      console.error(`   Yearly Price ID: ${plan.stripe_price_id_yearly || 'NOT SET'}`);
+
+      throw new Error(
+        `Configuration incomplète: Le forfait "${plan.name}" n'a pas de tarif Stripe configuré pour la facturation ${billing_period === 'monthly' ? 'mensuelle' : 'annuelle'}. ` +
+        `Veuillez contacter le support ou réessayer plus tard.`
+      );
     }
+
+    // Validate Stripe Price ID format
+    if (!stripePriceId.startsWith('price_') || stripePriceId.length !== 30) {
+      console.error(`❌ Invalid Stripe Price ID format: ${stripePriceId}`);
+      throw new Error(
+        `Erreur de configuration: L'identifiant de tarif Stripe est invalide. ` +
+        `Veuillez contacter le support technique.`
+      );
+    }
+
+    console.log(`✓ Using Stripe Price ID: ${stripePriceId} for ${plan.name} (${billing_period})`);
 
     // Create or get Stripe customer
     let customerId = seller.stripe_customer_id;
@@ -172,12 +191,30 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error("💥 Stripe checkout error:", error);
+
+    // Provide user-friendly error messages
+    let userMessage = error.message;
+    let statusCode = 400;
+
+    // Handle specific Stripe errors
+    if (error.type === 'StripeInvalidRequestError') {
+      if (error.message.includes('No such price')) {
+        userMessage = 'Configuration tarifaire invalide. Le tarif sélectionné n\'existe pas dans Stripe. Veuillez contacter le support.';
+        console.error('❌ CRITICAL: Stripe Price ID does not exist in Stripe account');
+      } else if (error.message.includes('No such customer')) {
+        userMessage = 'Erreur lors de la création de votre compte client. Veuillez réessayer.';
+      }
+    } else if (error.message.includes('Configuration incomplète')) {
+      statusCode = 503; // Service temporarily unavailable
+    }
+
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
-      code: error.type || 'unknown_error'
+      error: userMessage,
+      code: error.type || 'unknown_error',
+      details: error.message
     }), {
-      status: 400,
+      status: statusCode,
       headers: {
         ...corsHeaders,
         "Content-Type": "application/json"

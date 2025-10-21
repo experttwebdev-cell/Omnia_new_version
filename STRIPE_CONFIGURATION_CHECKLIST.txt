@@ -1,0 +1,218 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                     STRIPE CONFIGURATION CHECKLIST                            ║
+║                     Complete This Before Signups Work                         ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+ESTIMATED TIME: 10 minutes
+STATUS: ⚠️  REQUIRED - Signups disabled until completed
+
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 1: ACCESS STRIPE DASHBOARD (1 minute)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] Go to: https://dashboard.stripe.com
+[ ] Sign in (or create account if needed)
+[ ] Check mode: Test Mode (for development)
+    Switch in top-right corner if needed
+
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 2: CREATE STRIPE PRODUCTS (5 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRODUCT 1: Starter Lite
+────────────────────────
+[ ] Click: Products → Add Product
+[ ] Name: Starter Lite
+[ ] Description: Forfait de démarrage - 100 produits max
+[ ] Pricing Model: Recurring
+[ ] Monthly Price: 9.99 EUR
+[ ] Add another price → Yearly: 99.00 EUR
+[ ] Save product
+
+[ ] COPY MONTHLY PRICE ID: price_________________________
+[ ] COPY YEARLY PRICE ID:  price_________________________
+
+PRODUCT 2: Professional AI
+───────────────────────────
+[ ] Click: Products → Add Product
+[ ] Name: Professional AI
+[ ] Description: Forfait professionnel - 500 produits max
+[ ] Pricing Model: Recurring
+[ ] Monthly Price: 79.00 EUR
+[ ] Add another price → Yearly: 790.00 EUR
+[ ] Save product
+
+[ ] COPY MONTHLY PRICE ID: price_________________________
+[ ] COPY YEARLY PRICE ID:  price_________________________
+
+PRODUCT 3: Enterprise Commerce+
+────────────────────────────────
+[ ] Click: Products → Add Product
+[ ] Name: Enterprise Commerce+
+[ ] Description: Solution enterprise - Illimité
+[ ] Pricing Model: Recurring
+[ ] Monthly Price: 199.00 EUR
+[ ] Add another price → Yearly: 1990.00 EUR
+[ ] Save product
+
+[ ] COPY MONTHLY PRICE ID: price_________________________
+[ ] COPY YEARLY PRICE ID:  price_________________________
+
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 3: UPDATE DATABASE (2 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] Go to: https://supabase.com/dashboard/project/ufdhzgqrubbnornjdvgv/sql
+[ ] Open SQL Editor
+[ ] Copy the commands below
+[ ] Replace price_xxxxxxxxxxxxx with YOUR actual Price IDs
+[ ] Run the SQL commands
+
+SQL COMMANDS:
+─────────────
+
+-- Starter Plan
+UPDATE subscription_plans SET
+  stripe_price_id_monthly = 'price_xxxxxxxxxxxxx',
+  stripe_price_id_yearly = 'price_xxxxxxxxxxxxx'
+WHERE id = 'starter';
+
+-- Professional Plan
+UPDATE subscription_plans SET
+  stripe_price_id_monthly = 'price_xxxxxxxxxxxxx',
+  stripe_price_id_yearly = 'price_xxxxxxxxxxxxx'
+WHERE id = 'professional';
+
+-- Enterprise Plan
+UPDATE subscription_plans SET
+  stripe_price_id_monthly = 'price_xxxxxxxxxxxxx',
+  stripe_price_id_yearly = 'price_xxxxxxxxxxxxx'
+WHERE id = 'enterprise';
+
+-- VERIFY (all should show READY)
+SELECT * FROM subscription_plans_config_status;
+
+[ ] Executed UPDATE commands
+[ ] Verified all 3 plans show: "READY - All price IDs configured"
+
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 4: ADD STRIPE SECRET KEY (2 minutes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] In Stripe Dashboard, go to: Developers → API keys
+[ ] Copy your Secret key (starts with sk_test_ or sk_live_)
+
+    Secret Key: sk_____________________________________________________
+
+[ ] Go to: Supabase Dashboard → Project Settings → Edge Functions
+[ ] Click: Manage secrets
+[ ] Add new secret:
+    Name:  STRIPE_SECRET_KEY
+    Value: [paste your secret key]
+[ ] Click: Save
+
+[ ] Secret key added to Supabase
+
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 5: TEST SIGNUP FLOW (1 minute)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] Visit your application
+[ ] Click: "Essai Gratuit 14 Jours" or "Sign Up"
+[ ] Fill in test data:
+    Name: Test User
+    Email: test@example.com
+    Company: Test Company
+    Password: test123
+[ ] Click: "Continue"
+[ ] Verify: 3 plans are displayed
+[ ] Select: Any plan (Starter/Professional/Enterprise)
+[ ] Choose: Monthly or Yearly
+[ ] Click: "Commencer l'essai gratuit"
+[ ] Should redirect to: Stripe Checkout page
+[ ] Payment form should show correct price
+[ ] Use test card: 4242 4242 4242 4242
+[ ] Expiry: Any future date (e.g., 12/25)
+[ ] CVC: Any 3 digits (e.g., 123)
+[ ] Complete checkout
+[ ] Should redirect back to: Dashboard
+
+[ ] ✅ SIGNUP FLOW WORKS!
+
+───────────────────────────────────────────────────────────────────────────────
+
+VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ ] All 3 products created in Stripe
+[ ] All 6 prices created (2 per product)
+[ ] All 6 Price IDs copied
+[ ] Database updated with all Price IDs
+[ ] Configuration status shows all READY
+[ ] Stripe Secret Key added to Supabase
+[ ] Signup flow tested successfully
+[ ] Reached Stripe Checkout page
+[ ] Test payment completed
+[ ] Redirected to dashboard
+
+───────────────────────────────────────────────────────────────────────────────
+
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ Plans not showing on signup page
+   → Check: SELECT * FROM subscription_plans_config_status;
+   → All must show: READY
+
+❌ "No such price" error
+   → Verify Price IDs in database match Stripe Dashboard
+   → Check you're in same mode (Test vs Live)
+
+❌ "Stripe secret key not configured"
+   → Add STRIPE_SECRET_KEY to Supabase Edge Function secrets
+
+❌ Wrong price in Stripe Checkout
+   → Verify Price ID in database points to correct Stripe price
+
+❌ Cannot find Price IDs
+   → Go to: Stripe → Products → Click product → See prices listed
+
+───────────────────────────────────────────────────────────────────────────────
+
+ADDITIONAL RESOURCES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📖 Quick Guide:       STRIPE_QUICK_FIX.md
+📖 Detailed Guide:    STRIPE_SETUP_GUIDE.md
+📖 Technical Details: STRIPE_PRICING_FIX_SUMMARY.md
+📖 Issue Summary:     SIGNUP_ERROR_RESOLVED.md
+
+───────────────────────────────────────────────────────────────────────────────
+
+IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  Use TEST MODE for development
+⚠️  Price IDs are safe to expose (they appear in checkout URLs)
+⚠️  Secret Keys must NEVER be committed to git
+⚠️  Each Price ID is exactly 30 characters: price_ + 24 chars
+⚠️  Switching to Live Mode requires new products and Price IDs
+⚠️  14-day free trial is configured automatically
+
+───────────────────────────────────────────────────────────────────────────────
+
+✅ COMPLETION STATUS: ___ / ___ steps completed
+
+Date completed: ___________________
+
+Notes:
+_____________________________________________________________________________
+_____________________________________________________________________________
+_____________________________________________________________________________
+
+───────────────────────────────────────────────────────────────────────────────

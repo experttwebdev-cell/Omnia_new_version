@@ -124,8 +124,22 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       // Use database data if available, otherwise fallback to defaults
       if (data && data.length > 0) {
+        // Filter out plans without Stripe Price IDs configured
+        const configuredPlans = data.filter(plan => {
+          const hasMonthly = plan.stripe_price_id_monthly && plan.stripe_price_id_monthly.startsWith('price_');
+          const hasYearly = plan.stripe_price_id_yearly && plan.stripe_price_id_yearly.startsWith('price_');
+          return hasMonthly && hasYearly;
+        });
+
+        if (configuredPlans.length === 0) {
+          console.warn('⚠️ No plans have Stripe Price IDs configured');
+          setError('Les forfaits ne sont pas encore configurés. Veuillez réessayer plus tard ou contacter le support.');
+          setLoadingPlans(false);
+          return;
+        }
+
         // Mark the professional plan as popular
-        const plansWithPopular = data.map(plan => ({
+        const plansWithPopular = configuredPlans.map(plan => ({
           ...plan,
           popular: plan.id === 'professional'
         }));
@@ -285,6 +299,29 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     setError('');
 
     try {
+      // Validate selected plan has Stripe Price IDs
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+      if (!selectedPlan) {
+        setError('Veuillez sélectionner un forfait valide');
+        setLoading(false);
+        return;
+      }
+
+      const priceIdToUse = billingCycle === 'yearly'
+        ? selectedPlan.stripe_price_id_yearly
+        : selectedPlan.stripe_price_id_monthly;
+
+      if (!priceIdToUse || !priceIdToUse.startsWith('price_')) {
+        setError(
+          `Le forfait "${selectedPlan.name}" n'est pas encore disponible pour la facturation ${billingCycle === 'monthly' ? 'mensuelle' : 'annuelle'}. ` +
+          'Veuillez sélectionner un autre forfait ou cycle de facturation.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      console.log(`✓ Plan validation passed: ${selectedPlan.name} with price ID ${priceIdToUse}`);
+
       // 1. Créer le compte utilisateur avec le plan et cycle de facturation sélectionnés
       const { error: signUpError, sellerId } = await signUp(
         email,

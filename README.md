@@ -10,6 +10,16 @@ Complete AI-powered platform for Shopify SEO optimization, product enrichment, a
 
 ---
 
+## ⚠️ IMPORTANT: Stripe Configuration Required
+
+**Before deployment, you must configure Stripe pricing:**
+
+**👉 [STRIPE_QUICK_FIX.md](STRIPE_QUICK_FIX.md)** - 10-minute Stripe setup (REQUIRED)
+
+Without Stripe configuration, users cannot sign up. This is quick and easy!
+
+---
+
 ## ⚡ Deploy Now - 10 Minutes to Live!
 
 **Your application is production-ready and can be deployed right now.**
@@ -22,6 +32,11 @@ Complete AI-powered platform for Shopify SEO optimization, product enrichment, a
 - [QUICK_DEPLOY.md](QUICK_DEPLOY.md) - Fast 10-minute deployment
 - [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Complete 30-minute guide
 - [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) - Configuration reference
+
+**Stripe Setup (Required):**
+- [STRIPE_QUICK_FIX.md](STRIPE_QUICK_FIX.md) - Quick 10-minute setup
+- [STRIPE_SETUP_GUIDE.md](STRIPE_SETUP_GUIDE.md) - Detailed guide with troubleshooting
+- [STRIPE_PRICING_FIX_SUMMARY.md](STRIPE_PRICING_FIX_SUMMARY.md) - Technical details
 
 ---
 
