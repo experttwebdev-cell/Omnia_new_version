@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-  brain, 
+  ShoppingBag, 
   Mail, 
   Lock, 
   Building, 
@@ -17,7 +17,7 @@ import {
   Shield,
   Sparkles,
   Zap,
-  Calendar,
+  Calendar, 
   Users,
   FileText,
   MessageSquare
@@ -461,7 +461,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="relative">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-lg">
-                  <brain className="w-7 h-7 text-white" />
+                  <ShoppingBag className="w-7 h-7 text-white" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
                   <Sparkles className="w-3 h-3 text-white" />
