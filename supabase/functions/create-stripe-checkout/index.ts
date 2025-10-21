@@ -1,107 +1,139 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import Stripe from "npm:stripe@14.14.0";
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import Stripe from 'npm:stripe@17.7.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey"
-};
+const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
+if (!stripeSecret) {
+  throw new Error('STRIPE_SECRET_KEY is required');
+}
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Supabase configuration is required');
+}
+
+const stripe = new Stripe(stripeSecret, {
+  apiVersion: '2023-10-16',
+  appInfo: {
+    name: 'Bolt Integration',
+    version: '1.0.0'
+  }
+});
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Helper function to create responses with CORS headers
+function corsResponse(body: any, status = 200) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': '*'
+  };
+
+  if (status === 204) {
     return new Response(null, {
-      status: 200,
-      headers: corsHeaders
+      status,
+      headers
     });
   }
 
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...headers,
+      'Content-Type': 'application/json'
+    }
+  });
+}
+
+Deno.serve(async (req) => {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Supabase configuration missing");
-    }
-    
-    if (!stripeKey) {
-      throw new Error("Stripe secret key not configured");
+    if (req.method === 'OPTIONS') {
+      return corsResponse({}, 204);
     }
 
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: "2023-10-16"
-    });
+    if (req.method !== 'POST') {
+      return corsResponse({
+        error: 'Method not allowed'
+      }, 405);
+    }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get request body
     const { plan_id, billing_period, success_url, cancel_url } = await req.json();
     
-    // Validation des paramètres requis
-    if (!plan_id || !billing_period) {
-      throw new Error("Missing required parameters: plan_id and billing_period");
+    const error = validateParameters({
+      price_id: plan_id, // Map plan_id to price_id for validation
+      success_url,
+      cancel_url,
+      mode: 'subscription'
+    }, {
+      price_id: 'string',
+      success_url: 'string', 
+      cancel_url: 'string',
+      mode: {
+        values: ['subscription']
+      }
+    });
+
+    if (error) {
+      return corsResponse({
+        error
+      }, 400);
     }
 
-    // Get JWT from header
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return corsResponse({
+        error: 'No authorization header'
+      }, 401);
     }
 
-    // Verify JWT and get user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: getUserError } = await supabase.auth.getUser(token);
     
-    if (userError || !user) {
-      throw new Error("Unauthorized: " + (userError?.message || "Invalid token"));
+    if (getUserError || !user) {
+      return corsResponse({
+        error: 'Failed to authenticate user'
+      }, 401);
     }
-
-    // Get seller info
-    const { data: seller, error: sellerError } = await supabase
-      .from("sellers")
-      .select("email, full_name, company_name, stripe_customer_id")
-      .eq("id", user.id)
-      .single();
-
-    if (sellerError) throw new Error("Seller not found: " + sellerError.message);
 
     // Get plan details
     const { data: plan, error: planError } = await supabase
-      .from("subscription_plans")
-      .select("*")
-      .eq("id", plan_id)
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', plan_id)
       .single();
 
-    if (planError) throw new Error("Plan not found: " + planError.message);
+    if (planError || !plan) {
+      return corsResponse({
+        error: 'Plan not found'
+      }, 404);
+    }
 
     // Get the appropriate Stripe Price ID based on billing period
-    const stripePriceId = billing_period === "annual" || billing_period === "yearly"
-      ? plan.stripe_price_id_yearly
+    const stripePriceId = billing_period === 'yearly' 
+      ? plan.stripe_price_id_yearly 
       : plan.stripe_price_id_monthly;
 
-    // Enhanced validation with helpful error messages
-    if (!stripePriceId) {
-      console.error(`❌ Stripe Price ID missing for plan: ${plan.name}, billing: ${billing_period}`);
-      console.error(`   Monthly Price ID: ${plan.stripe_price_id_monthly || 'NOT SET'}`);
-      console.error(`   Yearly Price ID: ${plan.stripe_price_id_yearly || 'NOT SET'}`);
-
-      throw new Error(
-        `Configuration incomplète: Le forfait "${plan.name}" n'a pas de tarif Stripe configuré pour la facturation ${billing_period === 'monthly' ? 'mensuelle' : 'annuelle'}. ` +
-        `Veuillez contacter le support ou réessayer plus tard.`
-      );
+    if (!stripePriceId || !stripePriceId.startsWith('price_')) {
+      console.error(`Invalid Stripe Price ID for plan ${plan_id}: ${stripePriceId}`);
+      return corsResponse({
+        error: `Configuration incomplète: Le forfait "${plan.name}" n'a pas de tarif Stripe configuré pour la facturation ${billing_period === 'monthly' ? 'mensuelle' : 'annuelle'}.`
+      }, 400);
     }
 
-    // Validate Stripe Price ID format
-    if (!stripePriceId.startsWith('price_') || stripePriceId.length !== 30) {
-      console.error(`❌ Invalid Stripe Price ID format: ${stripePriceId}`);
-      throw new Error(
-        `Erreur de configuration: L'identifiant de tarif Stripe est invalide. ` +
-        `Veuillez contacter le support technique.`
-      );
-    }
+    // Get or create seller
+    const { data: seller, error: sellerError } = await supabase
+      .from('sellers')
+      .select('email, full_name, company_name, stripe_customer_id')
+      .eq('id', user.id)
+      .single();
 
-    console.log(`✓ Using Stripe Price ID: ${stripePriceId} for ${plan.name} (${billing_period})`);
+    if (sellerError) {
+      return corsResponse({
+        error: 'Seller not found'
+      }, 404);
+    }
 
     // Create or get Stripe customer
     let customerId = seller.stripe_customer_id;
@@ -117,34 +149,32 @@ Deno.serve(async (req) => {
       customerId = customer.id;
 
       // Update seller with Stripe customer ID
-      await supabase
-        .from("sellers")
+      const { error: updateError } = await supabase
+        .from('sellers')
         .update({ stripe_customer_id: customerId })
-        .eq("id", user.id);
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Failed to update seller with Stripe customer ID:', updateError);
+      }
     }
 
-    // Create Stripe Checkout Session using pre-configured Price IDs
+    // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "subscription",
+      payment_method_types: ['card'],
+      mode: 'subscription',
       customer: customerId,
       client_reference_id: user.id,
-
-      line_items: [
-        {
-          price: stripePriceId,
-          quantity: 1
-        }
-      ],
-
-      // Metadata for webhook
+      line_items: [{
+        price: stripePriceId,
+        quantity: 1
+      }],
       metadata: {
         seller_id: user.id,
         plan_id: plan_id,
         billing_period: billing_period,
         plan_name: plan.name
       },
-
       subscription_data: {
         trial_period_days: 14,
         metadata: {
@@ -154,71 +184,50 @@ Deno.serve(async (req) => {
           plan_name: plan.name
         }
       },
-
-      // Custom success and cancel URLs
-      success_url: success_url || `${req.headers.get("origin")}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancel_url || `${req.headers.get("origin")}/pricing?checkout=cancelled`,
-
-      // Additional configuration
+      success_url: success_url || `${new URL(req.url).origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancel_url || `${new URL(req.url).origin}/pricing?checkout=cancelled`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       customer_update: {
         address: 'auto',
         name: 'auto'
-      },
-
-      // Custom text
-      custom_text: {
-        submit: {
-          message: `Essai gratuit de 14 jours. Aucun paiement aujourd'hui - le premier débit aura lieu dans 14 jours.`
-        }
       }
     });
 
-    console.log(`✅ Checkout session created for ${seller.email}: ${session.id}`);
+    console.log(`Created checkout session ${session.id} for customer ${customerId}`);
 
-    return new Response(JSON.stringify({
+    return corsResponse({
       success: true,
       session_id: session.id,
       url: session.url,
       customer_id: customerId
-    }), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json"
-      }
     });
 
   } catch (error) {
-    console.error("💥 Stripe checkout error:", error);
-
-    // Provide user-friendly error messages
-    let userMessage = error.message;
-    let statusCode = 400;
-
-    // Handle specific Stripe errors
-    if (error.type === 'StripeInvalidRequestError') {
-      if (error.message.includes('No such price')) {
-        userMessage = 'Configuration tarifaire invalide. Le tarif sélectionné n\'existe pas dans Stripe. Veuillez contacter le support.';
-        console.error('❌ CRITICAL: Stripe Price ID does not exist in Stripe account');
-      } else if (error.message.includes('No such customer')) {
-        userMessage = 'Erreur lors de la création de votre compte client. Veuillez réessayer.';
-      }
-    } else if (error.message.includes('Configuration incomplète')) {
-      statusCode = 503; // Service temporarily unavailable
-    }
-
-    return new Response(JSON.stringify({
-      success: false,
-      error: userMessage,
-      code: error.type || 'unknown_error',
-      details: error.message
-    }), {
-      status: statusCode,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json"
-      }
-    });
+    console.error(`Checkout error: ${error.message}`);
+    return corsResponse({
+      error: error.message
+    }, 500);
   }
 });
+
+function validateParameters(values: any, expected: any) {
+  for (const parameter in expected) {
+    const expectation = expected[parameter];
+    const value = values[parameter];
+
+    if (expectation === 'string') {
+      if (value == null) {
+        return `Missing required parameter ${parameter}`;
+      }
+      if (typeof value !== 'string') {
+        return `Expected parameter ${parameter} to be a string got ${JSON.stringify(value)}`;
+      }
+    } else {
+      if (!expectation.values.includes(value)) {
+        return `Expected parameter ${parameter} to be one of ${expectation.values.join(', ')}`;
+      }
+    }
+  }
+  return undefined;
+}
