@@ -10,13 +10,28 @@ Complete AI-powered platform for Shopify SEO optimization, product enrichment, a
 
 ---
 
-## ⚠️ IMPORTANT: Stripe Configuration Required
+## 🔴 URGENT: Stripe Live Payment Setup Required
 
-**Before deployment, you must configure Stripe pricing:**
+**Current Issue:** Subscription plans not displaying - "Les forfaits ne sont pas encore configurés"
 
-**👉 [STRIPE_QUICK_FIX.md](STRIPE_QUICK_FIX.md)** - 10-minute Stripe setup (REQUIRED)
+**Why:** Stripe Price IDs are not configured in the database. Users cannot sign up!
 
-Without Stripe configuration, users cannot sign up. This is quick and easy!
+**Solution:** Configure Stripe LIVE payments (15 minutes):
+
+**👉 [STRIPE_LIVE_SETUP_NOW.md](STRIPE_LIVE_SETUP_NOW.md)** ⚡ **START HERE** - Complete live setup guide
+
+**Additional Resources:**
+- **[STRIPE_SETUP_CHECKLIST.md](STRIPE_SETUP_CHECKLIST.md)** - Step-by-step checklist
+- **[UPDATE_STRIPE_PRICE_IDS.sql](UPDATE_STRIPE_PRICE_IDS.sql)** - SQL template to copy/paste
+- **[STRIPE_SETUP_GUIDE.md](STRIPE_SETUP_GUIDE.md)** - Detailed guide with troubleshooting
+
+**What You'll Do:**
+1. Create 3 products in Stripe Dashboard (LIVE MODE) - 8 min
+2. Copy 6 Price IDs from Stripe - 2 min
+3. Update database with Price IDs - 2 min
+4. Add Stripe secret key to Supabase - 3 min
+
+**After Setup:** ✅ Real payments accepted, users can sign up with 14-day free trial
 
 ---
 
