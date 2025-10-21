@@ -64,6 +64,9 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // URL de base pour les Edge Functions
+  const EDGE_FUNCTION_BASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co/functions/v1';
+
   useEffect(() => {
     loadPlans();
   }, []);
@@ -394,12 +397,16 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       console.log('🔑 Session obtenue, création du checkout Stripe...');
 
-      // 3. Create Stripe Checkout session
-      const response = await fetch('/api/functions/v1/create-stripe-checkout', {
+      // 3. Create Stripe Checkout session avec la bonne URL
+      const functionUrl = `${EDGE_FUNCTION_BASE_URL}/create-stripe-checkout`;
+      console.log('🔗 URL de la fonction Edge:', functionUrl);
+
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           plan_id: selectedPlanId,
@@ -409,14 +416,20 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         })
       });
 
+      console.log('📤 Réponse du serveur - Status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur Stripe - Response text:', errorText);
+        console.error('❌ Status:', response.status);
+        
         let errorMessage = 'Erreur lors de la création de la session de paiement';
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
+          console.error('❌ Erreur détaillée:', errorData);
         } catch (e) {
+          console.error('❌ Impossible de parser la réponse d\'erreur');
           errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
@@ -451,8 +464,39 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
   const yearlySavings = selectedPlan ? Math.round((1 - (selectedPlan.price_yearly / (selectedPlan.price_monthly * 12))) * 100) : 0;
 
-  // [Le JSX reste exactement le même que dans la version précédente]
-  // Je garde le même JSX pour éviter la duplication
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-200 text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Bienvenue sur Omnia AI!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Votre essai gratuit de 14 jours commence maintenant. Redirection vers votre tableau de bord...
+            </p>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6 mb-6">
+              <div className="flex items-center justify-center gap-2 text-blue-800 text-lg font-semibold mb-3">
+                <Sparkles className="w-5 h-5" />
+                <span>Essai gratuit de 14 jours</span>
+              </div>
+              <p className="text-sm text-gray-600 text-center">
+                Aucune carte bancaire requise. Explorez toutes les fonctionnalités gratuitement!
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-gray-500">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-pink-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
