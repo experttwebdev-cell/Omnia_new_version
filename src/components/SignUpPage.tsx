@@ -20,7 +20,10 @@ import {
   Calendar,
   Users,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Search,
+  Bot,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
@@ -64,6 +67,7 @@ const getFeaturesList = (plan: Plan): string[] => {
     features.push(`${plan.max_articles_monthly} article de blog/mois`);
     features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
     features.push('Support par email');
+    features.push('Recherche produit basique');
   } else if (plan.id === 'professional') {
     features.push(`Jusqu'à ${plan.max_products} produits`);
     features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
@@ -72,6 +76,8 @@ const getFeaturesList = (plan: Plan): string[] => {
     features.push('Support prioritaire');
     features.push('Analytics avancées');
     features.push('API complète');
+    features.push('Recherche IA avancée');
+    features.push('Assistant shopping OmnIA');
   } else if (plan.id === 'enterprise') {
     features.push('Produits illimités');
     features.push('Optimisations SEO illimitées');
@@ -81,6 +87,8 @@ const getFeaturesList = (plan: Plan): string[] => {
     features.push('Analytics enterprise');
     features.push('API personnalisée');
     features.push('White label');
+    features.push('Recherche IA illimitée');
+    features.push('Assistant shopping prioritaire');
   }
 
   return features;
@@ -94,6 +102,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   useEffect(() => {
     console.log('Current step:', step);
   }, [step]);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -134,7 +143,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      // Fallback to default plans if database is empty
+      // ✅ AMÉLIORATION : Plans avec fonctionnalités IA étendues
       const defaultPlans: Plan[] = [
         {
           id: 'starter',
@@ -152,10 +161,12 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             '10 articles de blog/mois',
             '3 campagnes marketing',
             '1000 réponses chat/mois',
-            'Support email'
+            'Support email',
+            'Recherche produit basique',
+            'Assistant IA limité'
           ],
           stripe_price_id: '',
-          description: 'Parfait pour commencer'
+          description: 'Parfait pour commencer avec l\'IA'
         },
         {
           id: 'professional',
@@ -174,11 +185,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             '10 campagnes marketing',
             '5000 réponses chat/mois',
             'Support prioritaire',
-            'Analytics avancées'
+            'Analytics avancées',
+            'Recherche IA avancée',
+            'Assistant shopping OmnIA',
+            'Streaming temps réel'
           ],
           stripe_price_id: '',
           popular: true,
-          description: 'Recommandé pour les entreprises'
+          description: 'IA avancée pour votre e-commerce'
         },
         {
           id: 'enterprise',
@@ -198,10 +212,13 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             'Réponses chat illimitées',
             'Support dédié 24/7',
             'API personnalisée',
-            'Formation équipe'
+            'Formation équipe',
+            'Recherche IA illimitée',
+            'Assistant shopping prioritaire',
+            'Streaming haute performance'
           ],
           stripe_price_id: '',
-          description: 'Solution complète pour les grandes entreprises'
+          description: 'Solution IA complète pour grandes entreprises'
         }
       ];
 
@@ -220,7 +237,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           max_articles_monthly: 10,
           max_campaigns: 3,
           max_chat_responses_monthly: 1000,
-          features: ['100 produits', '50 optimisations/mois', '10 articles/mois', 'Support email'],
+          features: ['100 produits', '50 optimisations/mois', '10 articles/mois', 'Support email', 'Recherche basique'],
           stripe_price_id: '',
           description: 'Parfait pour commencer'
         },
@@ -234,10 +251,10 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           max_articles_monthly: 50,
           max_campaigns: 10,
           max_chat_responses_monthly: 5000,
-          features: ['500 produits', '200 optimisations/mois', '50 articles/mois', 'Support prioritaire'],
+          features: ['500 produits', '200 optimisations/mois', '50 articles/mois', 'Support prioritaire', 'IA avancée'],
           stripe_price_id: '',
           popular: true,
-          description: 'Recommandé pour les entreprises'
+          description: 'IA avancée pour votre boutique'
         }
       ]);
     } finally {
@@ -396,6 +413,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
   const yearlySavings = selectedPlan ? Math.round((1 - (selectedPlan.price_yearly / (selectedPlan.price_monthly * 12))) * 100) : 0;
 
+  // ✅ NOUVEAU : Fonctionnalités IA mises en avant
+  const aiFeatures = [
+    { icon: Search, text: 'Recherche produit intelligente', description: 'Trouvez vos produits naturellement' },
+    { icon: Bot, text: 'Assistant shopping OmnIA', description: 'Chat IA temps réel avec streaming' },
+    { icon: MessageCircle, text: 'Réponses IA illimitées', description: 'Vos clients jamais sans réponse' },
+    { icon: Sparkles, text: 'Optimisation SEO automatique', description: 'Boostez votre visibilité' }
+  ];
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
@@ -456,12 +481,12 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         </button>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20">
-          {/* En-tête */}
+          {/* En-tête avec focus IA */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="relative">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 shadow-lg">
-                  <ShoppingBag className="w-7 h-7 text-white" />
+                  <Bot className="w-7 h-7 text-white" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
                   <Sparkles className="w-3 h-3 text-white" />
@@ -471,17 +496,40 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Omnia AI
                 </h1>
-                <p className="text-xs text-gray-500">E-commerce intelligent</p>
+                <p className="text-xs text-gray-500">E-commerce intelligent avec IA</p>
               </div>
             </div>
 
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              {step === 1 ? 'Commencer votre essai gratuit' : 'Choisissez votre forfait'}
+              {step === 1 ? 'Commencer votre essai gratuit' : 'Choisissez votre forfait IA'}
             </h2>
             <p className="text-gray-600">
-              {step === 1 ? 'Créez votre compte en 2 minutes' : '14 jours d\'essai gratuit, sans carte bancaire'}
+              {step === 1 ? 'Créez votre compte en 2 minutes' : '14 jours d\'essai gratuit avec IA avancée'}
             </p>
           </div>
+
+          {/* ✅ NOUVEAU : Bannière fonctionnalités IA */}
+          {step === 2 && (
+            <div className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center flex items-center justify-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                Fonctionnalités IA incluses
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {aiFeatures.map((feature, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <feature.icon className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{feature.text}</p>
+                      <p className="text-xs text-gray-600">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Étapes de progression */}
           <div className="flex items-center justify-center gap-8 mb-8">
@@ -507,7 +555,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 2
               </div>
               <span className={`font-medium ${step === 2 ? 'text-gray-900' : 'text-gray-500'}`}>
-                Forfait
+                Forfait IA
               </span>
             </div>
           </div>
@@ -639,13 +687,13 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
               >
-                <span>Continuer vers le choix du forfait</span>
+                <span>Continuer vers le choix du forfait IA</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             </form>
           )}
 
-          {/* Étape 2: Choix du forfait */}
+          {/* Étape 2: Choix du forfait IA */}
           {step === 2 && (
             <div className="space-y-8">
               {/* Sélecteur de cycle de facturation */}
@@ -674,7 +722,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 </div>
               </div>
 
-              {/* Grille des forfaits */}
+              {/* Grille des forfaits IA */}
               {loadingPlans ? (
                 <div className="flex justify-center py-12">
                   <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -701,7 +749,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
                       <div className="p-6">
                         <div className="flex items-center gap-3 mb-4">
-                          <Package className={`w-6 h-6 ${
+                          <Bot className={`w-6 h-6 ${
                             plan.id === 'starter' ? 'text-blue-600' :
                             plan.id === 'professional' ? 'text-purple-600' :
                             'text-pink-600'
@@ -726,15 +774,15 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                         </div>
 
                         <div className="space-y-2 mb-6">
-                          {getFeaturesList(plan).slice(0, 4).map((feature, index) => (
+                          {getFeaturesList(plan).slice(0, 6).map((feature, index) => (
                             <div key={index} className="flex items-center gap-2">
                               <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                               <span className="text-sm text-gray-700">{feature}</span>
                             </div>
                           ))}
-                          {getFeaturesList(plan).length > 4 && (
+                          {getFeaturesList(plan).length > 6 && (
                             <p className="text-sm text-blue-600 font-medium">
-                              +{getFeaturesList(plan).length - 4} fonctionnalités
+                              +{getFeaturesList(plan).length - 6} fonctionnalités IA
                             </p>
                           )}
                         </div>
@@ -761,6 +809,9 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                       <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
                       <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
                       <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
+                      <p className="text-blue-600 font-medium">
+                        ✅ Inclut l'assistant shopping OmnIA
+                      </p>
                     </div>
                   </div>
 
@@ -782,7 +833,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                       ) : (
                         <>
                           <CreditCard className="w-5 h-5" />
-                          <span>Commencer l'essai gratuit</span>
+                          <span>Commencer l'essai gratuit IA</span>
                         </>
                       )}
                     </button>
@@ -790,21 +841,26 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 </div>
               </div>
 
-              {/* Sécurité et garanties */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              {/* ✅ AMÉLIORATION : Sécurité et garanties IA */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                 <div className="p-4">
                   <Shield className="w-8 h-8 text-green-600 mx-auto mb-2" />
                   <p className="font-semibold text-gray-900">Paiement sécurisé</p>
                   <p className="text-sm text-gray-600">Cryptage SSL 256-bit</p>
                 </div>
                 <div className="p-4">
-                  <CheckCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <Bot className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">IA incluse</p>
+                  <p className="text-sm text-gray-600">Assistant shopping intégré</p>
+                </div>
+                <div className="p-4">
+                  <CheckCircle className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                   <p className="font-semibold text-gray-900">Sans engagement</p>
                   <p className="text-sm text-gray-600">Annulation à tout moment</p>
                 </div>
                 <div className="p-4">
-                  <Zap className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                  <p className="font-semibold text-gray-900">Support 7j/7</p>
+                  <Zap className="w-8 h-8 text-pink-600 mx-auto mb-2" />
+                  <p className="font-semibold text-gray-900">Support IA 7j/7</p>
                   <p className="text-sm text-gray-600">Équipe dédiée</p>
                 </div>
               </div>
