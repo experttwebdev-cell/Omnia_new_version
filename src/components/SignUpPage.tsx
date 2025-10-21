@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
-import { getEnvVar } from '../lib/supabase';
 
 interface SignUpPageProps {
   planId?: string;
@@ -43,57 +42,15 @@ interface Plan {
   max_campaigns: number;
   max_chat_responses_monthly: number;
   features: string[] | Record<string, any>;
-  stripe_price_id: string;
+  stripe_price_id_monthly?: string;
   stripe_price_id_yearly?: string;
   description: string;
   popular?: boolean;
 }
 
-// Helper function to convert features to display format
-const getFeaturesList = (plan: Plan): string[] => {
-  if (Array.isArray(plan.features)) {
-    return plan.features;
-  }
-
-  // Convert database JSONB features to readable strings
-  const features: string[] = [];
-
-  if (plan.id === 'starter') {
-    features.push(`Jusqu'à ${plan.max_products} produits`);
-    features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
-    features.push(`${plan.max_articles_monthly} article de blog/mois`);
-    features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
-    features.push('Support par email');
-  } else if (plan.id === 'professional') {
-    features.push(`Jusqu'à ${plan.max_products} produits`);
-    features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
-    features.push(`${plan.max_articles_monthly} articles de blog/mois`);
-    features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
-    features.push('Support prioritaire');
-    features.push('Analytics avancées');
-    features.push('API complète');
-  } else if (plan.id === 'enterprise') {
-    features.push('Produits illimités');
-    features.push('Optimisations SEO illimitées');
-    features.push('Articles de blog illimités');
-    features.push('Réponses chat illimitées');
-    features.push('Support dédié 24/7');
-    features.push('Analytics enterprise');
-    features.push('API personnalisée');
-    features.push('White label');
-  }
-
-  return features;
-};
-
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
   const { signUp } = useAuth();
   const [step, setStep] = useState(1);
-
-  // Debug: log whenever step changes
-  useEffect(() => {
-    console.log('Current step:', step);
-  }, [step]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -122,7 +79,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       if (error) throw error;
 
-      // Use database data if available, otherwise fallback to defaults
       if (data && data.length > 0) {
         // Filter out plans without Stripe Price IDs configured
         const configuredPlans = data.filter(plan => {
@@ -144,153 +100,143 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           popular: plan.id === 'professional'
         }));
         setPlans(plansWithPopular);
-        setLoadingPlans(false);
-        return;
+      } else {
+        // Fallback to default plans
+        setPlans(getDefaultPlans());
       }
-
-      // Fallback to default plans if database is empty
-      const defaultPlans: Plan[] = [
-        {
-          id: 'starter',
-          name: 'Starter',
-          price_monthly: 29,
-          price_yearly: 278,
-          max_products: 100,
-          max_optimizations_monthly: 50,
-          max_articles_monthly: 10,
-          max_campaigns: 3,
-          max_chat_responses_monthly: 1000,
-          features: [
-            '100 produits maximum',
-            '50 optimisations SEO/mois',
-            '10 articles de blog/mois',
-            '3 campagnes marketing',
-            '1000 réponses chat/mois',
-            'Support email'
-          ],
-          stripe_price_id: '',
-          description: 'Parfait pour commencer'
-        },
-        {
-          id: 'professional',
-          name: 'Professional',
-          price_monthly: 79,
-          price_yearly: 758,
-          max_products: 500,
-          max_optimizations_monthly: 200,
-          max_articles_monthly: 50,
-          max_campaigns: 10,
-          max_chat_responses_monthly: 5000,
-          features: [
-            '500 produits maximum',
-            '200 optimisations SEO/mois',
-            '50 articles de blog/mois',
-            '10 campagnes marketing',
-            '5000 réponses chat/mois',
-            'Support prioritaire',
-            'Analytics avancées'
-          ],
-          stripe_price_id: '',
-          popular: true,
-          description: 'Recommandé pour les entreprises'
-        },
-        {
-          id: 'enterprise',
-          name: 'Enterprise',
-          price_monthly: 199,
-          price_yearly: 1910,
-          max_products: -1, // Illimité
-          max_optimizations_monthly: -1,
-          max_articles_monthly: -1,
-          max_campaigns: -1,
-          max_chat_responses_monthly: -1,
-          features: [
-            'Produits illimités',
-            'Optimisations SEO illimitées',
-            'Articles de blog illimités',
-            'Campagnes marketing illimitées',
-            'Réponses chat illimitées',
-            'Support dédié 24/7',
-            'API personnalisée',
-            'Formation équipe'
-          ],
-          stripe_price_id: '',
-          description: 'Solution complète pour les grandes entreprises'
-        }
-      ];
-
-      setPlans(defaultPlans);
     } catch (error) {
       console.error('Error loading plans:', error);
-      // Plans par défaut en cas d'erreur
-      setPlans([
-        {
-          id: 'starter',
-          name: 'Starter',
-          price_monthly: 29,
-          price_yearly: 278,
-          max_products: 100,
-          max_optimizations_monthly: 50,
-          max_articles_monthly: 10,
-          max_campaigns: 3,
-          max_chat_responses_monthly: 1000,
-          features: ['100 produits', '50 optimisations/mois', '10 articles/mois', 'Support email'],
-          stripe_price_id: '',
-          description: 'Parfait pour commencer'
-        },
-        {
-          id: 'professional',
-          name: 'Professional',
-          price_monthly: 79,
-          price_yearly: 758,
-          max_products: 500,
-          max_optimizations_monthly: 200,
-          max_articles_monthly: 50,
-          max_campaigns: 10,
-          max_chat_responses_monthly: 5000,
-          features: ['500 produits', '200 optimisations/mois', '50 articles/mois', 'Support prioritaire'],
-          stripe_price_id: '',
-          popular: true,
-          description: 'Recommandé pour les entreprises'
-        }
-      ]);
+      setPlans(getDefaultPlans());
     } finally {
       setLoadingPlans(false);
     }
+  };
+
+  const getDefaultPlans = (): Plan[] => [
+    {
+      id: 'starter',
+      name: 'Starter',
+      price_monthly: 29,
+      price_yearly: 278,
+      max_products: 100,
+      max_optimizations_monthly: 50,
+      max_articles_monthly: 10,
+      max_campaigns: 3,
+      max_chat_responses_monthly: 1000,
+      features: [
+        '100 produits maximum',
+        '50 optimisations SEO/mois',
+        '10 articles de blog/mois',
+        '3 campagnes marketing',
+        '1000 réponses chat/mois',
+        'Support email'
+      ],
+      description: 'Parfait pour commencer'
+    },
+    {
+      id: 'professional',
+      name: 'Professional',
+      price_monthly: 79,
+      price_yearly: 758,
+      max_products: 500,
+      max_optimizations_monthly: 200,
+      max_articles_monthly: 50,
+      max_campaigns: 10,
+      max_chat_responses_monthly: 5000,
+      features: [
+        '500 produits maximum',
+        '200 optimisations SEO/mois',
+        '50 articles de blog/mois',
+        '10 campagnes marketing',
+        '5000 réponses chat/mois',
+        'Support prioritaire',
+        'Analytics avancées'
+      ],
+      popular: true,
+      description: 'Recommandé pour les entreprises'
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price_monthly: 199,
+      price_yearly: 1910,
+      max_products: -1,
+      max_optimizations_monthly: -1,
+      max_articles_monthly: -1,
+      max_campaigns: -1,
+      max_chat_responses_monthly: -1,
+      features: [
+        'Produits illimités',
+        'Optimisations SEO illimitées',
+        'Articles de blog illimités',
+        'Campagnes marketing illimitées',
+        'Réponses chat illimitées',
+        'Support dédié 24/7',
+        'API personnalisée',
+        'Formation équipe'
+      ],
+      description: 'Solution complète pour les grandes entreprises'
+    }
+  ];
+
+  const getFeaturesList = (plan: Plan): string[] => {
+    if (Array.isArray(plan.features)) {
+      return plan.features;
+    }
+
+    const features: string[] = [];
+    if (plan.id === 'starter') {
+      features.push(`Jusqu'à ${plan.max_products} produits`);
+      features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
+      features.push(`${plan.max_articles_monthly} article de blog/mois`);
+      features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
+      features.push('Support par email');
+    } else if (plan.id === 'professional') {
+      features.push(`Jusqu'à ${plan.max_products} produits`);
+      features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
+      features.push(`${plan.max_articles_monthly} articles de blog/mois`);
+      features.push(`${plan.max_chat_responses_monthly} réponses chat/mois`);
+      features.push('Support prioritaire');
+      features.push('Analytics avancées');
+      features.push('API complète');
+    } else if (plan.id === 'enterprise') {
+      features.push('Produits illimités');
+      features.push('Optimisations SEO illimitées');
+      features.push('Articles de blog illimités');
+      features.push('Réponses chat illimitées');
+      features.push('Support dédié 24/7');
+      features.push('Analytics enterprise');
+      features.push('API personnalisée');
+      features.push('White label');
+    }
+
+    return features;
   };
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    console.log('Step 1 form submitted', { email, password, confirmPassword, companyName, fullName });
-
-    // Validation
     if (!email || !password || !confirmPassword || !companyName || !fullName) {
-      console.log('Validation failed: missing fields');
       setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      console.log('Validation failed: invalid email');
       setError('Veuillez entrer une adresse email valide');
       return;
     }
 
     if (password.length < 6) {
-      console.log('Validation failed: password too short');
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
 
     if (password !== confirmPassword) {
-      console.log('Validation failed: passwords do not match');
       setError('Les mots de passe ne correspondent pas');
       return;
     }
 
-    console.log('Validation passed, moving to step 2');
     setStep(2);
   };
 
@@ -299,7 +245,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     setError('');
 
     try {
-      // Validate selected plan has Stripe Price IDs
       const selectedPlan = plans.find(p => p.id === selectedPlanId);
       if (!selectedPlan) {
         setError('Veuillez sélectionner un forfait valide');
@@ -307,23 +252,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      const priceIdToUse = billingCycle === 'yearly'
-        ? selectedPlan.stripe_price_id_yearly
-        : selectedPlan.stripe_price_id_monthly;
-
-      if (!priceIdToUse || !priceIdToUse.startsWith('price_')) {
-        setError(
-          `Le forfait "${selectedPlan.name}" n'est pas encore disponible pour la facturation ${billingCycle === 'monthly' ? 'mensuelle' : 'annuelle'}. ` +
-          'Veuillez sélectionner un autre forfait ou cycle de facturation.'
-        );
-        setLoading(false);
-        return;
-      }
-
-      console.log(`✓ Plan validation passed: ${selectedPlan.name} with price ID ${priceIdToUse}`);
-
-      // 1. Créer le compte utilisateur avec le plan et cycle de facturation sélectionnés
-      const { error: signUpError, sellerId } = await signUp(
+      // 1. Create user account first
+      const { error: signUpError, data } = await signUp(
         email,
         password,
         companyName,
@@ -338,86 +268,47 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      if (!sellerId) {
-        setError('Erreur lors de la création du vendeur');
+      // 2. Get the session after signup
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        setError('Erreur d\'authentification après l\'inscription');
         setLoading(false);
         return;
       }
 
-      // 2. Créer une session Stripe Checkout
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-
-      if (authError || !session) {
-        setError('Erreur d\'authentification');
-        setLoading(false);
-        return;
-      }
-
-      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-      const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
-
-      const checkoutUrl = `${supabaseUrl}/functions/v1/create-stripe-checkout`;
-
-      console.log('Creating Stripe checkout session...', {
-        plan_id: selectedPlanId,
-        billing_period: billingCycle,
-        url: checkoutUrl
-      });
-
-      const checkoutResponse = await fetch(checkoutUrl, {
+      // 3. Create Stripe Checkout session
+      const response = await fetch('/api/functions/v1/create-stripe-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseAnonKey
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           plan_id: selectedPlanId,
           billing_period: billingCycle,
-          success_url: `${window.location.origin}/#dashboard?checkout=success`,
-          cancel_url: `${window.location.origin}/#signup?checkout=cancelled`
+          success_url: `${window.location.origin}/dashboard?checkout=success`,
+          cancel_url: `${window.location.origin}/signup?checkout=cancelled`
         })
       });
 
-      console.log('Checkout response status:', checkoutResponse.status);
-
-      if (!checkoutResponse.ok) {
-        let errorMessage = 'Erreur lors de la création de la session de paiement';
-        try {
-          const errorData = await checkoutResponse.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          errorMessage = `Erreur HTTP ${checkoutResponse.status}: ${checkoutResponse.statusText}`;
-        }
-        throw new Error(errorMessage);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la session de paiement');
       }
 
-      let checkoutData;
-      try {
-        checkoutData = await checkoutResponse.json();
-      } catch (e) {
-        throw new Error('Réponse invalide du serveur de paiement');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Échec de la création de la session de paiement');
       }
 
-      console.log('Checkout response data:', checkoutData);
-
-      if (!checkoutData.success) {
-        throw new Error(checkoutData.error || 'Échec de la création de la session de paiement');
-      }
-
-      if (!checkoutData.url) {
+      if (!result.url) {
         throw new Error('URL de paiement non reçue');
       }
 
-      // 3. Rediriger vers Stripe Checkout
-      console.log('Redirecting to Stripe Checkout:', checkoutData.url);
-
-      // Vérifier si la clé Stripe est en mode test
-      if (!checkoutData.url.includes('checkout.stripe.com')) {
-        throw new Error('Configuration Stripe invalide. Veuillez contacter le support.');
-      }
-
-      window.location.href = checkoutData.url;
+      // 4. Redirect to Stripe Checkout
+      window.location.href = result.url;
 
     } catch (err) {
       console.error('Signup error:', err);
@@ -441,15 +332,12 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
-
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Bienvenue sur Omnia AI!
             </h2>
-
             <p className="text-gray-600 mb-6">
               Votre essai gratuit de 14 jours commence maintenant. Redirection vers votre tableau de bord...
             </p>
-
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6 mb-6">
               <div className="flex items-center justify-center gap-2 text-blue-800 text-lg font-semibold mb-3">
                 <Sparkles className="w-5 h-5" />
@@ -459,17 +347,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 Aucune carte bancaire requise. Explorez toutes les fonctionnalités gratuitement!
               </p>
             </div>
-
-            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-              <div className="space-y-2 text-sm text-gray-700">
-                <p><strong>Forfait sélectionné:</strong> {selectedPlan?.name}</p>
-                <p><strong>Facturation future:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Après l'essai: {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}
-                </p>
-              </div>
-            </div>
-
             <div className="flex items-center justify-center gap-2 text-gray-500">
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
               <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
@@ -493,7 +370,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         </button>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20">
-          {/* En-tête */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="relative">
@@ -520,7 +396,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             </p>
           </div>
 
-          {/* Étapes de progression */}
           <div className="flex items-center justify-center gap-8 mb-8">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
@@ -558,7 +433,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             </div>
           )}
 
-          {/* Étape 1: Informations de base */}
           {step === 1 && (
             <form onSubmit={handleStep1Submit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -682,10 +556,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             </form>
           )}
 
-          {/* Étape 2: Choix du forfait */}
           {step === 2 && (
             <div className="space-y-8">
-              {/* Sélecteur de cycle de facturation */}
               <div className="flex justify-center">
                 <div className="bg-gray-100 rounded-xl p-1 flex">
                   <button
@@ -711,7 +583,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                 </div>
               </div>
 
-              {/* Grille des forfaits */}
               {loadingPlans ? (
                 <div className="flex justify-center py-12">
                   <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -778,90 +649,4 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
                         <div className={`w-full py-3 rounded-lg text-center font-semibold transition ${
                           selectedPlanId === plan.id
-                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {selectedPlanId === plan.id ? 'Sélectionné' : 'Choisir'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Récapitulatif et actions */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-2">Récapitulatif</h4>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
-                      <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
-                      <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-green-600">
-                      <Calendar className="w-4 h-4" />
-                      <span className="text-sm font-medium">14 jours d'essai gratuit</span>
-                    </div>
-                    <button
-                      onClick={handleStep2Submit}
-                      disabled={loading}
-                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
-                    >
-                      {loading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Redirection vers Stripe...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-5 h-5" />
-                          <span>Commencer l'essai gratuit</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sécurité et garanties */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                <div className="p-4">
-                  <Shield className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                  <p className="font-semibold text-gray-900">Paiement sécurisé</p>
-                  <p className="text-sm text-gray-600">Cryptage SSL 256-bit</p>
-                </div>
-                <div className="p-4">
-                  <CheckCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                  <p className="font-semibold text-gray-900">Sans engagement</p>
-                  <p className="text-sm text-gray-600">Annulation à tout moment</p>
-                </div>
-                <div className="p-4">
-                  <Zap className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                  <p className="font-semibold text-gray-900">Support 7j/7</p>
-                  <p className="text-sm text-gray-600">Équipe dédiée</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Lien de connexion */}
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Déjà un compte?{' '}
-              <button
-                onClick={onLogin}
-                className="text-blue-600 hover:text-blue-700 font-semibold transition"
-              >
-                Se connecter
-              </button>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+                            ? 'bg-gradient-to-r from-blue-600
