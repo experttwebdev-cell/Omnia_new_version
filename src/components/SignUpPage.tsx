@@ -105,19 +105,22 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           const formattedPlan = {
             id: plan.id,
             name: plan.name,
-            price_monthly: typeof plan.price_monthly === 'string' ? 
-              parseFloat(plan.price_monthly.replace(',', '.')) : plan.price_monthly,
-            price_yearly: typeof plan.price_yearly === 'string' ? 
-              parseFloat(plan.price_yearly.replace(',', '.')) : plan.price_yearly,
-            max_products: plan.max_products,
-            max_optimizations_monthly: plan.max_optimizations_monthly,
-            max_articles_monthly: plan.max_articles_monthly,
-            max_campaigns: plan.max_campaigns,
-            max_chat_responses_monthly: plan.max_chat_responses_monthly,
+            price_monthly: typeof plan.price_monthly === 'string' 
+              ? parseFloat(plan.price_monthly.toString().replace(',', '.')) 
+              : Number(plan.price_monthly),
+            price_yearly: typeof plan.price_yearly === 'string'
+              ? parseFloat(plan.price_yearly.toString().replace(',', '.'))
+              : Number(plan.price_yearly),
+            max_products: plan.max_products || 0,
+            max_optimizations_monthly: plan.max_optimizations_monthly || 0,
+            max_articles_monthly: plan.max_articles_monthly || 0,
+            max_campaigns: plan.max_campaigns || 0,
+            max_chat_responses_monthly: plan.max_chat_responses_monthly || 0,
             features: features,
-            stripe_price_id: plan.stripe_price_id,
-            stripe_price_id_yearly: plan.stripe_price_id_yearly,
-            description: plan.description,
+            // UTILISATION DES BONNES COLONNES STRIPE
+            stripe_price_id: plan.stripe_price_id_monthly, // Utilise stripe_price_id_monthly pour monthly
+            stripe_price_id_yearly: plan.stripe_price_id_yearly, // Utilise stripe_price_id_yearly pour yearly
+            description: plan.description || '',
             popular: plan.popular || plan.id === 'professional',
             trial_days: plan.trial_days || 14
           };
@@ -354,8 +357,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       if (!priceIdToUse || !priceIdToUse.startsWith('price_')) {
         const availablePlans = plans.filter(p => 
-          (billingCycle === 'monthly' && p.stripe_price_id) || 
-          (billingCycle === 'yearly' && p.stripe_price_id_yearly)
+          (billingCycle === 'monthly' && p.stripe_price_id && p.stripe_price_id.startsWith('price_')) || 
+          (billingCycle === 'yearly' && p.stripe_price_id_yearly && p.stripe_price_id_yearly.startsWith('price_'))
         );
 
         if (availablePlans.length > 0) {
@@ -376,6 +379,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       console.log('✅ ID de prix Stripe valide:', priceIdToUse);
 
       // 1. Create user account first
+      console.log('👤 Création du compte utilisateur...');
       const { error: signUpError } = await signUp(
         email,
         password,
@@ -386,21 +390,26 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       );
 
       if (signUpError) {
+        console.error('❌ Erreur lors de la création du compte:', signUpError);
         setError(signUpError.message || 'Erreur lors de la création du compte');
         setLoading(false);
         return;
       }
 
+      console.log('✅ Compte utilisateur créé avec succès');
+
       // 2. Get the session after signup
+      console.log('🔑 Récupération de la session...');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
+        console.error('❌ Erreur de session:', sessionError);
         setError('Erreur d\'authentification après l\'inscription');
         setLoading(false);
         return;
       }
 
-      console.log('🔑 Session obtenue, création du checkout Stripe...');
+      console.log('✅ Session obtenue, création du checkout Stripe...');
 
       // 3. Create Stripe Checkout session
       const functionUrl = `${EDGE_FUNCTION_BASE_URL}/create-stripe-checkout`;
@@ -581,6 +590,9 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-red-800 font-medium text-sm">{error}</p>
+                <p className="text-red-600 text-xs mt-1">
+                  Si le problème persiste, contactez-nous à support@omnia-ai.com
+                </p>
               </div>
             </div>
           )}
@@ -662,6 +674,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Minimum 6 caractères</p>
                 </div>
 
                 <div>
@@ -730,14 +743,16 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    Annuel <span className="text-green-500 ml-1">-{yearlySavings}%</span>
+                    Annuel {yearlySavings > 0 && (
+                      <span className="text-green-500 ml-1">-{yearlySavings}%</span>
+                    )}
                   </button>
                 </div>
               </div>
 
               {loadingPlans ? (
                 <div className="flex justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -778,23 +793,23 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                           <span className="text-gray-600">
                             {billingCycle === 'yearly' ? '/an' : '/mois'}
                           </span>
-                          {billingCycle === 'yearly' && (
+                          {billingCycle === 'yearly' && plan.price_monthly > 0 && (
                             <p className="text-green-600 text-sm mt-1">
-                              Soit {(plan.price_yearly / 12).toFixed(0)}€/mois
+                              Soit {(plan.price_yearly / 12).toFixed(2)}€/mois
                             </p>
                           )}
                         </div>
 
                         <div className="space-y-2 mb-6">
-                          {getFeaturesList(plan).slice(0, 4).map((feature, index) => (
+                          {getFeaturesList(plan).slice(0, 6).map((feature, index) => (
                             <div key={index} className="flex items-center gap-2">
                               <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                               <span className="text-sm text-gray-700">{feature}</span>
                             </div>
                           ))}
-                          {getFeaturesList(plan).length > 4 && (
+                          {getFeaturesList(plan).length > 6 && (
                             <p className="text-sm text-blue-600 font-medium">
-                              +{getFeaturesList(plan).length - 4} fonctionnalités
+                              +{getFeaturesList(plan).length - 6} fonctionnalités
                             </p>
                           )}
                         </div>
@@ -832,7 +847,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                     </div>
                     <button
                       onClick={handleStep2Submit}
-                      disabled={loading}
+                      disabled={loading || loadingPlans}
                       className="w-full md:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
                     >
                       {loading ? (
@@ -847,6 +862,9 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                         </>
                       )}
                     </button>
+                    <p className="text-xs text-gray-500 text-center">
+                      Aucune carte de crédit requise pour l'essai gratuit
+                    </p>
                   </div>
                 </div>
               </div>
