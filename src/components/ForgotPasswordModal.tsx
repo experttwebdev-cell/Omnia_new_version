@@ -16,7 +16,7 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
+    
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setError('Veuillez entrer une adresse email valide');
       return;
@@ -25,34 +25,28 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
     setLoading(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-password-reset`, {
+      const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey,
         },
         body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (!response.ok) {
+        throw new Error(data.error || `Erreur ${response.status}`);
+      }
+
+      if (data.success) {
         setSuccess(true);
       } else {
         setError(data.error || 'Erreur lors de l\'envoi de l\'email');
       }
     } catch (err) {
       console.error('Password recovery error:', err);
-
-      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-        setError('Impossible de contacter le serveur. Veuillez réessayer plus tard.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Erreur de connexion au serveur');
-      }
+      setError(err instanceof Error ? err.message : 'Erreur de connexion au serveur');
     } finally {
       setLoading(false);
     }
@@ -70,19 +64,6 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
     setEmail('');
     setError('');
     setSuccess(false);
-  };
-
-  // Demo function to simulate email sending (for development)
-  const simulateEmailSend = async () => {
-    setLoading(true);
-    setError('');
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Simulate success
-    setSuccess(true);
-    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -163,12 +144,7 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-red-800 text-sm font-medium">{error}</p>
-                    <p className="text-red-700 text-xs mt-1">
-                      Le système de récupération est en cours de développement.
-                    </p>
-                  </div>
+                  <p className="text-red-800 text-sm">{error}</p>
                 </div>
               )}
 
@@ -234,12 +210,12 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-600 text-sm">💡</span>
+                    <span className="text-blue-600 text-sm">🔒</span>
                   </div>
                   <div>
                     <p className="text-blue-800 text-sm font-medium">Sécurité</p>
                     <p className="text-blue-700 text-xs mt-1">
-                      Pour votre sécurité, le lien de réinitialisation expirera dans 1 heure. Si vous n'avez pas fait cette demande, vous pouvez ignorer cet email en toute sécurité.
+                      Le lien de réinitialisation expire après 1 heure pour votre sécurité.
                     </p>
                   </div>
                 </div>
