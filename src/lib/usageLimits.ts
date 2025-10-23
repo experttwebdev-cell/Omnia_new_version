@@ -1,176 +1,224 @@
-import { supabase } from './supabase';
-
+// Types pour le suivi d'utilisation
 export interface UsageStats {
-  products_count: number;
-  optimizations_this_month: number;
-  articles_this_month: number;
-  chat_responses_this_month: number;
-  campaigns_active: number;
-}
-
-export interface UsageLimits {
-  max_products: number;
-  max_optimizations_monthly: number;
-  max_articles_monthly: number;
-  max_campaigns: number;
-  max_chat_responses_monthly: number;
-}
-
-export interface UsageStatus {
-  stats: UsageStats;
-  limits: UsageLimits;
-  usage: {
-    products: { used: number; limit: number; percentage: number; canUse: boolean };
-    optimizations: { used: number; limit: number; percentage: number; canUse: boolean };
-    articles: { used: number; limit: number; percentage: number; canUse: boolean };
-    campaigns: { used: number; limit: number; percentage: number; canUse: boolean };
-    chatResponses: { used: number; limit: number; percentage: number; canUse: boolean };
+  products: {
+    used: number;
+    limit: number;
+    percentage: number;
+    canUse: boolean;
+  };
+  optimizations: {
+    used: number;
+    limit: number;
+    percentage: number;
+    canUse: boolean;
+  };
+  articles: {
+    used: number;
+    limit: number;
+    percentage: number;
+    canUse: boolean;
+  };
+  chatResponses: {
+    used: number;
+    limit: number;
+    percentage: number;
+    canUse: boolean;
+  };
+  campaigns: {
+    used: number;
+    limit: number;
+    canUse: boolean;
   };
 }
 
-export async function getUsageStats(sellerId: string): Promise<UsageStats | null> {
-  try {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-    const [productsCount, optimizationsCount, articlesCount, chatCount, campaignsCount] = await Promise.all([
-      supabase
-        .from('shopify_products')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId),
-
-      supabase
-        .from('shopify_products')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId)
-        .eq('enrichment_status', 'enriched')
-        .gte('updated_at', firstDayOfMonth),
-
-      supabase
-        .from('blog_articles')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId)
-        .gte('created_at', firstDayOfMonth),
-
-      supabase
-        .from('chat_conversations')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId)
-        .gte('created_at', firstDayOfMonth),
-
-      supabase
-        .from('blog_campaigns')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId)
-        .eq('status', 'active')
-    ]);
-
-    return {
-      products_count: productsCount.count || 0,
-      optimizations_this_month: optimizationsCount.count || 0,
-      articles_this_month: articlesCount.count || 0,
-      chat_responses_this_month: chatCount.count || 0,
-      campaigns_active: campaignsCount.count || 0,
+export interface UsageStatus {
+  usage: UsageStats;
+  plan: {
+    id: string;
+    name: string;
+    limits: {
+      max_products: number;
+      max_optimizations_monthly: number;
+      max_articles_monthly: number;
+      max_chat_responses_monthly: number;
+      max_campaigns: number;
     };
-  } catch (error) {
-    console.error('Error fetching usage stats:', error);
-    return null;
+  };
+  period: {
+    start: string;
+    end: string;
+  };
+}
+
+// Fonction pour calculer le pourcentage d'utilisation
+const calculatePercentage = (used: number, limit: number): number => {
+  if (limit === -1) return 0; // Illimité
+  if (limit === 0) return 100; // Non inclus
+  return Math.min((used / limit) * 100, 100);
+};
+
+// Fonction pour vérifier si l'utilisateur peut utiliser la fonctionnalité
+const canUseFeature = (used: number, limit: number): boolean => {
+  if (limit === -1) return true; // Illimité
+  if (limit === 0) return false; // Non inclus
+  return used < limit;
+};
+
+// Mock data - À remplacer par des appels API réels
+const mockUsageData = {
+  'starter': {
+    products: { used: 85, limit: 100 },
+    optimizations: { used: 200, limit: 300 },
+    articles: { used: 0, limit: 1 },
+    chatResponses: { used: 150, limit: 200 },
+    campaigns: { used: 0, limit: 1 }
+  },
+  'professional': {
+    products: { used: 1250, limit: 2000 },
+    optimizations: { used: 3500, limit: 5000 },
+    articles: { used: 3, limit: 5 },
+    chatResponses: { used: 3200, limit: 5000 },
+    campaigns: { used: 2, limit: 3 }
+  },
+  'enterprise': {
+    products: { used: 5000, limit: -1 },
+    optimizations: { used: 15000, limit: -1 },
+    articles: { used: 25, limit: -1 },
+    chatResponses: { used: 12000, limit: -1 },
+    campaigns: { used: 8, limit: -1 }
   }
-}
+};
 
-export async function getUsageStatus(sellerId: string, planId: string): Promise<UsageStatus | null> {
-  try {
-    const [stats, planData] = await Promise.all([
-      getUsageStats(sellerId),
-      supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', planId)
-        .single()
-    ]);
-
-    if (!stats || !planData.data) return null;
-
-    const limits: UsageLimits = {
-      max_products: planData.data.max_products,
-      max_optimizations_monthly: planData.data.max_optimizations_monthly,
-      max_articles_monthly: planData.data.max_articles_monthly,
-      max_campaigns: planData.data.max_campaigns,
-      max_chat_responses_monthly: planData.data.max_chat_responses_monthly,
-    };
-
-    const calculateUsage = (used: number, limit: number) => {
-      const isUnlimited = limit === -1;
-      const percentage = isUnlimited ? 0 : Math.min((used / limit) * 100, 100);
-      const canUse = isUnlimited || used < limit;
-      return { used, limit, percentage, canUse };
-    };
-
-    return {
-      stats,
-      limits,
-      usage: {
-        products: calculateUsage(stats.products_count, limits.max_products),
-        optimizations: calculateUsage(stats.optimizations_this_month, limits.max_optimizations_monthly),
-        articles: calculateUsage(stats.articles_this_month, limits.max_articles_monthly),
-        campaigns: calculateUsage(stats.campaigns_active, limits.max_campaigns),
-        chatResponses: calculateUsage(stats.chat_responses_this_month, limits.max_chat_responses_monthly),
-      },
-    };
-  } catch (error) {
-    console.error('Error getting usage status:', error);
-    return null;
-  }
-}
-
-export async function checkCanUseFeature(
-  sellerId: string,
-  planId: string,
-  feature: 'products' | 'optimizations' | 'articles' | 'campaigns' | 'chatResponses'
-): Promise<boolean> {
-  const status = await getUsageStatus(sellerId, planId);
-  if (!status) return false;
-  return status.usage[feature].canUse;
-}
-
-export async function incrementUsage(
-  sellerId: string,
-  feature: 'optimizations' | 'articles' | 'chatResponses'
-): Promise<boolean> {
-  try {
-    const now = new Date().toISOString();
-
-    switch (feature) {
-      case 'optimizations':
-        break;
-      case 'articles':
-        break;
-      case 'chatResponses':
-        break;
+// Mock plan data
+const mockPlans = {
+  'starter': {
+    id: 'starter',
+    name: 'Starter',
+    limits: {
+      max_products: 100,
+      max_optimizations_monthly: 300,
+      max_articles_monthly: 1,
+      max_chat_responses_monthly: 200,
+      max_campaigns: 1
     }
-
-    return true;
-  } catch (error) {
-    console.error('Error incrementing usage:', error);
-    return false;
+  },
+  'professional': {
+    id: 'professional',
+    name: 'Professional',
+    limits: {
+      max_products: 2000,
+      max_optimizations_monthly: 5000,
+      max_articles_monthly: 5,
+      max_chat_responses_monthly: 5000,
+      max_campaigns: 3
+    }
+  },
+  'enterprise': {
+    id: 'enterprise',
+    name: 'Enterprise',
+    limits: {
+      max_products: -1,
+      max_optimizations_monthly: -1,
+      max_articles_monthly: -1,
+      max_chat_responses_monthly: -1,
+      max_campaigns: -1
+    }
   }
+};
+
+// Fonction principale pour obtenir le statut d'utilisation
+export async function getUsageStatus(sellerId: string, planId: string): Promise<UsageStatus> {
+  // Simulation d'un appel API
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  const planData = mockPlans[planId as keyof typeof mockPlans];
+  const usageData = mockUsageData[planId as keyof typeof mockUsageData];
+
+  if (!planData || !usageData) {
+    throw new Error('Plan non trouvé');
+  }
+
+  const usage: UsageStats = {
+    products: {
+      used: usageData.products.used,
+      limit: planData.limits.max_products,
+      percentage: calculatePercentage(usageData.products.used, planData.limits.max_products),
+      canUse: canUseFeature(usageData.products.used, planData.limits.max_products)
+    },
+    optimizations: {
+      used: usageData.optimizations.used,
+      limit: planData.limits.max_optimizations_monthly,
+      percentage: calculatePercentage(usageData.optimizations.used, planData.limits.max_optimizations_monthly),
+      canUse: canUseFeature(usageData.optimizations.used, planData.limits.max_optimizations_monthly)
+    },
+    articles: {
+      used: usageData.articles.used,
+      limit: planData.limits.max_articles_monthly,
+      percentage: calculatePercentage(usageData.articles.used, planData.limits.max_articles_monthly),
+      canUse: canUseFeature(usageData.articles.used, planData.limits.max_articles_monthly)
+    },
+    chatResponses: {
+      used: usageData.chatResponses.used,
+      limit: planData.limits.max_chat_responses_monthly,
+      percentage: calculatePercentage(usageData.chatResponses.used, planData.limits.max_chat_responses_monthly),
+      canUse: canUseFeature(usageData.chatResponses.used, planData.limits.max_chat_responses_monthly)
+    },
+    campaigns: {
+      used: usageData.campaigns.used,
+      limit: planData.limits.max_campaigns,
+      percentage: calculatePercentage(usageData.campaigns.used, planData.limits.max_campaigns),
+      canUse: canUseFeature(usageData.campaigns.used, planData.limits.max_campaigns)
+    }
+  };
+
+  // Période actuelle (mois en cours)
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  return {
+    usage,
+    plan: planData,
+    period: {
+      start: periodStart.toISOString(),
+      end: periodEnd.toISOString()
+    }
+  };
 }
 
+// Fonction pour formater les limites
 export function formatLimit(value: number): string {
   if (value === -1) return 'Illimité';
+  if (value === 0) return 'Non inclus';
   return value.toLocaleString('fr-FR');
 }
 
+// Fonction pour obtenir la couleur en fonction du pourcentage d'utilisation
 export function getUsageColor(percentage: number): string {
-  if (percentage >= 90) return 'text-red-600 bg-red-50 border-red-200';
-  if (percentage >= 75) return 'text-orange-600 bg-orange-50 border-orange-200';
-  if (percentage >= 50) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-  return 'text-green-600 bg-green-50 border-green-200';
+  if (percentage >= 90) return 'text-red-600';
+  if (percentage >= 75) return 'text-yellow-600';
+  return 'text-green-600';
 }
 
+// Fonction pour obtenir la couleur de la barre de progression
 export function getUsageBarColor(percentage: number): string {
-  if (percentage >= 90) return 'bg-red-600';
-  if (percentage >= 75) return 'bg-orange-600';
-  if (percentage >= 50) return 'bg-yellow-600';
-  return 'bg-green-600';
+  if (percentage >= 90) return 'bg-red-500';
+  if (percentage >= 75) return 'bg-yellow-500';
+  return 'bg-green-500';
+}
+
+// Fonction pour obtenir la couleur de fond en fonction du pourcentage
+export function getUsageBgColor(percentage: number): string {
+  if (percentage >= 90) return 'bg-red-50 border-red-200';
+  if (percentage >= 75) return 'bg-yellow-50 border-yellow-200';
+  return 'bg-green-50 border-green-200';
+}
+
+// Fonction pour mettre à jour l'utilisation (simulation)
+export async function updateUsage(sellerId: string, feature: keyof UsageStats, increment: number = 1): Promise<void> {
+  // Simulation d'un appel API pour mettre à jour l'utilisation
+  await new Promise(resolve => setTimeout(resolve, 200));
+  console.log(`Mise à jour usage: ${feature} +${increment} pour seller ${sellerId}`);
+  
+  // En production, cela appellerait votre API pour incrémenter le compteur
 }
