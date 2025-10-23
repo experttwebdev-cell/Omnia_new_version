@@ -21,11 +21,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom'; // Si vous utilisez React Router
 
 interface SignUpPageProps {
   planId?: string;
   onLogin: () => void;
   onBack: () => void;
+  onSignupSuccess?: () => void; // Nouvelle prop pour la redirection
 }
 
 interface Plan {
@@ -46,8 +48,9 @@ interface Plan {
   trial_days: number;
 }
 
-export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPageProps) {
-  const { signUp } = useAuth();
+export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuccess }: SignUpPageProps) {
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate(); // Si vous utilisez React Router
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -67,6 +70,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
   // URL de base pour les Edge Functions
   const EDGE_FUNCTION_BASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co/functions/v1';
 
+  // Redirection automatique si l'utilisateur est déjà connecté
+  useEffect(() => {
+    if (user) {
+      console.log('✅ Utilisateur déjà connecté, redirection vers le dashboard');
+      redirectToDashboard();
+    }
+  }, [user]);
+
   useEffect(() => {
     loadPlans();
   }, []);
@@ -85,11 +96,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         throw error;
       }
 
-      console.log('📦 Données reçues de la base de données:', data);
-
       if (data && data.length > 0) {
         const formattedPlans = data.map(plan => {
-          // Gestion sécurisée du parsing des features
           let features: Record<string, any> = {};
           try {
             if (typeof plan.features === 'string') {
@@ -102,7 +110,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             features = {};
           }
 
-          const formattedPlan = {
+          return {
             id: plan.id,
             name: plan.name,
             price_monthly: typeof plan.price_monthly === 'string' 
@@ -117,52 +125,27 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             max_campaigns: plan.max_campaigns || 0,
             max_chat_responses_monthly: plan.max_chat_responses_monthly || 0,
             features: features,
-            // UTILISATION DES BONNES COLONNES STRIPE
-            stripe_price_id: plan.stripe_price_id_monthly, // Utilise stripe_price_id_monthly pour monthly
-            stripe_price_id_yearly: plan.stripe_price_id_yearly, // Utilise stripe_price_id_yearly pour yearly
+            stripe_price_id: plan.stripe_price_id_monthly,
+            stripe_price_id_yearly: plan.stripe_price_id_yearly,
             description: plan.description || '',
             popular: plan.popular || plan.id === 'professional',
             trial_days: plan.trial_days || 14
           };
-
-          console.log(`📋 Forfait formaté ${formattedPlan.name}:`, {
-            monthly: formattedPlan.stripe_price_id,
-            yearly: formattedPlan.stripe_price_id_yearly,
-            price_monthly: formattedPlan.price_monthly,
-            price_yearly: formattedPlan.price_yearly
-          });
-
-          return formattedPlan;
         });
 
-        console.log('✅ Forfaits formatés:', formattedPlans);
-
-        // Filtrer les forfaits qui ont au moins un ID de prix Stripe
         const configuredPlans = formattedPlans.filter(plan => {
           const hasMonthly = plan.stripe_price_id && plan.stripe_price_id.startsWith('price_');
           const hasYearly = plan.stripe_price_id_yearly && plan.stripe_price_id_yearly.startsWith('price_');
-          
-          console.log(`🔍 Forfait ${plan.name}:`, {
-            monthly: plan.stripe_price_id,
-            yearly: plan.stripe_price_id_yearly,
-            hasMonthly,
-            hasYearly
-          });
-          
           return hasMonthly || hasYearly;
         });
 
-        console.log('🎯 Forfaits configurés:', configuredPlans);
-
         if (configuredPlans.length === 0) {
-          console.warn('⚠️ Aucun forfait n\'a d\'ID de prix Stripe configuré');
           setError('Les forfaits ne sont pas encore configurés. Veuillez réessayer plus tard ou contacter le support.');
           setPlans(getDefaultPlans());
         } else {
           setPlans(configuredPlans);
         }
       } else {
-        console.log('📋 Utilisation des forfaits par défaut');
         setPlans(getDefaultPlans());
       }
     } catch (error) {
@@ -330,6 +313,110 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     setStep(2);
   };
 
+  // Fonction pour rediriger vers le dashboard
+  const redirectToDashboard = () => {
+    console.log('🔄 Redirection vers le dashboard...');
+    
+    // Méthode 1: Utiliser la prop de callback
+    if (onSignupSuccess) {
+      onSignupSuccess();
+      return;
+    }
+    
+    // Méthode 2: Utiliser React Router
+    if (navigate) {
+      navigate('/dashboard');
+      return;
+    }
+    
+    // Méthode 3: Redirection standard
+    window.location.href = '/dashboard';
+  };
+
+  // Fonction pour gérer l'inscription sans Stripe (pour l'essai gratuit direct)
+  const handleDirectSignup = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      console.log('🚀 Début de l\'inscription directe...');
+
+      // 1. Création du compte avec Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            company_name: companyName,
+            plan_id: selectedPlanId,
+            billing_cycle: billingCycle
+          }
+        }
+      });
+
+      if (signUpError) {
+        console.error('❌ Erreur lors de la création du compte:', signUpError);
+        
+        let errorMessage = signUpError.message || 'Erreur lors de la création du compte';
+        
+        if (signUpError.message.includes('user already registered')) {
+          errorMessage = 'Un compte existe déjà avec cet email. Connectez-vous ou utilisez un autre email.';
+        } else if (signUpError.message.includes('email')) {
+          errorMessage = 'Format d\'email invalide.';
+        } else if (signUpError.message.includes('password')) {
+          errorMessage = 'Le mot de passe doit contenir au moins 6 caractères.';
+        } else if (signUpError.message.includes('Failed to fetch')) {
+          errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      if (!authData.user) {
+        throw new Error('Erreur lors de la création du compte utilisateur');
+      }
+
+      console.log('✅ Compte utilisateur créé avec succès:', authData.user.id);
+
+      // 2. Créer automatiquement le profil seller
+      const { error: sellerError } = await supabase
+        .from('sellers')
+        .insert({
+          id: authData.user.id,
+          email: email,
+          full_name: fullName,
+          company_name: companyName,
+          status: 'trial',
+          subscription_status: 'inactive',
+          current_plan_id: selectedPlanId,
+          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (sellerError) {
+        console.error('⚠️ Erreur lors de la création du profil seller:', sellerError);
+        // Continuer quand même, le profil pourra être créé plus tard
+      }
+
+      console.log('✅ Inscription réussie! Redirection...');
+      
+      // 3. Afficher le succès et rediriger
+      setSuccess(true);
+      
+      // Redirection après un court délai
+      setTimeout(() => {
+        redirectToDashboard();
+      }, 2000);
+
+    } catch (err) {
+      console.error('💥 Erreur lors de l\'inscription:', err);
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'inscription');
+      setLoading(false);
+    }
+  };
+
   const handleStep2Submit = async () => {
     setLoading(true);
     setError('');
@@ -348,7 +435,16 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         planData: selectedPlan
       });
 
-      // Utiliser stripe_price_id pour monthly et stripe_price_id_yearly pour yearly
+      // Vérifier si on veut un essai gratuit direct ou passer par Stripe
+      const wantsTrialOnly = true; // Vous pouvez ajouter un switch dans l'UI pour choisir
+
+      if (wantsTrialOnly) {
+        // Essai gratuit direct sans Stripe
+        await handleDirectSignup();
+        return;
+      }
+
+      // Processus avec Stripe (code existant)
       const priceIdToUse = billingCycle === 'yearly' 
         ? selectedPlan.stripe_price_id_yearly 
         : selectedPlan.stripe_price_id;
@@ -378,28 +474,53 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       console.log('✅ ID de prix Stripe valide:', priceIdToUse);
 
-      // 1. Create user account first
+      // 1. Create user account with Supabase Auth
       console.log('👤 Création du compte utilisateur...');
-      const { error: signUpError } = await signUp(
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        companyName,
-        fullName,
-        selectedPlanId,
-        billingCycle
-      );
+        options: {
+          data: {
+            full_name: fullName,
+            company_name: companyName,
+            plan_id: selectedPlanId,
+            billing_cycle: billingCycle
+          }
+        }
+      });
 
       if (signUpError) {
         console.error('❌ Erreur lors de la création du compte:', signUpError);
-        setError(signUpError.message || 'Erreur lors de la création du compte');
+        
+        let errorMessage = signUpError.message || 'Erreur lors de la création du compte';
+        
+        if (signUpError.message.includes('user already registered')) {
+          errorMessage = 'Un compte existe déjà avec cet email. Connectez-vous ou utilisez un autre email.';
+        } else if (signUpError.message.includes('email')) {
+          errorMessage = 'Format d\'email invalide.';
+        } else if (signUpError.message.includes('password')) {
+          errorMessage = 'Le mot de passe doit contenir au moins 6 caractères.';
+        } else if (signUpError.message.includes('Failed to fetch')) {
+          errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+        }
+        
+        setError(errorMessage);
         setLoading(false);
         return;
       }
 
-      console.log('✅ Compte utilisateur créé avec succès');
+      if (!authData.user) {
+        setError('Erreur lors de la création du compte utilisateur');
+        setLoading(false);
+        return;
+      }
 
-      // 2. Get the session after signup
+      console.log('✅ Compte utilisateur créé avec succès:', authData.user.id);
+
+      // 2. Attendre un peu et obtenir la session
       console.log('🔑 Récupération de la session...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
@@ -420,7 +541,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
         },
         body: JSON.stringify({
           plan_id: selectedPlanId,
@@ -433,19 +553,18 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       console.log('📤 Réponse du serveur - Status:', response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erreur Stripe - Response text:', errorText);
-        console.error('❌ Status:', response.status);
-        
         let errorMessage = 'Erreur lors de la création de la session de paiement';
+        
         try {
-          const errorData = JSON.parse(errorText);
+          const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
           console.error('❌ Erreur détaillée:', errorData);
         } catch (e) {
-          console.error('❌ Impossible de parser la réponse d\'erreur');
+          const errorText = await response.text();
+          console.error('❌ Réponse texte:', errorText);
           errorMessage = `Erreur HTTP ${response.status}: ${response.statusText}`;
         }
+        
         throw new Error(errorMessage);
       }
 
@@ -466,7 +585,18 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
     } catch (err) {
       console.error('💥 Erreur lors de l\'inscription:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de l\'inscription');
+      
+      let errorMessage = 'Une erreur est survenue lors de l\'inscription';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        
+        if (err.message.includes('Failed to fetch')) {
+          errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+        }
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -477,13 +607,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     : 0;
 
   const yearlySavings = selectedPlan ? Math.round((1 - (selectedPlan.price_yearly / (selectedPlan.price_monthly * 12))) * 100) : 0;
-
-  // Debug logs
-  useEffect(() => {
-    console.log('🔍 Current plans state:', plans);
-    console.log('🎯 Selected plan:', selectedPlan);
-    console.log('💰 Billing cycle:', billingCycle);
-  }, [plans, selectedPlan, billingCycle]);
 
   if (success) {
     return (
@@ -497,15 +620,15 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
               Bienvenue sur Omnia AI!
             </h2>
             <p className="text-gray-600 mb-6">
-              Votre essai gratuit de 14 jours commence maintenant. Redirection vers votre tableau de bord...
+              Votre compte a été créé avec succès. Redirection vers votre tableau de bord...
             </p>
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6 mb-6">
               <div className="flex items-center justify-center gap-2 text-blue-800 text-lg font-semibold mb-3">
                 <Sparkles className="w-5 h-5" />
-                <span>Essai gratuit de 14 jours</span>
+                <span>Essai gratuit de 14 jours activé</span>
               </div>
               <p className="text-sm text-gray-600 text-center">
-                Aucune carte bancaire requise. Explorez toutes les fonctionnalités gratuitement!
+                Explorez toutes les fonctionnalités gratuitement pendant 14 jours!
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 text-gray-500">
@@ -553,7 +676,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
               {step === 1 ? 'Commencer votre essai gratuit' : 'Choisissez votre forfait'}
             </h2>
             <p className="text-gray-600">
-              {step === 1 ? 'Créez votre compte en 2 minutes' : '14 jours d\'essai gratuit, sans carte bancaire'}
+              {step === 1 ? 'Créez votre compte en 2 minutes' : '14 jours d\'essai gratuit, sans engagement'}
             </p>
           </div>
 
@@ -845,25 +968,28 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                       <Calendar className="w-4 h-4" />
                       <span className="text-sm font-medium">{selectedPlan?.trial_days || 14} jours d'essai gratuit</span>
                     </div>
+                    
+                    {/* Bouton pour essai gratuit direct */}
                     <button
                       onClick={handleStep2Submit}
                       disabled={loading || loadingPlans}
-                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
+                      className="w-full md:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-3"
                     >
                       {loading ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Redirection vers Stripe...</span>
+                          <span>Création du compte...</span>
                         </>
                       ) : (
                         <>
-                          <CreditCard className="w-5 h-5" />
+                          <Sparkles className="w-5 h-5" />
                           <span>Commencer l'essai gratuit</span>
                         </>
                       )}
                     </button>
+
                     <p className="text-xs text-gray-500 text-center">
-                      Aucune carte de crédit requise pour l'essai gratuit
+                      Aucune carte de crédit requise • Accès immédiat
                     </p>
                   </div>
                 </div>
