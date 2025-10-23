@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Email Réinitialisation</title>
+    <title>Test Fonction Forgot Password</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-8">
     <div class="max-w-md mx-auto">
         <div class="bg-white rounded-lg shadow-md p-6">
-            <h1 class="text-2xl font-bold text-gray-800 mb-4">Test Envoi Email</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">Test Forgot Password</h1>
             
             <form id="emailForm" class="space-y-4">
                 <div>
@@ -20,8 +20,8 @@
                         type="email"
                         id="email"
                         required
-                        placeholder="test@example.com"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value="benyahya.otmane@gmail.com"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
                 </div>
 
@@ -32,30 +32,17 @@
                     <input
                         type="text"
                         id="name"
-                        placeholder="Votre nom"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value="Ben"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md"
                     />
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Type d'email
-                    </label>
-                    <select
-                        id="emailType"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                        <option value="password_reset">Réinitialisation standard</option>
-                        <option value="forgot_password">Mot de passe oublié</option>
-                    </select>
                 </div>
 
                 <button
                     type="submit"
                     id="sendButton"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
                 >
-                    Envoyer Email Test
+                    Tester forgot-password
                 </button>
             </form>
 
@@ -63,7 +50,7 @@
             
             <div id="logs" class="mt-4 text-sm">
                 <div id="logContent" class="bg-gray-800 text-gray-200 rounded p-3 font-mono text-xs max-h-40 overflow-y-auto">
-                    Prêt pour le test...
+                    Prêt...
                 </div>
             </div>
         </div>
@@ -77,7 +64,7 @@
             const logContent = document.getElementById('logContent');
             const timestamp = new Date().toLocaleTimeString();
             
-            if (logContent.textContent === 'Prêt pour le test...') {
+            if (logContent.textContent === 'Prêt...') {
                 logContent.textContent = '';
             }
             
@@ -99,20 +86,17 @@
             
             const email = document.getElementById('email').value;
             const name = document.getElementById('name').value || 'Utilisateur';
-            const emailType = document.getElementById('emailType').value;
             const button = document.getElementById('sendButton');
             
             button.disabled = true;
-            button.textContent = 'Envoi en cours...';
+            button.textContent = 'Envoi...';
             
-            addLog(`Début test pour: ${email}`);
-            addLog(`Nom: ${name}`);
-            addLog(`Type d'email: ${emailType === 'password_reset' ? 'Réinitialisation standard' : 'Mot de passe oublié'}`);
+            addLog(`Test pour: ${email}`);
 
             try {
-                addLog('Appel Edge Function...');
+                addLog('Appel fonction forgot-password...');
                 
-                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-password-reset`, {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/forgot-password`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -121,35 +105,31 @@
                     body: JSON.stringify({
                         email: email,
                         user_name: name,
-                        reset_token: Math.random().toString(36).slice(-8) + Date.now().toString(36),
-                        type: emailType
+                        reset_token: Math.random().toString(36).slice(-8) + Date.now().toString(36)
                     }),
                 });
 
                 const data = await response.json();
-                addLog(`Réponse: ${response.status} ${response.statusText}`);
+                addLog(`Réponse: ${response.status}`);
 
                 if (response.ok) {
-                    addLog('✅ Email envoyé avec succès');
-                    addLog(`📧 Type: ${data.type}`);
-                    showResult(true, `${emailType === 'password_reset' ? 'Email de réinitialisation' : 'Email d\'aide pour mot de passe oublié'} envoyé à ${email}`);
+                    addLog('✅ Succès!');
+                    showResult(true, `Email envoyé à ${email}`);
                 } else {
-                    addLog(`❌ Erreur: ${data.error || 'Erreur inconnue'}`);
-                    showResult(false, data.error || 'Erreur lors de l\'envoi');
+                    addLog(`❌ Erreur: ${data.error}`);
+                    showResult(false, data.error);
                 }
 
             } catch (error) {
                 addLog(`💥 Exception: ${error.message}`);
-                showResult(false, `Erreur: ${error.message}`);
+                showResult(false, error.message);
             } finally {
                 button.disabled = false;
-                button.textContent = 'Envoyer Email Test';
-                addLog('Test terminé');
+                button.textContent = 'Tester forgot-password';
             }
         });
 
-        addLog('Page chargée - Prêt à tester');
-        addLog('Sélectionnez le type d\'email à tester');
+        addLog('Page chargée');
     </script>
 </body>
 </html>
