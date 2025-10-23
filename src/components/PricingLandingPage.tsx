@@ -4,48 +4,25 @@ import {
   Check,
   Sparkles,
   Zap,
-  Crown,
   ArrowRight,
-  ShoppingBag,
-  MessageCircle,
-  FileText,
-  BarChart3,
-  Shield,
-  Headphones,
-  Search,
-  Tag,
-  Image,
-  Lightbulb,
-  TrendingUp,
-  Package,
-  Target,
-  Languages,
-  ShoppingCart,
-  Cpu,
-  Star,
-  Quote,
-  Clock,
-  Users,
-  Database,
-  Server,
-  HelpCircle,
   Play,
-  Award,
-  Rocket,
-  ChevronDown,
-  ChevronUp,
-  CreditCard,
-  BarChart,
-  Bot,
-  Cloud,
-  Workflow,
-  Gem,
-  Cube,
   Brain,
   Orbit,
   Atom,
+  Cpu,
   CircuitBoard,
-  CpuIcon
+  TrendingUp,
+  Package,
+  FileText,
+  MessageCircle,
+  Target,
+  Star,
+  Quote,
+  Clock,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  Headphones
 } from 'lucide-react';
 
 // Mock data for plans - UPDATED WITH NEW PRICING AND FEATURES
@@ -194,14 +171,11 @@ export function PricingLandingPage() {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
-  // Fonctions de navigation
   const handleLogin = () => {
-    console.log('Navigation vers login');
     navigate('/login');
   };
 
   const handleSignUp = (planId: string = 'professional') => {
-    console.log('Navigation vers signup avec plan:', planId);
     navigate(`/signup/${planId}`);
   };
 
@@ -275,7 +249,6 @@ export function PricingLandingPage() {
     return value.toLocaleString('fr-FR');
   };
 
-  // Features data
   const featureCategories = [
     {
       id: 'all',
@@ -368,7 +341,6 @@ export function PricingLandingPage() {
     ? allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab)
     : allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab).slice(0, 6);
 
-  // Testimonials
   const testimonials = [
     {
       name: 'Marie Dubois',
@@ -413,25 +385,18 @@ export function PricingLandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header avec logo futuriste Omnia AI */}
+      {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-gray-200/80 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              {/* Nouveau logo futuriste Omnia AI */}
               <div className="relative group">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-cyan-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/25 transform group-hover:rotate-180 transition-transform duration-700">
-                  <div className="relative">
-                    <Brain className="w-6 h-6 text-white filter drop-shadow-lg" />
-                    <div className="absolute -inset-1 bg-cyan-400 rounded-full blur-sm opacity-50 animate-pulse"></div>
-                  </div>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/25">
+                  <Brain className="w-6 h-6 text-white" />
                 </div>
-                <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl blur-md opacity-30 -z-10 group-hover:opacity-50 transition-opacity duration-300"></div>
-                {/* Effet d'orbite */}
-                <div className="absolute -inset-3 border-2 border-blue-400/30 rounded-3xl animate-spin-slow -z-20"></div>
               </div>
               <div>
-                <span className="text-2xl font-black bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 bg-clip-text text-transparent">
+                <span className="text-2xl font-black bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                   Omnia AI
                 </span>
                 <div className="text-xs text-gray-500 -mt-1 font-medium">Complete Neural Commerce</div>
@@ -459,34 +424,17 @@ export function PricingLandingPage() {
               </button>
               <button
                 onClick={() => handleSignUp('professional')}
-                className="px-6 py-2 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-xl transition-all duration-200"
               >
-                <span className="text-white">Essai Gratuit 14j</span>
+                Essai Gratuit 14j
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section Futuriste */}
-      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-gray-900 via-blue-900 to-cyan-900">
-        {/* Effets de fond futuristes */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, rgba(34, 211, 238, 0.1) 0%, transparent 50%)
-            `,
-            backgroundSize: '50% 50%, 60% 60%, 70% 70%'
-          }} />
-        </div>
-
-        {/* Particules animées */}
-        <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-cyan-400 rounded-full blur-sm animate-float"></div>
-        <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-blue-400 rounded-full blur-sm animate-float delay-75"></div>
-        <div className="absolute bottom-1/4 left-1/2 w-2 h-2 bg-cyan-300 rounded-full blur-sm animate-float delay-150"></div>
-
+      {/* Hero Section */}
+      <section className="relative overflow-hidden py-20 lg:py-32 bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-800">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-medium mb-8 border border-white/20">
@@ -497,24 +445,20 @@ export function PricingLandingPage() {
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
               L'Intelligence qui
               <br />
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
                 Connecte Tout
               </span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-gray-200 mb-4 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto leading-relaxed">
               Le premier cerveau digital unifié pour e-commerce. 
               Une IA qui pense, apprend et agit sur l'ensemble de votre business.
-            </p>
-
-            <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto">
-              Omnia signifie "tout" en latin. Notre IA fait exactement cela.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <button
                 onClick={() => handleSignUp('professional')}
-                className="group px-8 py-4 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
+                className="group px-8 py-4 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300"
               >
                 <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                   Activer le Cerveau IA
@@ -522,12 +466,7 @@ export function PricingLandingPage() {
                 <ArrowRight className="inline-block ml-2 w-5 h-5 text-gray-600 group-hover:translate-x-1 transition-transform" />
               </button>
 
-              <button
-                onClick={() => {
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="group px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
-              >
+              <button className="group px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300 flex items-center gap-2">
                 <Play className="w-5 h-5" />
                 Voir la démo neuronale
               </button>
@@ -551,7 +490,7 @@ export function PricingLandingPage() {
         </div>
       </section>
 
-      {/* Stats Section Futuriste */}
+      {/* Stats Section */}
       <section className="py-16 bg-white border-y border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -564,17 +503,17 @@ export function PricingLandingPage() {
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { number: '360°', label: 'Couverture complète business', icon: Orbit, suffix: '' },
-              { number: '0.2s', label: 'Temps de réaction IA', icon: Zap, suffix: '' },
-              { number: '∞', label: 'Connexions simultanées', icon: Brain, suffix: '' },
-              { number: '99.9%', label: 'Précision prédictive', icon: Target, suffix: '' }
+              { number: '360°', label: 'Couverture complète business', icon: Orbit },
+              { number: '0.2s', label: 'Temps de réaction IA', icon: Zap },
+              { number: '∞', label: 'Connexions simultanées', icon: Brain },
+              { number: '99.9%', label: 'Précision prédictive', icon: Target }
             ].map((stat, index) => (
               <div key={index} className="text-center group">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg hover:shadow-xl">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
                   <stat.icon className="w-8 h-8 text-white" />
                 </div>
                 <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent mb-2">
-                  {stat.number}{stat.suffix}
+                  {stat.number}
                 </div>
                 <div className="text-gray-600 font-medium text-sm">{stat.label}</div>
               </div>
@@ -583,7 +522,7 @@ export function PricingLandingPage() {
         </div>
       </section>
 
-      {/* Features Section Futuriste */}
+      {/* Features Section */}
       <section id="features" className="py-20 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -595,7 +534,6 @@ export function PricingLandingPage() {
             </p>
           </div>
 
-          {/* Feature Categories */}
           <div className="flex flex-wrap justify-center gap-3 mb-12">
             {featureCategories.map((category) => {
               const Icon = category.icon;
@@ -606,46 +544,27 @@ export function PricingLandingPage() {
                   className={`flex items-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     activeFeatureTab === category.id
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg transform scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-blue-300'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
                   {category.name}
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    activeFeatureTab === category.id 
-                      ? 'bg-white/20 text-white' 
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {category.count}
-                  </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {filteredFeatures.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <div
                   key={index}
-                  className={`group bg-white rounded-2xl p-6 border-2 transition-all duration-300 hover:-translate-y-2 ${
-                    feature.highlight 
-                      ? 'border-cyan-300 shadow-lg hover:shadow-xl' 
-                      : 'border-gray-200 hover:border-blue-200 hover:shadow-lg'
-                  }`}
+                  className="group bg-white rounded-2xl p-6 border-2 border-gray-200 transition-all duration-300 hover:-translate-y-2 hover:shadow-lg"
                 >
                   <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
                     <Icon className="w-6 h-6 text-white" />
                   </div>
-                  
-                  {feature.highlight && (
-                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-cyan-100 text-cyan-700 text-xs font-medium rounded-full mb-2">
-                      <Zap className="w-3 h-3 fill-cyan-600" />
-                      Cœur Neural
-                    </div>
-                  )}
                   
                   <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed text-sm mb-4">{feature.description}</p>
@@ -656,61 +575,30 @@ export function PricingLandingPage() {
                       {feature.benefit}
                     </div>
                   )}
-                  
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>Niveau neural :</span>
-                    <div className="flex gap-1">
-                      {feature.plans.map(plan => (
-                        <span
-                          key={plan}
-                          className={`px-2 py-1 rounded font-medium ${
-                            plan === 'starter' ? 'bg-blue-100 text-blue-800' :
-                            plan === 'professional' ? 'bg-cyan-100 text-cyan-800' :
-                            'bg-indigo-100 text-indigo-800'
-                          }`}
-                        >
-                          {plan}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               );
             })}
           </div>
-
-          {!showAllFeatures && filteredFeatures.length >= 6 && (
-            <div className="text-center">
-              <button
-                onClick={() => setShowAllFeatures(true)}
-                className="px-6 py-3 bg-white border-2 border-blue-200 text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-all duration-300 flex items-center gap-2 mx-auto"
-              >
-                Explorer tout le réseau neural
-                <ChevronDown className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Pricing Section Futuriste */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               Accès au Réseau Neural
             </h2>
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 mb-8">
               Choisissez votre niveau de connexion à l'IA Omnia
             </p>
 
-            {/* Billing Toggle */}
             <div className="inline-flex items-center gap-4 bg-white rounded-xl p-2 shadow-lg mb-12 border border-gray-200">
               <button
                 onClick={() => setSelectedBilling('monthly')}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
                   selectedBilling === 'monthly'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg transform scale-105'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -720,7 +608,7 @@ export function PricingLandingPage() {
                 onClick={() => setSelectedBilling('yearly')}
                 className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 ${
                   selectedBilling === 'yearly'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg transform scale-105'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -741,22 +629,18 @@ export function PricingLandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
               {plans.map((plan) => {
                 const price = selectedBilling === 'yearly' ? plan.price_yearly : plan.price_monthly;
-                const pricePerMonth = selectedBilling === 'yearly' ? (price / 12).toFixed(2) : price;
-
+                const monthlyPrice = selectedBilling === 'yearly' ? (plan.price_yearly / 12).toFixed(2) : plan.price_monthly;
                 const colors = getPlanColor(plan.id);
                 const isPopular = plan.popular;
-                const isRecommended = plan.recommended;
 
                 return (
                   <div
                     key={plan.id}
                     className={`relative bg-white rounded-3xl p-8 transition-all duration-500 ${
                       isPopular
-                        ? `border-4 ${colors.border} shadow-2xl scale-105 z-10 ${colors.glow}`
+                        ? 'border-4 border-blue-200 shadow-2xl scale-105 z-10'
                         : 'border-2 border-gray-200 hover:border-blue-300 hover:shadow-xl'
-                    } ${hoveredPlan === plan.id ? 'transform scale-105 shadow-2xl' : ''}`}
-                    onMouseEnter={() => setHoveredPlan(plan.id)}
-                    onMouseLeave={() => setHoveredPlan(null)}
+                    }`}
                   >
                     {isPopular && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-blue-600 to-cyan-500">
@@ -764,33 +648,16 @@ export function PricingLandingPage() {
                       </div>
                     )}
 
-                    {isRecommended && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-sm font-bold text-white shadow-lg bg-gradient-to-r from-indigo-600 to-blue-700">
-                        ⭐ SÉLECTIONNÉ
-                      </div>
-                    )}
-
-                    <div className={`w-16 h-16 bg-gradient-to-br ${colors.gradient} rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg ${colors.glow}`}>
+                    <div className={`w-16 h-16 bg-gradient-to-br ${colors.gradient} rounded-2xl flex items-center justify-center mb-6 text-white shadow-lg`}>
                       {getPlanIcon(plan.id)}
                     </div>
 
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    <p className="text-gray-600 mb-6 leading-relaxed">{plan.description}</p>
-                    
-                    {plan.roi_estimate && (
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-green-700 font-medium">
-                            📈 {plan.roi_estimate}
-                          </p>
-                          <TrendingUp className="w-5 h-5 text-green-600" />
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-gray-600 mb-6">{plan.description}</p>
                     
                     <div className="flex items-baseline gap-2 mb-4">
                       <span className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                        {selectedBilling === 'yearly' ? `${pricePerMonth}€` : `${price}€`}
+                        {selectedBilling === 'yearly' ? `${monthlyPrice}€` : `${price}€`}
                       </span>
                       <span className="text-gray-600">/mois</span>
                       {selectedBilling === 'yearly' && (
@@ -803,28 +670,25 @@ export function PricingLandingPage() {
                     {selectedBilling === 'yearly' && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
                         <p className="text-sm text-blue-700 font-medium text-center">
-                          💰 Économisez {((Number(plan.price_monthly) * 12) - Number(price)).toFixed(2)}€ par an
+                          💰 Économisez {((plan.price_monthly * 12) - plan.price_yearly).toFixed(2)}€ par an
                         </p>
                       </div>
                     )}
 
                     <button
                       onClick={() => handleSignUp(plan.id)}
-                      className={`w-full py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 mb-8 ${
-                        isPopular || isRecommended
-                          ? 'text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                      className={`w-full py-4 rounded-xl font-semibold transition-all duration-300 mb-8 ${
+                        isPopular
+                          ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg hover:shadow-xl'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-2 border-transparent hover:border-blue-300'
                       }`}
-                      style={isPopular || isRecommended ? { background: `linear-gradient(135deg, ${plan.id === 'professional' ? '#2563EB, #0891B2' : plan.id === 'enterprise' ? '#4F46E5, #1D4ED8' : '#3B82F6, #06B6D4'})` } : {}}
                     >
-                      {isPopular || isRecommended ? 'Sélectionné' : 'Choisir'}
-                      <ArrowRight className="w-5 h-5" />
+                      {isPopular ? 'Sélectionné' : 'Choisir'}
                     </button>
 
                     <div className="space-y-4">
-                      {/* Core Limits */}
                       <div className="grid gap-3">
-                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                           <Package className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                           <div className="text-sm">
                             <span className="font-semibold text-gray-900">
@@ -833,7 +697,7 @@ export function PricingLandingPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                           <Zap className="w-5 h-5 text-cyan-500 flex-shrink-0 mt-0.5" />
                           <div className="text-sm">
                             <span className="font-semibold text-gray-900">
@@ -842,7 +706,7 @@ export function PricingLandingPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                           <FileText className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                           <div className="text-sm">
                             <span className="font-semibold text-gray-900">
@@ -850,18 +714,8 @@ export function PricingLandingPage() {
                             </span>
                           </div>
                         </div>
-
-                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <MessageCircle className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
-                          <div className="text-sm">
-                            <span className="font-semibold text-gray-900">
-                              {formatLimit(plan.max_chat_responses_monthly)} réponses chat/mois
-                            </span>
-                          </div>
-                        </div>
                       </div>
 
-                      {/* Extra Features */}
                       <div className="border-t border-gray-200 pt-4 mt-4">
                         <div className="text-sm font-semibold text-gray-900 mb-3">
                           {plan.extra_features}
@@ -881,26 +735,6 @@ export function PricingLandingPage() {
               })}
             </div>
           )}
-
-          {/* Custom Plan CTA */}
-          <div className="text-center mt-12 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-8 border-2 border-blue-200 shadow-lg">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Brain className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Besoin d'un réseau neural sur mesure?
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-2xl mx-auto leading-relaxed">
-              Volume important, intégrations spécifiques, fonctionnalités exclusives ? 
-              Notre équipe construit le cerveau IA parfait pour votre business.
-            </p>
-            <button 
-              onClick={() => handleSignUp('enterprise')}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              Solution Neural Sur Mesure
-            </button>
-          </div>
         </div>
       </section>
 
@@ -911,20 +745,16 @@ export function PricingLandingPage() {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
               Ils Nous Font Confiance
             </h2>
-            <p className="text-xl text-gray-600">
-              Des e-commerces qui grandissent avec nous
-            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200 hover:shadow-xl transition-shadow">
+              <div key={index} className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <Quote className="w-8 h-8 text-blue-600 mb-3 opacity-30" />
                 <p className="text-gray-700 mb-6 leading-relaxed">"{testimonial.text}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold">
@@ -936,188 +766,42 @@ export function PricingLandingPage() {
                     <div className="text-sm font-medium text-blue-600">{testimonial.company}</div>
                   </div>
                 </div>
-                <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="text-sm font-semibold text-green-800 text-center">
-                    {testimonial.metric}
-                  </div>
-                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Questions Fréquentes
-            </h2>
-            <p className="text-xl text-gray-600">
-              Tout sur notre intelligence Omnia
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div key={index} className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden">
-                <button
-                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-100 transition-colors duration-200"
-                  onClick={() => setActiveFAQ(activeFAQ === index ? null : index)}
-                >
-                  <span className="font-semibold text-gray-900 text-lg">{faq.question}</span>
-                  {activeFAQ === index ? (
-                    <ChevronUp className="w-5 h-5 text-blue-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-500" />
-                  )}
-                </button>
-                {activeFAQ === index && (
-                  <div className="px-6 py-4 bg-white border-t border-gray-200">
-                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final Futuriste */}
-      <section className="py-20 relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-cyan-900">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              radial-gradient(circle at 25% 25%, rgba(37, 99, 235, 0.4) 0%, transparent 50%),
-              radial-gradient(circle at 75% 75%, rgba(6, 182, 212, 0.3) 0%, transparent 50%)
-            `,
-          }} />
-        </div>
-
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-            <Brain className="w-10 h-10 text-white" />
-          </div>
-          
+      {/* CTA Final */}
+      <section className="py-20 bg-gradient-to-br from-blue-900 to-cyan-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Prêt à Connecter Votre Business ?
           </h2>
-          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Rejoignez le réseau neural Omnia AI et donnez à votre e-commerce 
-            une intelligence qui pense, apprend et agit en temps réel.
+          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
+            Rejoignez le réseau neural Omnia AI et donnez à votre e-commerce une intelligence qui pense, apprend et agit en temps réel.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <button
               onClick={() => handleSignUp('professional')}
-              className="px-10 py-5 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105"
+              className="px-10 py-5 bg-white rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300"
             >
               <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                 Activer l'IA Omnia
               </span>
             </button>
-            
-            <button
-              onClick={() => {
-                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-300"
-            >
-              Voir les niveaux d'accès
-            </button>
-          </div>
-          
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>14 jours d'essai du réseau neural</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span>Architecture sécurisée de niveau enterprise</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              <span>Intégration en 5 minutes</span>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Brain className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-white">Omnia AI</span>
-              </div>
-              <p className="text-sm text-gray-400 mb-4 leading-relaxed">
-                L'intelligence qui connecte tout. 
-                Réseau neural complet pour e-commerce nouvelle génération.
-              </p>
-              <div className="flex items-center gap-3">
-                {['Twitter', 'LinkedIn', 'GitHub'].map((platform, index) => (
-                  <a
-                    key={index}
-                    href="#"
-                    className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
-                  >
-                    <div className="w-5 h-5 bg-gray-400 rounded-full"></div>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {[
-              {
-                title: 'Réseau Neural',
-                links: ['Architecture IA', 'Modules Intelligents', 'API Neurale', 'Intégrations', 'Documentation']
-              },
-              {
-                title: 'Entreprise',
-                links: ['À propos', 'Blog', 'Carrières', 'Partenaires', 'Contact']
-              },
-              {
-                title: 'Support',
-                links: ['Centre d\'aide', 'Contact', 'Statut', 'RGPD', 'Mentions légales']
-              }
-            ].map((section, index) => (
-              <div key={index}>
-                <h4 className="text-white font-semibold mb-4">{section.title}</h4>
-                <ul className="space-y-2 text-sm">
-                  {section.links.map((link, linkIndex) => (
-                    <li key={linkIndex}>
-                      <a href="#" className="hover:text-white transition-colors duration-200">
-                        {link}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-gray-800 pt-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-gray-400">
-                © 2024 Omnia AI. Neural Commerce Intelligence.
-              </p>
-              <div className="flex items-center gap-6 text-sm">
-                {['Confidentialité', 'Conditions', 'Cookies', 'Mentions légales'].map((item, index) => (
-                  <a key={index} href="#" className="hover:text-white transition-colors duration-200">
-                    {item}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
+      <footer className="bg-gray-900 text-gray-300 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm">
+            © 2024 Omnia AI. Neural Commerce Intelligence.
+          </p>
         </div>
       </footer>
     </div>
   );
-} 
+}
