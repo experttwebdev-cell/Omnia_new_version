@@ -12,15 +12,66 @@ import {
   Zap,
   CheckCircle
 } from 'lucide-react';
-import { useAuth } from '../lib/authContext';
+
+interface Seller {
+  id: string;
+  email: string;
+  company_name: string;
+  full_name: string;
+  role: string;
+  status: string;
+  // Add other fields as needed
+}
 
 interface LoginPageProps {
   onSignUp: () => void;
   onBack: () => void;
 }
 
+// Mock authentication function - replace with your actual API call
+const mockSignIn = async (email: string, password: string): Promise<{ error?: { message: string }, user?: Seller }> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Mock users data - in real app, this would come from your API
+  const mockUsers = [
+    {
+      idx: 1,
+      id: "069bb27f-d745-410c-a5d8-5224e2483d85",
+      email: "otmane.benyahya@sweetdeco.com",
+      company_name: "Decora Home",
+      full_name: "Otmane BENYAHYA",
+      role: "seller",
+      status: "trial",
+      trial_ends_at: "2025-11-03 22:00:12.361+00",
+      created_at: "2025-10-20 21:00:12.30828+00",
+      updated_at: "2025-10-23 10:10:40.934193+00",
+      stripe_customer_id: null,
+      email_verified: false,
+      subscription_status: "inactive",
+      current_plan_id: null,
+      // For demo purposes - in production, passwords should be hashed and stored securely
+      password: "password123" // Remove this in production
+    }
+  ];
+
+  const user = mockUsers.find(u => u.email === email);
+  
+  if (!user) {
+    return { error: { message: 'Aucun compte trouvé avec cet email' } };
+  }
+
+  // In production, you should compare hashed passwords
+  if (user.password !== password) {
+    return { error: { message: 'Mot de passe incorrect' } };
+  }
+
+  // Return user data without password
+  const { password: _, ...userWithoutPassword } = user;
+  return { user: userWithoutPassword as Seller };
+};
+
 export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
-  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,10 +97,20 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
     setLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error, user } = await mockSignIn(email, password);
 
       if (error) {
         setError(error.message || 'Email ou mot de passe incorrect');
+      } else if (user) {
+        // Login successful - handle the user data
+        console.log('Login successful:', user);
+        
+        // Store user data in localStorage or context
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        // Redirect or update app state
+        window.location.href = '/dashboard'; // Or use your router
       }
     } catch (err) {
       setError('Une erreur inattendue est survenue');
