@@ -14,15 +14,7 @@ import {
   X,
   Loader
 } from 'lucide-react';
-
-interface Seller {
-  id: string;
-  email: string;
-  company_name: string;
-  full_name: string;
-  role: string;
-  status: string;
-}
+import { supabase } from '../lib/supabase';
 
 interface LoginPageProps {
   onSignUp: () => void;
@@ -56,20 +48,14 @@ function ForgotPasswordModal({
     }
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(true);
+      if (error) {
+        setError(error.message || 'Erreur lors de l\'envoi de l\'email');
       } else {
-        setError(data.error || 'Erreur lors de l\'envoi de l\'email');
+        setSuccess(true);
       }
     } catch (err) {
       setError('Erreur de connexion au serveur');
@@ -252,49 +238,6 @@ function ForgotPasswordModal({
   );
 }
 
-// Mock authentication function - replace with your actual API call
-const mockSignIn = async (email: string, password: string): Promise<{ error?: { message: string }, user?: Seller }> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Mock users data - in real app, this would come from your API
-  const mockUsers = [
-    {
-      idx: 1,
-      id: "069bb27f-d745-410c-a5d8-5224e2483d85",
-      email: "otmane.benyahya@sweetdeco.com",
-      company_name: "Decora Home",
-      full_name: "Otmane BENYAHYA",
-      role: "seller",
-      status: "trial",
-      trial_ends_at: "2025-11-03 22:00:12.361+00",
-      created_at: "2025-10-20 21:00:12.30828+00",
-      updated_at: "2025-10-23 10:10:40.934193+00",
-      stripe_customer_id: null,
-      email_verified: false,
-      subscription_status: "inactive",
-      current_plan_id: null,
-      // For demo purposes - in production, passwords should be hashed and stored securely
-      password: "password123" // Remove this in production
-    }
-  ];
-
-  const user = mockUsers.find(u => u.email === email);
-  
-  if (!user) {
-    return { error: { message: 'Aucun compte trouvé avec cet email' } };
-  }
-
-  // In production, you should compare hashed passwords
-  if (user.password !== password) {
-    return { error: { message: 'Mot de passe incorrect' } };
-  }
-
-  // Return user data without password
-  const { password: _, ...userWithoutPassword } = user;
-  return { user: userWithoutPassword as Seller };
-};
-
 export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -308,7 +251,6 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
     e.preventDefault();
     setError('');
     
-    // Validation basique
     if (!email || !password) {
       setError('Veuillez remplir tous les champs');
       return;
@@ -322,24 +264,35 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
     setLoading(true);
 
     try {
-      const { error, user } = await mockSignIn(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (error) {
-        setError(error.message || 'Email ou mot de passe incorrect');
-      } else if (user) {
-        // Login successful - handle the user data
-        console.log('Login successful:', user);
+        console.error('Erreur auth:', error);
         
-        // Store user data in localStorage or context
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('isLoggedIn', 'true');
+        let errorMessage = error.message || 'Email ou mot de passe incorrect';
         
-        // Redirect or update app state
-        window.location.href = '/dashboard'; // Or use your router
+        // Messages d'erreur plus précis
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email ou mot de passe incorrect';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
+        }
+        
+        setError(errorMessage);
+      } else if (data.user) {
+        console.log('Login successful:', data.user);
+        
+        // Redirection vers le dashboard
+        window.location.href = '/dashboard';
       }
     } catch (err) {
-      setError('Une erreur inattendue est survenue');
       console.error('Login error:', err);
+      setError('Une erreur inattendue est survenue');
     } finally {
       setLoading(false);
     }
