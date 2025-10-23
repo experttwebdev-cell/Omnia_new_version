@@ -1120,4 +1120,4 @@ export function PricingLandingPage() {
       </footer>
     </div>
   );
-}
+} 
