@@ -16,13 +16,13 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
-
+    
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setError('Veuillez entrer une adresse email valide');
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
@@ -33,16 +33,42 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
         body: JSON.stringify({ email }),
       });
 
+      // Check if the response is OK
+      if (!response.ok) {
+        // If the API route doesn't exist (404), we'll simulate success for demo
+        if (response.status === 404) {
+          console.log('API route not found, simulating success for demo');
+          // Simulate success for demo purposes
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          setSuccess(true);
+          return;
+        }
+        
+        // Try to parse error message from response
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erreur ${response.status}`);
+        } catch {
+          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+        }
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
+      if (data.success) {
         setSuccess(true);
       } else {
         setError(data.error || 'Erreur lors de l\'envoi de l\'email');
       }
     } catch (err) {
-      setError('Erreur de connexion au serveur');
       console.error('Password recovery error:', err);
+      
+      // If there's a network error or API doesn't exist, show appropriate message
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        setError('Impossible de contacter le serveur. Veuillez réessayer plus tard.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Erreur de connexion au serveur');
+      }
     } finally {
       setLoading(false);
     }
@@ -60,6 +86,19 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
     setEmail('');
     setError('');
     setSuccess(false);
+  };
+
+  // Demo function to simulate email sending (for development)
+  const simulateEmailSend = async () => {
+    setLoading(true);
+    setError('');
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Simulate success
+    setSuccess(true);
+    setLoading(false);
   };
 
   if (!isOpen) return null;
@@ -106,6 +145,9 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
               
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
                 <p>💡 <strong>Astuce :</strong> Vérifiez vos spams si vous ne voyez pas l'email.</p>
+                <p className="mt-1 text-xs">
+                  <strong>Note développement :</strong> Cette fonctionnalité est en mode démonstration.
+                </p>
               </div>
 
               <div className="flex gap-3">
@@ -140,7 +182,12 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
               {error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-red-800 text-sm">{error}</p>
+                  <div>
+                    <p className="text-red-800 text-sm font-medium">{error}</p>
+                    <p className="text-red-700 text-xs mt-1">
+                      Le système de récupération est en cours de développement.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -157,7 +204,10 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (error) setError('');
+                      }}
                       required
                       className="w-full pl-10 pr-4 py-4 bg-white border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
                       placeholder="votre@email.com"
@@ -206,12 +256,20 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
                     <span className="text-blue-600 text-sm">💡</span>
                   </div>
                   <div>
-                    <p className="text-blue-800 text-sm font-medium">Conseil de sécurité</p>
+                    <p className="text-blue-800 text-sm font-medium">Mode démonstration</p>
                     <p className="text-blue-700 text-xs mt-1">
-                      Le lien de réinitialisation expire après 1 heure pour votre sécurité.
+                      Cette fonctionnalité est actuellement en mode démonstration. Aucun email réel ne sera envoyé.
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Development note - remove in production */}
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-xs text-center">
+                  <strong>Note pour les développeurs :</strong> L'API de récupération de mot de passe n'est pas encore implémentée. 
+                  Le système simule actuellement l'envoi d'email.
+                </p>
               </div>
             </>
           )}
@@ -227,4 +285,4 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
       `}</style>
     </div>
   );
-} 
+}
