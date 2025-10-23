@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Email Verification - OmnIA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Test Envoi Email de Vérification</h1>
+            <p class="text-gray-600 mb-6">Testez le système d'envoi d'email avec votre configuration SMTP O2switch</p>
+
+            <!-- Configuration Display -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-blue-900 mb-2">📋 Configuration SMTP Actuelle:</h3>
+                <div class="space-y-1 text-sm">
+                    <p><span class="font-medium">Host:</span> ohio.o2switch.net</p>
+                    <p><span class="font-medium">Port:</span> 465 (SSL/TLS)</p>
+                    <p><span class="font-medium">From:</span> support@omnia.sale</p>
+                    <p><span class="font-medium">Supabase URL:</span> <span id="supabaseUrl" class="text-blue-600"></span></p>
+                </div>
+            </div>
+
+            <!-- Test Form -->
+            <div class="border border-gray-200 rounded-lg p-6">
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">📧 Formulaire de Test</h3>
+
+                <form id="emailTestForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Email Destinataire *
+                        </label>
+                        <input
+                            type="email"
+                            id="testEmail"
+                            required
+                            placeholder="votre@email.com"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Utilisez une vraie adresse email que vous pouvez vérifier</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Nom d'utilisateur
+                        </label>
+                        <input
+                            type="text"
+                            id="userName"
+                            placeholder="Jean Dupont"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Nom de l'entreprise
+                        </label>
+                        <input
+                            type="text"
+                            id="companyName"
+                            placeholder="Mon E-commerce"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            User ID (Test)
+                        </label>
+                        <input
+                            type="text"
+                            id="userId"
+                            placeholder="test-user-id-123"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">UUID de test (généré automatiquement si vide)</p>
+                    </div>
+
+                    <button
+                        type="submit"
+                        id="sendButton"
+                        class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                    >
+                        📨 Envoyer Email de Test
+                    </button>
+                </form>
+            </div>
+
+            <!-- Results Display -->
+            <div id="results" class="mt-6 hidden">
+                <div id="resultContent" class="rounded-lg p-4"></div>
+            </div>
+
+            <!-- Logs Display -->
+            <div id="logs" class="mt-6">
+                <h3 class="text-xl font-semibold text-gray-900 mb-3">📝 Logs</h3>
+                <div id="logContent" class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
+                    <p class="text-gray-400">En attente de test...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">📖 Instructions</h2>
+
+            <div class="space-y-4 text-gray-700">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">✅ Avant de tester:</h3>
+                    <ol class="list-decimal list-inside space-y-2 ml-4">
+                        <li>Assurez-vous que l'Edge Function <code class="bg-gray-100 px-2 py-1 rounded">send-verification-email</code> est déployée</li>
+                        <li>Vérifiez que les secrets SMTP sont configurés dans Supabase</li>
+                        <li>Utilisez une vraie adresse email que vous pouvez vérifier</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">🧪 Processus de test:</h3>
+                    <ol class="list-decimal list-inside space-y-2 ml-4">
+                        <li>Remplissez le formulaire avec une adresse email valide</li>
+                        <li>Cliquez sur "Envoyer Email de Test"</li>
+                        <li>Vérifiez les logs pour voir la réponse</li>
+                        <li>Consultez votre boîte email (vérifiez aussi spam)</li>
+                        <li>Cliquez sur le lien de vérification dans l'email</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">🔍 Ce qui est testé:</h3>
+                    <ul class="list-disc list-inside space-y-2 ml-4">
+                        <li>Connexion au serveur SMTP O2switch</li>
+                        <li>Authentification SMTP</li>
+                        <li>Envoi d'email HTML professionnel</li>
+                        <li>Génération du lien de vérification</li>
+                        <li>Réponse de l'Edge Function</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">❌ En cas d'erreur:</h3>
+                    <ul class="list-disc list-inside space-y-2 ml-4">
+                        <li><strong>CORS Error:</strong> Edge Function pas déployée ou problème de configuration</li>
+                        <li><strong>SMTP Connection Failed:</strong> Vérifiez les secrets SMTP dans Supabase</li>
+                        <li><strong>Authentication Failed:</strong> Credentials SMTP incorrects</li>
+                        <li><strong>500 Error:</strong> Consultez les logs de l'Edge Function dans Supabase</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration Supabase
+        const SUPABASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        // Display Supabase URL
+        document.getElementById('supabaseUrl').textContent = SUPABASE_URL;
+
+        // Logging function
+        function addLog(message, type = 'info') {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString('fr-FR');
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+
+            const logEntry = document.createElement('p');
+            logEntry.className = `${colors[type]} mb-1`;
+            logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+
+            // Clear "waiting" message on first log
+            if (logContent.querySelector('.text-gray-400')) {
+                logContent.innerHTML = '';
+            }
+
+            logContent.appendChild(logEntry);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Show results
+        function showResult(success, message, details = null) {
+            const results = document.getElementById('results');
+            const resultContent = document.getElementById('resultContent');
+
+            results.classList.remove('hidden');
+
+            if (success) {
+                resultContent.className = 'bg-green-50 border border-green-200 rounded-lg p-4';
+                resultContent.innerHTML = `
+                    <div class="flex items-start">
+                        <svg class="w-6 h-6 text-green-600 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-green-900 mb-1">✅ Succès!</h4>
+                            <p class="text-green-800">${message}</p>
+                            ${details ? `<pre class="mt-2 text-xs text-green-700 bg-green-100 p-2 rounded overflow-x-auto">${JSON.stringify(details, null, 2)}</pre>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultContent.className = 'bg-red-50 border border-red-200 rounded-lg p-4';
+                resultContent.innerHTML = `
+                    <div class="flex items-start">
+                        <svg class="w-6 h-6 text-red-600 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <div>
+                            <h4 class="font-semibold text-red-900 mb-1">❌ Erreur</h4>
+                            <p class="text-red-800">${message}</p>
+                            ${details ? `<pre class="mt-2 text-xs text-red-700 bg-red-100 p-2 rounded overflow-x-auto">${JSON.stringify(details, null, 2)}</pre>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Form submission
+        document.getElementById('emailTestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sendButton = document.getElementById('sendButton');
+            const originalText = sendButton.innerHTML;
+
+            // Get form values
+            const email = document.getElementById('testEmail').value;
+            const userName = document.getElementById('userName').value || 'Utilisateur Test';
+            const companyName = document.getElementById('companyName').value || 'Entreprise Test';
+            const userId = document.getElementById('userId').value || crypto.randomUUID();
+            const verificationToken = crypto.randomUUID();
+
+            // Disable button
+            sendButton.disabled = true;
+            sendButton.innerHTML = '⏳ Envoi en cours...';
+
+            addLog('🚀 Début du test d\'envoi d\'email...', 'info');
+            addLog(`📧 Email destinataire: ${email}`, 'info');
+            addLog(`👤 Utilisateur: ${userName}`, 'info');
+            addLog(`🏢 Entreprise: ${companyName}`, 'info');
+            addLog(`🔑 User ID: ${userId}`, 'info');
+            addLog(`🎫 Token: ${verificationToken.substring(0, 20)}...`, 'info');
+
+            try {
+                addLog('📡 Appel Edge Function send-verification-email...', 'info');
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-verification-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                    },
+                    body: JSON.stringify({
+                        email,
+                        userId,
+                        verificationToken,
+                        userName,
+                        companyName,
+                    }),
+                });
+
+                addLog(`📨 Réponse HTTP: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('✅ Email envoyé avec succès!', 'success');
+                    addLog(`📬 Email envoyé à: ${data.email}`, 'success');
+                    addLog('🔍 Vérifiez votre boîte email (et spam)', 'warning');
+
+                    const verificationLink = `${window.location.origin}/#/verify-email?token=${verificationToken}&userId=${userId}`;
+                    addLog(`🔗 Lien de vérification généré: ${verificationLink}`, 'info');
+
+                    showResult(
+                        true,
+                        `Email envoyé avec succès à ${email}! Vérifiez votre boîte de réception (et le dossier spam).`,
+                        data
+                    );
+                } else {
+                    addLog(`❌ Erreur: ${data.error || 'Erreur inconnue'}`, 'error');
+                    if (data.details) {
+                        addLog(`🔍 Détails: ${data.details}`, 'error');
+                    }
+
+                    showResult(
+                        false,
+                        data.error || 'Échec de l\'envoi de l\'email',
+                        data
+                    );
+                }
+
+            } catch (error) {
+                addLog(`💥 Exception: ${error.message}`, 'error');
+                addLog(`📋 Stack: ${error.stack}`, 'error');
+
+                showResult(
+                    false,
+                    `Erreur lors de l'appel à l'Edge Function: ${error.message}`,
+                    { error: error.message, stack: error.stack }
+                );
+            } finally {
+                // Re-enable button
+                sendButton.disabled = false;
+                sendButton.innerHTML = originalText;
+
+                addLog('🏁 Test terminé', 'info');
+            }
+        });
+
+        // Initial log
+        addLog('✅ Page de test chargée', 'success');
+        addLog(`🌐 Supabase URL: ${SUPABASE_URL}`, 'info');
+        addLog('📝 Remplissez le formulaire et cliquez sur "Envoyer" pour tester', 'info');
+    </script>
+</body>
+</html>

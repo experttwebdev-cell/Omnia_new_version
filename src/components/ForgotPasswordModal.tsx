@@ -16,7 +16,7 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       setError('Veuillez entrer une adresse email valide');
       return;
@@ -25,45 +25,29 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
         },
         body: JSON.stringify({ email }),
       });
 
-      // Check if the response is OK
-      if (!response.ok) {
-        // If the API route doesn't exist (404), we'll simulate success for demo
-        if (response.status === 404) {
-          console.log('API route not found, simulating success for demo');
-          // Simulate success for demo purposes
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          setSuccess(true);
-          return;
-        }
-        
-        // Try to parse error message from response
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Erreur ${response.status}`);
-        } catch {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-      }
-
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setSuccess(true);
       } else {
         setError(data.error || 'Erreur lors de l\'envoi de l\'email');
       }
     } catch (err) {
       console.error('Password recovery error:', err);
-      
-      // If there's a network error or API doesn't exist, show appropriate message
+
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
         setError('Impossible de contacter le serveur. Veuillez réessayer plus tard.');
       } else {
@@ -145,9 +129,6 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
               
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
                 <p>💡 <strong>Astuce :</strong> Vérifiez vos spams si vous ne voyez pas l'email.</p>
-                <p className="mt-1 text-xs">
-                  <strong>Note développement :</strong> Cette fonctionnalité est en mode démonstration.
-                </p>
               </div>
 
               <div className="flex gap-3">
@@ -256,20 +237,12 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
                     <span className="text-blue-600 text-sm">💡</span>
                   </div>
                   <div>
-                    <p className="text-blue-800 text-sm font-medium">Mode démonstration</p>
+                    <p className="text-blue-800 text-sm font-medium">Sécurité</p>
                     <p className="text-blue-700 text-xs mt-1">
-                      Cette fonctionnalité est actuellement en mode démonstration. Aucun email réel ne sera envoyé.
+                      Pour votre sécurité, le lien de réinitialisation expirera dans 1 heure. Si vous n'avez pas fait cette demande, vous pouvez ignorer cet email en toute sécurité.
                     </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Development note - remove in production */}
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-xs text-center">
-                  <strong>Note pour les développeurs :</strong> L'API de récupération de mot de passe n'est pas encore implémentée. 
-                  Le système simule actuellement l'envoi d'email.
-                </p>
               </div>
             </>
           )}

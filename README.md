@@ -35,22 +35,26 @@ Complete AI-powered platform for Shopify SEO optimization, product enrichment, a
 
 ---
 
-## 📧 Email Verification System - NEW!
+## 📧 Complete Email System - NEW!
 
-**Email verification with O2switch SMTP integration configured!**
+**Email verification + Password reset with O2switch SMTP!**
 
 **Quick Start:**
-- **[EMAIL_SETUP_SUMMARY.md](EMAIL_SETUP_SUMMARY.md)** ⚡ **START HERE** - Complete setup summary
-- **[EMAIL_CONFIGURATION.md](EMAIL_CONFIGURATION.md)** - Technical guide with troubleshooting
+- **[EMAIL_SYSTEM_COMPLETE.md](EMAIL_SYSTEM_COMPLETE.md)** ⚡ **START HERE** - Complete system overview
+- **[test-email-verification.html](test-email-verification.html)** - HTML test page
+- **[EMAIL_SETUP_SUMMARY.md](EMAIL_SETUP_SUMMARY.md)** - Setup summary
+- **[EMAIL_CONFIGURATION.md](EMAIL_CONFIGURATION.md)** - Technical guide
 
-**What's Included:**
-- ✅ Professional HTML email templates (bilingual)
+**Features:**
+- ✅ Email verification after signup (24h expiry)
+- ✅ Password reset via email (1h expiry)
+- ✅ Professional HTML email templates
 - ✅ SMTP O2switch integration (ohio.o2switch.net:465)
-- ✅ Complete email verification flow
-- ✅ Database tracking with expiration
-- ✅ Modern verification page
+- ✅ Database token tracking with expiration
+- ✅ Modern verification & reset pages
+- ✅ HTML test page for debugging
 
-**Deploy Time:** 20-25 minutes (Edge Function deployment + Secrets configuration)
+**Deploy Time:** 25 minutes (2 Edge Functions + Secrets)
 
 ---
 
