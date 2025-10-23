@@ -119,6 +119,9 @@ async function handleEvent(event: Stripe.Event) {
     case 'customer.subscription.deleted':
       await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
       break;
+    case 'invoice.payment_succeeded':
+      await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+      break;
     case 'payment_intent.succeeded':
       await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
       break;
@@ -128,7 +131,7 @@ async function handleEvent(event: Stripe.Event) {
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  const { customer, mode, subscription, payment_intent } = session;
+  const { customer, mode, subscription, payment_intent, metadata } = session;
   
   if (!customer || typeof customer !== 'string') {
     console.error('No customer found in session');
@@ -139,18 +142,21 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     console.info(`Processing subscription checkout for customer: ${customer}`);
     await syncCustomerFromStripe(customer);
     
-    // Update seller subscription status
+    // Update seller subscription status and plan
     const { error: updateError } = await supabase
       .from('sellers')
       .update({ 
         subscription_status: 'active',
-        current_plan_id: session.metadata?.plan_id,
-        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        status: 'active',
+        current_plan_id: metadata?.plan_id,
+        trial_ends_at: null // Fin de l'essai car abonnement actif
       })
       .eq('stripe_customer_id', customer);
 
     if (updateError) {
       console.error('Error updating seller subscription:', updateError);
+    } else {
+      console.log(`✅ Updated seller subscription for customer: ${customer}`);
     }
   } else if (mode === 'payment' && payment_intent) {
     console.info(`Processing one-time payment for customer: ${customer}`);
@@ -178,13 +184,26 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       .from('sellers')
       .update({ 
         subscription_status: 'cancelled',
+        status: 'inactive',
         current_plan_id: null
       })
       .eq('stripe_customer_id', customer);
 
     if (updateError) {
       console.error('Error updating seller subscription status:', updateError);
+    } else {
+      console.log(`✅ Updated seller subscription to cancelled for customer: ${customer}`);
     }
+  }
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  // Handle successful invoice payments (renewals)
+  const { customer, subscription } = invoice;
+  
+  if (typeof customer === 'string' && subscription && typeof subscription === 'string') {
+    console.info(`Invoice payment succeeded for customer: ${customer}`);
+    await syncCustomerFromStripe(customer);
   }
 }
 
@@ -241,7 +260,7 @@ async function syncCustomerFromStripe(customerId: string) {
       console.info(`No active subscriptions found for customer: ${customerId}`);
       const { error: noSubError } = await supabase.from('stripe_subscriptions').upsert({
         customer_id: customerId,
-        subscription_status: 'not_started'
+        status: 'not_started'
       }, {
         onConflict: 'customer_id'
       });
@@ -256,16 +275,20 @@ async function syncCustomerFromStripe(customerId: string) {
     // assumes that a customer can only have a single subscription
     const subscription = subscriptions.data[0];
 
-    // store subscription state
+    // store subscription state - USING NEW TIMESTAMP COLUMNS
     const subscriptionData: any = {
       customer_id: customerId,
       subscription_id: subscription.id,
       price_id: subscription.items.data[0].price.id,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start_ts: new Date(subscription.current_period_start * 1000).toISOString(),
+      current_period_end_ts: new Date(subscription.current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       status: subscription.status
     };
+
+    // Also keep the old bigint columns for backward compatibility
+    subscriptionData.current_period_start = subscription.current_period_start;
+    subscriptionData.current_period_end = subscription.current_period_end;
 
     // Add payment method details if available
     if (subscription.default_payment_method && typeof subscription.default_payment_method !== 'string') {
