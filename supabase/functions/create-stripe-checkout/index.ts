@@ -109,9 +109,10 @@ Deno.serve(async (req) => {
     console.log('📋 Plan found:', plan.name);
 
     // Obtenir le bon Stripe Price ID basé sur la période de facturation
+    // Utiliser stripe_price_id_monthly si disponible, sinon stripe_price_id
     const stripePriceId = billing_period === 'yearly' 
       ? plan.stripe_price_id_yearly 
-      : plan.stripe_price_id;
+      : (plan.stripe_price_id_monthly || plan.stripe_price_id);
 
     console.log('💰 Stripe Price ID to use:', stripePriceId);
     console.log('📅 Billing period:', billing_period);
@@ -153,6 +154,9 @@ Deno.serve(async (req) => {
           email: user.email,
           full_name: user.user_metadata?.full_name || '',
           company_name: user.user_metadata?.company_name || '',
+          status: 'trial',
+          subscription_status: 'inactive',
+          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
