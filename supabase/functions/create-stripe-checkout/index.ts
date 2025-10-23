@@ -16,14 +16,13 @@ if (!supabaseUrl || !supabaseKey) {
 const stripe = new Stripe(stripeSecret, {
   apiVersion: '2023-10-16',
   appInfo: {
-    name: 'Bolt Integration',
+    name: 'Omnia AI',
     version: '1.0.0'
   }
 });
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Helper function to create responses with CORS headers
 function corsResponse(body: any, status = 200) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -61,23 +60,16 @@ Deno.serve(async (req) => {
 
     const { plan_id, billing_period, success_url, cancel_url } = await req.json();
     
-    const error = validateParameters({
-      price_id: plan_id, // Map plan_id to price_id for validation
-      success_url,
-      cancel_url,
-      mode: 'subscription'
-    }, {
-      price_id: 'string',
-      success_url: 'string', 
-      cancel_url: 'string',
-      mode: {
-        values: ['subscription']
-      }
-    });
-
-    if (error) {
+    // Validation des paramètres
+    if (!plan_id || !billing_period) {
       return corsResponse({
-        error
+        error: 'Missing required parameters: plan_id and billing_period'
+      }, 400);
+    }
+
+    if (!['monthly', 'yearly'].includes(billing_period)) {
+      return corsResponse({
+        error: 'Invalid billing_period. Must be "monthly" or "yearly"'
       }, 400);
     }
 
@@ -92,12 +84,15 @@ Deno.serve(async (req) => {
     const { data: { user }, error: getUserError } = await supabase.auth.getUser(token);
     
     if (getUserError || !user) {
+      console.error('❌ Authentication error:', getUserError);
       return corsResponse({
         error: 'Failed to authenticate user'
       }, 401);
     }
 
-    // Get plan details
+    console.log('🔍 Getting plan details for:', plan_id);
+
+    // Récupérer les détails du forfait
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
       .select('*')
@@ -105,61 +100,110 @@ Deno.serve(async (req) => {
       .single();
 
     if (planError || !plan) {
+      console.error('❌ Plan not found:', planError);
       return corsResponse({
         error: 'Plan not found'
       }, 404);
     }
 
-    // Get the appropriate Stripe Price ID based on billing period
+    console.log('📋 Plan found:', plan.name);
+
+    // Obtenir le bon Stripe Price ID basé sur la période de facturation
     const stripePriceId = billing_period === 'yearly' 
       ? plan.stripe_price_id_yearly 
-      : plan.stripe_price_id_monthly;
+      : plan.stripe_price_id;
+
+    console.log('💰 Stripe Price ID to use:', stripePriceId);
+    console.log('📅 Billing period:', billing_period);
 
     if (!stripePriceId || !stripePriceId.startsWith('price_')) {
-      console.error(`Invalid Stripe Price ID for plan ${plan_id}: ${stripePriceId}`);
+      console.error(`❌ Invalid Stripe Price ID for plan ${plan_id}: ${stripePriceId}`);
       return corsResponse({
         error: `Configuration incomplète: Le forfait "${plan.name}" n'a pas de tarif Stripe configuré pour la facturation ${billing_period === 'monthly' ? 'mensuelle' : 'annuelle'}.`
       }, 400);
     }
 
-    // Get or create seller
-    const { data: seller, error: sellerError } = await supabase
+    // Vérifier que le prix existe dans Stripe
+    try {
+      const price = await stripe.prices.retrieve(stripePriceId);
+      console.log('✅ Stripe price verified:', price.id);
+    } catch (priceError) {
+      console.error('❌ Stripe price not found:', priceError);
+      return corsResponse({
+        error: `Le tarif Stripe n'existe pas. Veuillez vérifier la configuration.`
+      }, 400);
+    }
+
+    // Obtenir ou créer le seller
+    let sellerData;
+    const { data: existingSeller, error: sellerError } = await supabase
       .from('sellers')
-      .select('email, full_name, company_name, stripe_customer_id')
+      .select('*')
       .eq('id', user.id)
       .single();
 
-    if (sellerError) {
-      return corsResponse({
-        error: 'Seller not found'
-      }, 404);
+    if (sellerError || !existingSeller) {
+      console.log('👤 Creating new seller record...');
+      
+      // Créer le seller s'il n'existe pas
+      const { data: newSeller, error: createSellerError } = await supabase
+        .from('sellers')
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          company_name: user.user_metadata?.company_name || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (createSellerError) {
+        console.error('❌ Failed to create seller:', createSellerError);
+        return corsResponse({
+          error: 'Failed to create seller profile'
+        }, 500);
+      }
+      sellerData = newSeller;
+    } else {
+      sellerData = existingSeller;
     }
 
-    // Create or get Stripe customer
-    let customerId = seller.stripe_customer_id;
+    console.log('👤 Seller data:', sellerData.email);
+
+    // Créer ou récupérer le client Stripe
+    let customerId = sellerData.stripe_customer_id;
     if (!customerId) {
+      console.log('👥 Creating new Stripe customer...');
       const customer = await stripe.customers.create({
-        email: seller.email,
-        name: seller.full_name,
+        email: sellerData.email,
+        name: sellerData.full_name,
         metadata: {
           seller_id: user.id,
-          company_name: seller.company_name
+          company_name: sellerData.company_name
         }
       });
       customerId = customer.id;
 
-      // Update seller with Stripe customer ID
+      // Mettre à jour le seller avec l'ID client Stripe
       const { error: updateError } = await supabase
         .from('sellers')
-        .update({ stripe_customer_id: customerId })
+        .update({ 
+          stripe_customer_id: customerId,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', user.id);
 
       if (updateError) {
-        console.error('Failed to update seller with Stripe customer ID:', updateError);
+        console.error('⚠️ Failed to update seller with Stripe customer ID:', updateError);
+        // Continuer quand même, nous avons l'ID client
       }
     }
 
-    // Create Stripe Checkout Session
+    console.log('🎫 Creating Stripe checkout session...');
+
+    // Créer la session Stripe Checkout
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -176,7 +220,7 @@ Deno.serve(async (req) => {
         plan_name: plan.name
       },
       subscription_data: {
-        trial_period_days: 14,
+        trial_period_days: plan.trial_days || 14,
         metadata: {
           seller_id: user.id,
           plan_id: plan_id,
@@ -185,16 +229,21 @@ Deno.serve(async (req) => {
         }
       },
       success_url: success_url || `${new URL(req.url).origin}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancel_url || `${new URL(req.url).origin}/pricing?checkout=cancelled`,
+      cancel_url: cancel_url || `${new URL(req.url).origin}/signup?checkout=cancelled&plan_id=${plan_id}`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       customer_update: {
         address: 'auto',
         name: 'auto'
+      },
+      custom_text: {
+        submit: {
+          message: `Essai gratuit de ${plan.trial_days || 14} jours. Aucun paiement requis aujourd'hui.`
+        }
       }
     });
 
-    console.log(`Created checkout session ${session.id} for customer ${customerId}`);
+    console.log('✅ Checkout session created:', session.id);
 
     return corsResponse({
       success: true,
@@ -204,30 +253,9 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error(`Checkout error: ${error.message}`);
+    console.error('💥 Checkout error:', error);
     return corsResponse({
-      error: error.message
+      error: error.message || 'Une erreur est survenue lors de la création de la session de paiement'
     }, 500);
   }
 });
-
-function validateParameters(values: any, expected: any) {
-  for (const parameter in expected) {
-    const expectation = expected[parameter];
-    const value = values[parameter];
-
-    if (expectation === 'string') {
-      if (value == null) {
-        return `Missing required parameter ${parameter}`;
-      }
-      if (typeof value !== 'string') {
-        return `Expected parameter ${parameter} to be a string got ${JSON.stringify(value)}`;
-      }
-    } else {
-      if (!expectation.values.includes(value)) {
-        return `Expected parameter ${parameter} to be one of ${expectation.values.join(', ')}`;
-      }
-    }
-  }
-  return undefined;
-}
