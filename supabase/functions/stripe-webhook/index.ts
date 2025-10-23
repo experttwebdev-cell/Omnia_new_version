@@ -12,7 +12,7 @@ if (!stripeSecret) {
 const stripe = new Stripe(stripeSecret, {
   apiVersion: '2023-10-16',
   appInfo: {
-    name: 'Bolt Integration',
+    name: 'Omnia AI',
     version: '1.0.0'
   }
 });
@@ -116,6 +116,9 @@ async function handleEvent(event: Stripe.Event) {
     case 'customer.subscription.created':
       await handleSubscriptionEvent(event.data.object as Stripe.Subscription);
       break;
+    case 'customer.subscription.deleted':
+      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+      break;
     case 'payment_intent.succeeded':
       await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
       break;
@@ -135,6 +138,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   if (mode === 'subscription' && subscription) {
     console.info(`Processing subscription checkout for customer: ${customer}`);
     await syncCustomerFromStripe(customer);
+    
+    // Update seller subscription status
+    const { error: updateError } = await supabase
+      .from('sellers')
+      .update({ 
+        subscription_status: 'active',
+        current_plan_id: session.metadata?.plan_id,
+        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      })
+      .eq('stripe_customer_id', customer);
+
+    if (updateError) {
+      console.error('Error updating seller subscription:', updateError);
+    }
   } else if (mode === 'payment' && payment_intent) {
     console.info(`Processing one-time payment for customer: ${customer}`);
     await handleOneTimePayment(session);
@@ -147,6 +164,27 @@ async function handleSubscriptionEvent(subscription: Stripe.Subscription) {
   if (typeof customer === 'string') {
     console.info(`Syncing subscription for customer: ${customer}`);
     await syncCustomerFromStripe(customer);
+  }
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const { customer } = subscription;
+  
+  if (typeof customer === 'string') {
+    console.info(`Subscription deleted for customer: ${customer}`);
+    
+    // Update seller subscription status
+    const { error: updateError } = await supabase
+      .from('sellers')
+      .update({ 
+        subscription_status: 'cancelled',
+        current_plan_id: null
+      })
+      .eq('stripe_customer_id', customer);
+
+    if (updateError) {
+      console.error('Error updating seller subscription status:', updateError);
+    }
   }
 }
 
