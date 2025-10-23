@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Email Verification - OmnIA</title>
+    <title>Test Email Réinitialisation - OmnIA</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen p-8">
     <div class="max-w-4xl mx-auto">
         <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Test Envoi Email de Vérification</h1>
-            <p class="text-gray-600 mb-6">Testez le système d'envoi d'email avec votre configuration SMTP O2switch</p>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Test Envoi Email de Réinitialisation</h1>
+            <p class="text-gray-600 mb-6">Testez le système de récupération de mot de passe avec votre configuration SMTP O2switch</p>
 
             <!-- Configuration Display -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 class="font-semibold text-blue-900 mb-2">📋 Configuration SMTP Actuelle:</h3>
+                <h3 class="font-semibold text-blue-900 mb-2">📋 Configuration Actuelle:</h3>
                 <div class="space-y-1 text-sm">
-                    <p><span class="font-medium">Host:</span> ohio.o2switch.net</p>
-                    <p><span class="font-medium">Port:</span> 465 (SSL/TLS)</p>
-                    <p><span class="font-medium">From:</span> support@omnia.sale</p>
+                    <p><span class="font-medium">SMTP Host:</span> ohio.o2switch.net</p>
+                    <p><span class="font-medium">SMTP Port:</span> 465 (SSL/TLS)</p>
+                    <p><span class="font-medium">From Email:</span> support@omnia.sale</p>
+                    <p><span class="font-medium">Edge Function:</span> send-password-reset</p>
                     <p><span class="font-medium">Supabase URL:</span> <span id="supabaseUrl" class="text-blue-600"></span></p>
                 </div>
             </div>
 
             <!-- Test Form -->
             <div class="border border-gray-200 rounded-lg p-6">
-                <h3 class="text-xl font-semibold text-gray-900 mb-4">📧 Formulaire de Test</h3>
+                <h3 class="text-xl font-semibold text-gray-900 mb-4">📧 Test Réinitialisation Mot de Passe</h3>
 
                 <form id="emailTestForm" class="space-y-4">
                     <div>
@@ -44,12 +45,12 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Nom d'utilisateur
+                            Nom Complet
                         </label>
                         <input
                             type="text"
                             id="userName"
-                            placeholder="Jean Dupont"
+                            placeholder="Otmane BENYAHYA"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
                     </div>
@@ -61,31 +62,53 @@
                         <input
                             type="text"
                             id="companyName"
-                            placeholder="Mon E-commerce"
+                            placeholder="Decora Home"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            User ID (Test)
-                        </label>
-                        <input
-                            type="text"
-                            id="userId"
-                            placeholder="test-user-id-123"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                        <p class="text-xs text-gray-500 mt-1">UUID de test (généré automatiquement si vide)</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                User ID (Test)
+                            </label>
+                            <input
+                                type="text"
+                                id="userId"
+                                placeholder="069bb27f-d745-410c-a5d8-5224e2483d85"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Reset Token
+                            </label>
+                            <input
+                                type="text"
+                                id="resetToken"
+                                placeholder="Généré automatiquement"
+                                readonly
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                            />
+                        </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        id="sendButton"
-                        class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
-                    >
-                        📨 Envoyer Email de Test
-                    </button>
+                    <div class="flex gap-3">
+                        <button
+                            type="submit"
+                            id="sendButton"
+                            class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                        >
+                            🔐 Envoyer Email Réinitialisation
+                        </button>
+                        <button
+                            type="button"
+                            id="testApiButton"
+                            class="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                        >
+                            🧪 Tester API Route
+                        </button>
+                    </div>
                 </form>
             </div>
 
@@ -105,47 +128,76 @@
 
         <!-- Instructions -->
         <div class="bg-white rounded-2xl shadow-xl p-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">📖 Instructions</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">📖 Instructions Réinitialisation</h2>
 
             <div class="space-y-4 text-gray-700">
                 <div>
                     <h3 class="font-semibold text-lg mb-2">✅ Avant de tester:</h3>
                     <ol class="list-decimal list-inside space-y-2 ml-4">
-                        <li>Assurez-vous que l'Edge Function <code class="bg-gray-100 px-2 py-1 rounded">send-verification-email</code> est déployée</li>
+                        <li>Assurez-vous que l'Edge Function <code class="bg-gray-100 px-2 py-1 rounded">send-password-reset</code> est déployée</li>
                         <li>Vérifiez que les secrets SMTP sont configurés dans Supabase</li>
+                        <li>Vérifiez que l'API route <code class="bg-gray-100 px-2 py-1 rounded">/api/auth/forgot-password</code> existe</li>
                         <li>Utilisez une vraie adresse email que vous pouvez vérifier</li>
                     </ol>
                 </div>
 
                 <div>
-                    <h3 class="font-semibold text-lg mb-2">🧪 Processus de test:</h3>
-                    <ol class="list-decimal list-inside space-y-2 ml-4">
-                        <li>Remplissez le formulaire avec une adresse email valide</li>
-                        <li>Cliquez sur "Envoyer Email de Test"</li>
-                        <li>Vérifiez les logs pour voir la réponse</li>
-                        <li>Consultez votre boîte email (vérifiez aussi spam)</li>
-                        <li>Cliquez sur le lien de vérification dans l'email</li>
-                    </ol>
+                    <h3 class="font-semibold text-lg mb-2">🧪 Deux Méthodes de Test:</h3>
+                    
+                    <div class="ml-4 space-y-3">
+                        <div class="p-3 bg-blue-50 rounded-lg">
+                            <h4 class="font-semibold text-blue-900">🔐 Edge Function Directe</h4>
+                            <p class="text-sm text-blue-800">Appel direct de l'Edge Function Supabase avec tous les paramètres</p>
+                            <ul class="list-disc list-inside text-xs text-blue-700 mt-1">
+                                <li>Teste la connexion SMTP directement</li>
+                                <li>Contrôle total des paramètres</li>
+                                <li>Bypass l'API Next.js</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-3 bg-green-50 rounded-lg">
+                            <h4 class="font-semibold text-green-900">🧪 API Route Next.js</h4>
+                            <p class="text-sm text-green-800">Test du flux complet via votre API Next.js</p>
+                            <ul class="list-disc list-inside text-xs text-green-700 mt-1">
+                                <li>Teste l'intégration complète</li>
+                                <li>Simule le comportement réel de l'application</li>
+                                <li>Vérifie la logique métier</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
                     <h3 class="font-semibold text-lg mb-2">🔍 Ce qui est testé:</h3>
                     <ul class="list-disc list-inside space-y-2 ml-4">
                         <li>Connexion au serveur SMTP O2switch</li>
-                        <li>Authentification SMTP</li>
-                        <li>Envoi d'email HTML professionnel</li>
-                        <li>Génération du lien de vérification</li>
-                        <li>Réponse de l'Edge Function</li>
+                        <li>Authentification SMTP avec vos credentials</li>
+                        <li>Envoi d'email HTML professionnel en français</li>
+                        <li>Génération du lien de réinitialisation sécurisé</li>
+                        <li>Intégration avec Supabase Edge Functions</li>
+                        <li>Réponse de l'API Next.js</li>
                     </ul>
                 </div>
 
                 <div>
-                    <h3 class="font-semibold text-lg mb-2">❌ En cas d'erreur:</h3>
+                    <h3 class="font-semibold text-lg mb-2">❌ Dépannage des Erreurs:</h3>
                     <ul class="list-disc list-inside space-y-2 ml-4">
-                        <li><strong>CORS Error:</strong> Edge Function pas déployée ou problème de configuration</li>
-                        <li><strong>SMTP Connection Failed:</strong> Vérifiez les secrets SMTP dans Supabase</li>
-                        <li><strong>Authentication Failed:</strong> Credentials SMTP incorrects</li>
+                        <li><strong>CORS Error:</strong> Edge Function pas déployée ou problème de configuration CORS</li>
+                        <li><strong>SMTP Connection Failed:</strong> Vérifiez host/port/credentials SMTP</li>
+                        <li><strong>Authentication Failed:</strong> Mauvais username/mot de passe SMTP</li>
+                        <li><strong>404 Error:</strong> Edge Function non trouvée - vérifiez le nom</li>
                         <li><strong>500 Error:</strong> Consultez les logs de l'Edge Function dans Supabase</li>
+                    </ul>
+                </div>
+
+                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h3 class="font-semibold text-yellow-900 mb-2">⚠️ Important pour O2Switch:</h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm text-yellow-800">
+                        <li>Port SMTP: <strong>465</strong> (SSL/TLS) ou <strong>587</strong> (STARTTLS)</li>
+                        <li>Host: <strong>ohio.o2switch.net</strong></li>
+                        <li>Username: <strong>support@omnia.sale</strong> (adresse email complète)</li>
+                        <li>Password: <strong>Seoplan@2024</strong></li>
+                        <li>From Email: Doit correspondre au username SMTP</li>
                     </ul>
                 </div>
             </div>
@@ -159,6 +211,18 @@
 
         // Display Supabase URL
         document.getElementById('supabaseUrl').textContent = SUPABASE_URL;
+
+        // Generate reset token
+        function generateResetToken() {
+            return Math.random().toString(36).slice(-8) + Date.now().toString(36);
+        }
+
+        // Auto-generate reset token
+        document.getElementById('testEmail').addEventListener('input', function() {
+            if (!document.getElementById('resetToken').value) {
+                document.getElementById('resetToken').value = generateResetToken();
+            }
+        });
 
         // Logging function
         function addLog(message, type = 'info') {
@@ -222,47 +286,37 @@
             }
         }
 
-        // Form submission
-        document.getElementById('emailTestForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Test Edge Function directly
+        async function testEdgeFunction() {
+            const email = document.getElementById('testEmail').value;
+            const userName = document.getElementById('userName').value || 'Otmane BENYAHYA';
+            const resetToken = document.getElementById('resetToken').value || generateResetToken();
 
             const sendButton = document.getElementById('sendButton');
             const originalText = sendButton.innerHTML;
 
-            // Get form values
-            const email = document.getElementById('testEmail').value;
-            const userName = document.getElementById('userName').value || 'Utilisateur Test';
-            const companyName = document.getElementById('companyName').value || 'Entreprise Test';
-            const userId = document.getElementById('userId').value || crypto.randomUUID();
-            const verificationToken = crypto.randomUUID();
-
             // Disable button
             sendButton.disabled = true;
-            sendButton.innerHTML = '⏳ Envoi en cours...';
+            sendButton.innerHTML = '⏳ Envoi Edge Function...';
 
-            addLog('🚀 Début du test d\'envoi d\'email...', 'info');
-            addLog(`📧 Email destinataire: ${email}`, 'info');
+            addLog('🚀 Début test Edge Function directe...', 'info');
+            addLog(`📧 Email: ${email}`, 'info');
             addLog(`👤 Utilisateur: ${userName}`, 'info');
-            addLog(`🏢 Entreprise: ${companyName}`, 'info');
-            addLog(`🔑 User ID: ${userId}`, 'info');
-            addLog(`🎫 Token: ${verificationToken.substring(0, 20)}...`, 'info');
+            addLog(`🔑 Reset Token: ${resetToken}`, 'info');
 
             try {
-                addLog('📡 Appel Edge Function send-verification-email...', 'info');
+                addLog('📡 Appel Edge Function send-password-reset...', 'info');
 
-                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-verification-email`, {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/send-password-reset`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'apikey': SUPABASE_ANON_KEY,
                     },
                     body: JSON.stringify({
                         email,
-                        userId,
-                        verificationToken,
-                        userName,
-                        companyName,
+                        reset_token: resetToken,
+                        user_name: userName,
                     }),
                 });
 
@@ -271,53 +325,135 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    addLog('✅ Email envoyé avec succès!', 'success');
-                    addLog(`📬 Email envoyé à: ${data.email}`, 'success');
+                    addLog('✅ Edge Function exécutée avec succès!', 'success');
+                    addLog(`📬 Email envoyé à: ${email}`, 'success');
                     addLog('🔍 Vérifiez votre boîte email (et spam)', 'warning');
 
-                    const verificationLink = `${window.location.origin}/#/verify-email?token=${verificationToken}&userId=${userId}`;
-                    addLog(`🔗 Lien de vérification généré: ${verificationLink}`, 'info');
+                    const resetLink = `${window.location.origin}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+                    addLog(`🔗 Lien de réinitialisation: ${resetLink}`, 'info');
 
                     showResult(
                         true,
-                        `Email envoyé avec succès à ${email}! Vérifiez votre boîte de réception (et le dossier spam).`,
+                        `Email de réinitialisation envoyé avec succès à ${email}! Vérifiez votre boîte de réception.`,
                         data
                     );
                 } else {
-                    addLog(`❌ Erreur: ${data.error || 'Erreur inconnue'}`, 'error');
-                    if (data.details) {
-                        addLog(`🔍 Détails: ${data.details}`, 'error');
-                    }
-
+                    addLog(`❌ Erreur Edge Function: ${data.error || 'Erreur inconnue'}`, 'error');
                     showResult(
                         false,
-                        data.error || 'Échec de l\'envoi de l\'email',
+                        data.error || 'Échec de l\'envoi de l\'email via Edge Function',
                         data
                     );
                 }
 
             } catch (error) {
                 addLog(`💥 Exception: ${error.message}`, 'error');
-                addLog(`📋 Stack: ${error.stack}`, 'error');
-
                 showResult(
                     false,
                     `Erreur lors de l'appel à l'Edge Function: ${error.message}`,
-                    { error: error.message, stack: error.stack }
+                    { error: error.message }
                 );
             } finally {
                 // Re-enable button
                 sendButton.disabled = false;
                 sendButton.innerHTML = originalText;
-
-                addLog('🏁 Test terminé', 'info');
+                addLog('🏁 Test Edge Function terminé', 'info');
             }
+        }
+
+        // Test API Route
+        async function testApiRoute() {
+            const email = document.getElementById('testEmail').value;
+            const testApiButton = document.getElementById('testApiButton');
+            const originalText = testApiButton.innerHTML;
+
+            // Disable button
+            testApiButton.disabled = true;
+            testApiButton.innerHTML = '⏳ Test API...';
+
+            addLog('🧪 Début test API Route Next.js...', 'info');
+            addLog(`📧 Email: ${email}`, 'info');
+            addLog('🔍 Simulation du flux complet de réinitialisation...', 'info');
+
+            try {
+                addLog('📡 Appel API /api/auth/forgot-password...', 'info');
+
+                const response = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                    }),
+                });
+
+                addLog(`📨 Réponse HTTP: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('✅ API Route exécutée avec succès!', 'success');
+                    addLog(`💬 Message: ${data.message}`, 'success');
+                    
+                    if (data.success) {
+                        addLog('📬 Processus de réinitialisation initié', 'success');
+                        addLog('🔍 Vérifiez votre boîte email (et spam)', 'warning');
+                    }
+
+                    showResult(
+                        true,
+                        `API Route exécutée avec succès: ${data.message}`,
+                        data
+                    );
+                } else {
+                    addLog(`❌ Erreur API: ${data.error || 'Erreur inconnue'}`, 'error');
+                    showResult(
+                        false,
+                        data.error || 'Échec de l\'API Route',
+                        data
+                    );
+                }
+
+            } catch (error) {
+                addLog(`💥 Exception: ${error.message}`, 'error');
+                
+                if (error.message.includes('Failed to fetch')) {
+                    addLog('🔧 API Route non trouvée - Vérifiez le chemin /api/auth/forgot-password', 'warning');
+                }
+
+                showResult(
+                    false,
+                    `Erreur lors de l'appel à l'API: ${error.message}`,
+                    { error: error.message }
+                );
+            } finally {
+                // Re-enable button
+                testApiButton.disabled = false;
+                testApiButton.innerHTML = originalText;
+                addLog('🏁 Test API Route terminé', 'info');
+            }
+        }
+
+        // Form submission for Edge Function
+        document.getElementById('emailTestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await testEdgeFunction();
+        });
+
+        // API Route test button
+        document.getElementById('testApiButton').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await testApiRoute();
         });
 
         // Initial log
-        addLog('✅ Page de test chargée', 'success');
+        addLog('✅ Page de test de réinitialisation chargée', 'success');
         addLog(`🌐 Supabase URL: ${SUPABASE_URL}`, 'info');
-        addLog('📝 Remplissez le formulaire et cliquez sur "Envoyer" pour tester', 'info');
+        addLog(`🔐 Edge Function: send-password-reset`, 'info');
+        addLog(`🧪 API Route: /api/auth/forgot-password`, 'info');
+        addLog('📝 Remplissez le formulaire et choisissez une méthode de test', 'info');
+        addLog('💡 Conseil: Testez d\'abord l\'Edge Function, puis l\'API Route', 'warning');
     </script>
 </body>
 </html>
