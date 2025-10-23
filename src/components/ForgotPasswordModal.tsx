@@ -227,4 +227,4 @@ export function ForgotPasswordModal({ isOpen, onClose, onBackToLogin }: ForgotPa
       `}</style>
     </div>
   );
-}
+} 
