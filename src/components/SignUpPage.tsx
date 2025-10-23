@@ -88,7 +88,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       console.log('📦 Données reçues de la base de données:', data);
 
       if (data && data.length > 0) {
-        // Formater les données pour correspondre à l'interface
         const formattedPlans = data.map(plan => {
           // Gestion sécurisée du parsing des features
           let features: Record<string, any> = {};
@@ -103,12 +102,13 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             features = {};
           }
 
-          return {
+          const formattedPlan = {
             id: plan.id,
             name: plan.name,
-            price_monthly: typeof plan.price_monthly === 'string' ? parseFloat(plan.price_monthly) : plan.price_monthly,
-            price_yearly: typeof plan.price_yearly === 'string' ? parseFloat(plan.price_yearly) : 
-                         typeof plan.price_annual === 'string' ? parseFloat(plan.price_annual) : plan.price_yearly,
+            price_monthly: typeof plan.price_monthly === 'string' ? 
+              parseFloat(plan.price_monthly.replace(',', '.')) : plan.price_monthly,
+            price_yearly: typeof plan.price_yearly === 'string' ? 
+              parseFloat(plan.price_yearly.replace(',', '.')) : plan.price_yearly,
             max_products: plan.max_products,
             max_optimizations_monthly: plan.max_optimizations_monthly,
             max_articles_monthly: plan.max_articles_monthly,
@@ -118,9 +118,18 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
             stripe_price_id: plan.stripe_price_id,
             stripe_price_id_yearly: plan.stripe_price_id_yearly,
             description: plan.description,
-            popular: plan.id === 'professional',
+            popular: plan.popular || plan.id === 'professional',
             trial_days: plan.trial_days || 14
           };
+
+          console.log(`📋 Forfait formaté ${formattedPlan.name}:`, {
+            monthly: formattedPlan.stripe_price_id,
+            yearly: formattedPlan.stripe_price_id_yearly,
+            price_monthly: formattedPlan.price_monthly,
+            price_yearly: formattedPlan.price_yearly
+          });
+
+          return formattedPlan;
         });
 
         console.log('✅ Forfaits formatés:', formattedPlans);
@@ -145,13 +154,10 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         if (configuredPlans.length === 0) {
           console.warn('⚠️ Aucun forfait n\'a d\'ID de prix Stripe configuré');
           setError('Les forfaits ne sont pas encore configurés. Veuillez réessayer plus tard ou contacter le support.');
-          // Utiliser les forfaits par défaut en attendant
           setPlans(getDefaultPlans());
-          setLoadingPlans(false);
-          return;
+        } else {
+          setPlans(configuredPlans);
         }
-
-        setPlans(configuredPlans);
       } else {
         console.log('📋 Utilisation des forfaits par défaut');
         setPlans(getDefaultPlans());
@@ -182,8 +188,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         billing_periods: ['monthly', 'annual']
       },
       description: 'Parfait pour débuter avec l\'IA',
-      stripe_price_id: 'price_starter',
-      stripe_price_id_yearly: 'price_starter_yearly',
+      stripe_price_id: 'price_1SKPmJEfti9t9nN91Y6QrqxC',
+      stripe_price_id_yearly: 'price_1SKPqvEfti9t9nN9RJ6PiOrl',
       popular: false,
       trial_days: 14
     },
@@ -204,8 +210,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         billing_periods: ['monthly', 'annual']
       },
       description: 'Solution complète pour professionnels',
-      stripe_price_id: 'price_professional',
-      stripe_price_id_yearly: 'price_professional_yearly',
+      stripe_price_id: 'price_1SKPpVEfti9t9nN9xNiKuIIu',
+      stripe_price_id_yearly: 'price_1SKPsbEfti9t9nN9JTqhOoug',
       popular: true,
       trial_days: 14
     },
@@ -228,15 +234,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         billing_periods: ['monthly', 'annual']
       },
       description: 'Entreprise avec tout illimité',
-      stripe_price_id: 'price_enterprise',
-      stripe_price_id_yearly: 'price_enterprise_yearly',
+      stripe_price_id: 'price_1SKPqFEfti9t9nN9ayiQiio4',
+      stripe_price_id_yearly: 'price_1SKPtfEfti9t9nN9hEKHlvVV',
       popular: false,
       trial_days: 14
     }
   ];
 
   const getFeaturesList = (plan: Plan): string[] => {
-    // Si les features sont déjà un tableau, les retourner directement
     if (Array.isArray(plan.features)) {
       return plan.features;
     }
@@ -244,7 +249,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     const features: string[] = [];
     const featureObj = plan.features as Record<string, any>;
 
-    // Features basées sur le type de forfait
     if (plan.id === 'starter') {
       features.push(`Jusqu'à ${plan.max_products} produits`);
       features.push(`${plan.max_optimizations_monthly} optimisations SEO/mois`);
@@ -271,7 +275,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
       if (featureObj.whitelabel) features.push('Solution white-label');
     }
 
-    // Ajouter les features supplémentaires depuis l'objet
     if (featureObj.support) {
       const supportMap: Record<string, string> = {
         'email': 'Support email',
@@ -347,6 +350,8 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         ? selectedPlan.stripe_price_id_yearly 
         : selectedPlan.stripe_price_id;
 
+      console.log('💰 ID de prix à utiliser:', priceIdToUse);
+
       if (!priceIdToUse || !priceIdToUse.startsWith('price_')) {
         const availablePlans = plans.filter(p => 
           (billingCycle === 'monthly' && p.stripe_price_id) || 
@@ -368,7 +373,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
         return;
       }
 
-      console.log('✅ ID de prix Stripe à utiliser:', priceIdToUse);
+      console.log('✅ ID de prix Stripe valide:', priceIdToUse);
 
       // 1. Create user account first
       const { error: signUpError } = await signUp(
@@ -397,7 +402,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
 
       console.log('🔑 Session obtenue, création du checkout Stripe...');
 
-      // 3. Create Stripe Checkout session avec la bonne URL
+      // 3. Create Stripe Checkout session
       const functionUrl = `${EDGE_FUNCTION_BASE_URL}/create-stripe-checkout`;
       console.log('🔗 URL de la fonction Edge:', functionUrl);
 
@@ -412,7 +417,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
           plan_id: selectedPlanId,
           billing_period: billingCycle,
           success_url: `${window.location.origin}/dashboard?checkout=success`,
-          cancel_url: `${window.location.origin}/signup?checkout=cancelled`
+          cancel_url: `${window.location.origin}/signup?checkout=cancelled&plan_id=${selectedPlanId}`
         })
       });
 
@@ -463,6 +468,13 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
     : 0;
 
   const yearlySavings = selectedPlan ? Math.round((1 - (selectedPlan.price_yearly / (selectedPlan.price_monthly * 12))) * 100) : 0;
+
+  // Debug logs
+  useEffect(() => {
+    console.log('🔍 Current plans state:', plans);
+    console.log('🎯 Selected plan:', selectedPlan);
+    console.log('💰 Billing cycle:', billingCycle);
+  }, [plans, selectedPlan, billingCycle]);
 
   if (success) {
     return (
@@ -809,13 +821,14 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack }: SignUpPag
                       <p><strong>Forfait:</strong> {selectedPlan?.name}</p>
                       <p><strong>Facturation:</strong> {billingCycle === 'monthly' ? 'Mensuelle' : 'Annuelle'}</p>
                       <p><strong>Prix:</strong> {selectedPrice}€{billingCycle === 'yearly' ? '/an' : '/mois'}</p>
+                      <p><strong>Essai gratuit:</strong> {selectedPlan?.trial_days || 14} jours</p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-green-600">
                       <Calendar className="w-4 h-4" />
-                      <span className="text-sm font-medium">14 jours d'essai gratuit</span>
+                      <span className="text-sm font-medium">{selectedPlan?.trial_days || 14} jours d'essai gratuit</span>
                     </div>
                     <button
                       onClick={handleStep2Submit}
