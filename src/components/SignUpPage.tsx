@@ -22,23 +22,11 @@ import {
   Crown,
   Rocket,
   TrendingUp,
-  Target,
   BarChart3,
   Headphones,
-  Globe,
   FileText,
   MessageCircle,
-  Search,
-  Image,
-  Lightbulb,
-  Users,
-  Database,
-  Server,
-  HelpCircle,
-  Play,
-  Award,
-  ChevronDown,
-  ChevronUp
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
@@ -71,7 +59,7 @@ interface Plan {
 }
 
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuccess }: SignUpPageProps) {
-  const { signUp, user } = useAuth();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,11 +78,6 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPlanComparison, setShowPlanComparison] = useState(false);
-  const [activeFeatureTab, setActiveFeatureTab] = useState('all');
-  const [showAllFeatures, setShowAllFeatures] = useState(false);
-
-  // URL de base pour les Edge Functions
-  const EDGE_FUNCTION_BASE_URL = 'https://ufdhzgqrubbnornjdvgv.supabase.co/functions/v1';
 
   // Redirection automatique si l'utilisateur est déjà connecté
   useEffect(() => {
@@ -124,72 +107,11 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
 
   const loadPlans = async () => {
     try {
-      console.log('🔍 Chargement des forfaits depuis la base de données...');
+      console.log('🔍 Chargement des forfaits...');
       
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .order('price_monthly', { ascending: true });
-
-      if (error) {
-        console.error('❌ Erreur lors du chargement des forfaits:', error);
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        const formattedPlans = data.map(plan => {
-          let features: Record<string, any> = {};
-          try {
-            if (typeof plan.features === 'string') {
-              features = JSON.parse(plan.features);
-            } else if (plan.features && typeof plan.features === 'object') {
-              features = plan.features;
-            }
-          } catch (parseError) {
-            console.warn(`❌ Erreur de parsing des features pour ${plan.name}:`, parseError);
-            features = {};
-          }
-
-          return {
-            id: plan.id,
-            name: plan.name,
-            price_monthly: typeof plan.price_monthly === 'string' 
-              ? parseFloat(plan.price_monthly.toString().replace(',', '.')) 
-              : Number(plan.price_monthly),
-            price_yearly: typeof plan.price_yearly === 'string'
-              ? parseFloat(plan.price_yearly.toString().replace(',', '.'))
-              : Number(plan.price_yearly),
-            max_products: plan.max_products || 0,
-            max_optimizations_monthly: plan.max_optimizations_monthly || 0,
-            max_articles_monthly: plan.max_articles_monthly || 0,
-            max_campaigns: plan.max_campaigns || 0,
-            max_chat_responses_monthly: plan.max_chat_responses_monthly || 0,
-            features: features,
-            stripe_price_id: plan.stripe_price_id_monthly,
-            stripe_price_id_yearly: plan.stripe_price_id_yearly,
-            description: plan.description || '',
-            popular: plan.popular || plan.id === 'professional',
-            best_value: plan.best_value || plan.id === 'professional',
-            recommended: plan.recommended || plan.id === 'enterprise',
-            trial_days: plan.trial_days || 14
-          };
-        });
-
-        const configuredPlans = formattedPlans.filter(plan => {
-          const hasMonthly = plan.stripe_price_id && plan.stripe_price_id.startsWith('price_');
-          const hasYearly = plan.stripe_price_id_yearly && plan.stripe_price_id_yearly.startsWith('price_');
-          return hasMonthly || hasYearly;
-        });
-
-        if (configuredPlans.length === 0) {
-          setError('Les forfaits ne sont pas encore configurés. Veuillez réessayer plus tard ou contacter le support.');
-          setPlans(getDefaultPlans());
-        } else {
-          setPlans(configuredPlans);
-        }
-      } else {
-        setPlans(getDefaultPlans());
-      }
+      // For now, use default plans
+      setPlans(getDefaultPlans());
+      
     } catch (error) {
       console.error('💥 Erreur critique lors du chargement des forfaits:', error);
       setPlans(getDefaultPlans());
