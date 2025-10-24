@@ -714,8 +714,151 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
         </div>
       </section>
 
+      {/* Stats Section */}
+      <section className="py-16 bg-white border-y border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              { number: '12+', label: 'Fonctionnalités IA', icon: Sparkles, suffix: '' },
+              { number: '99.9', label: 'Uptime Garanti', icon: Server, suffix: '%' },
+              { number: '24/7', label: 'Support Disponible', icon: Headphones, suffix: '' },
+              { number: '2', label: 'Installation', icon: Clock, suffix: 'min' }
+            ].map((stat, index) => (
+              <div key={index} className="text-center group">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <stat.icon className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                  {stat.number}{stat.suffix}
+                </div>
+                <div className="text-gray-600 font-medium">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Une Suite Complète d'Outils IA
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Découvrez comment notre intelligence artificielle transforme votre gestion de catalogue produits
+            </p>
+          </div>
+
+          {/* Feature Categories Tabs */}
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
+            {featureCategories.map((category) => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setActiveFeatureTab(category.id)}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                    activeFeatureTab === category.id
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-purple-300'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {category.name}
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    activeFeatureTab === category.id 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {category.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {filteredFeatures.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={index}
+                  className={`group bg-white rounded-2xl p-6 border-2 transition-all duration-300 hover:-translate-y-2 ${
+                    feature.highlight 
+                      ? 'border-purple-300 shadow-lg hover:shadow-xl' 
+                      : 'border-gray-200 hover:border-purple-200 hover:shadow-lg'
+                  }`}
+                >
+                  <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  
+                  {feature.highlight && (
+                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full mb-2">
+                      <Star className="w-3 h-3 fill-purple-600" />
+                      Populaire
+                    </div>
+                  )}
+                  
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
+                  <p className="text-gray-600 leading-relaxed text-sm mb-4">{feature.description}</p>
+                  
+                  {/* Plan Availability */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>Disponible sur :</span>
+                      <div className="flex gap-1">
+                        {feature.plans.map(plan => (
+                          <span
+                            key={plan}
+                            className={`px-2 py-1 rounded font-medium ${
+                              plan === 'starter' ? 'bg-blue-100 text-blue-800' :
+                              plan === 'professional' ? 'bg-purple-100 text-purple-800' :
+                              'bg-violet-100 text-violet-800'
+                            }`}
+                          >
+                            {plan}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Show More/Less Button */}
+          {!showAllFeatures && filteredFeatures.length >= 6 && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowAllFeatures(true)}
+                className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 rounded-xl font-semibold hover:bg-purple-50 transition-all duration-300 flex items-center gap-2 mx-auto"
+              >
+                Voir toutes les fonctionnalités
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {showAllFeatures && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowAllFeatures(false)}
+                className="px-6 py-3 bg-white border-2 border-purple-200 text-purple-600 rounded-xl font-semibold hover:bg-purple-50 transition-all duration-300 flex items-center gap-2 mx-auto"
+              >
+                Voir moins de fonctionnalités
+                <ChevronUp className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Rest of the PricingLandingPage component remains the same */}
-      {/* ... (Stats Section, Features Section, Pricing Section, FAQ Section, CTA Section, Footer) */}
+      {/* ... (Pricing Section, FAQ Section, CTA Section, Footer) */}
 
     </div>
   );
