@@ -1,8 +1,5 @@
+// components/PricingLandingPage.tsx
 import { useState, useEffect } from 'react';
-import { AuthProvider } from './lib/authContext';
-import { LoginPage } from './components/LoginPage';
-import { SignUpPage } from './components/SignUpPage';
-import { EmailVerification } from './components/EmailVerification';
 import {
   Check,
   Sparkles,
@@ -60,6 +57,7 @@ const mockPlans = [
     id: 'starter',
     name: 'Starter',
     price_monthly: 49,
+    price_yearly: 470,
     max_products: 500,
     max_optimizations_monthly: 1000,
     max_articles_monthly: 10,
@@ -82,12 +80,14 @@ const mockPlans = [
     description: 'Parfait pour les petites boutiques qui débutent avec l\'IA',
     popular: false,
     best_value: false,
-    recommended: false
+    recommended: false,
+    trial_days: 14
   },
   {
     id: 'professional',
     name: 'Professional',
     price_monthly: 99,
+    price_yearly: 950,
     max_products: 5000,
     max_optimizations_monthly: 10000,
     max_articles_monthly: 50,
@@ -110,12 +110,14 @@ const mockPlans = [
     description: 'Idéal pour les e-commerces en croissance avec un volume important',
     popular: true,
     best_value: true,
-    recommended: false
+    recommended: false,
+    trial_days: 14
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
     price_monthly: 299,
+    price_yearly: 2870,
     max_products: -1,
     max_optimizations_monthly: -1,
     max_articles_monthly: -1,
@@ -138,7 +140,8 @@ const mockPlans = [
     description: 'Solution complète pour les grandes entreprises et marketplaces',
     popular: false,
     best_value: false,
-    recommended: true
+    recommended: true,
+    trial_days: 14
   }
 ];
 
@@ -146,6 +149,7 @@ interface Plan {
   id: string;
   name: string;
   price_monthly: number;
+  price_yearly: number;
   max_products: number;
   max_optimizations_monthly: number;
   max_articles_monthly: number;
@@ -157,6 +161,7 @@ interface Plan {
   popular?: boolean;
   best_value?: boolean;
   recommended?: boolean;
+  trial_days: number;
 }
 
 interface PricingLandingPageProps {
@@ -1180,82 +1185,3 @@ export function PricingLandingPage({ onSignUp, onLogin }: PricingLandingPageProp
     </div>
   );
 }
-
-function AppContent() {
-  const [currentView, setCurrentView] = useState<'landing' | 'signup' | 'login' | 'verify-email'>('landing');
-  const [selectedPlan, setSelectedPlan] = useState<string>('professional');
-
-  // Check if URL contains verify-email route
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('/verify-email')) {
-      setCurrentView('verify-email');
-    }
-  }, []);
-
-  const handleSignUp = (planId: string) => {
-    console.log('Sign up clicked with plan:', planId);
-    setSelectedPlan(planId);
-    setCurrentView('signup');
-  };
-
-  const handleLogin = () => {
-    console.log('Login clicked');
-    setCurrentView('login');
-  };
-
-  const handleBackToLanding = () => {
-    setCurrentView('landing');
-  };
-
-  const handleVerificationSuccess = () => {
-    // After successful verification, redirect to login
-    setCurrentView('login');
-    // Clear the URL hash
-    window.location.hash = '';
-  };
-
-  if (currentView === 'verify-email') {
-    return (
-      <EmailVerification
-        onSuccess={handleVerificationSuccess}
-        onBack={handleBackToLanding}
-      />
-    );
-  }
-
-  if (currentView === 'landing') {
-    return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
-  }
-
-  if (currentView === 'signup') {
-    return (
-      <SignUpPage
-        planId={selectedPlan}
-        onLogin={handleLogin}
-        onBack={handleBackToLanding}
-      />
-    );
-  }
-
-  if (currentView === 'login') {
-    return (
-      <LoginPage
-        onSignUp={() => handleSignUp('professional')}
-        onBack={handleBackToLanding}
-      />
-    );
-  }
-
-  return <PricingLandingPage onSignUp={handleSignUp} onLogin={handleLogin} />;
-}
-
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
-
-export default App;
