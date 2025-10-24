@@ -21,13 +21,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom'; // Si vous utilisez React Router
 
 interface SignUpPageProps {
   planId?: string;
   onLogin: () => void;
   onBack: () => void;
-  onSignupSuccess?: () => void; // Nouvelle prop pour la redirection
+  onSignupSuccess?: () => void;
 }
 
 interface Plan {
@@ -50,7 +49,6 @@ interface Plan {
 
 export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuccess }: SignUpPageProps) {
   const { signUp, user } = useAuth();
-  const navigate = useNavigate(); // Si vous utilisez React Router
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -254,7 +252,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
       features.push('Produits illimités');
       features.push('Optimisations SEO illimitées');
       features.push('Articles de blog illimités');
-      features.push('Réponses chat illimitées');
+      features.push('Réponses chat illimités');
       features.push('Support dédié 24/7');
       features.push('Analytics enterprise');
       if (featureObj.api) features.push('API personnalisée');
@@ -323,13 +321,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
       return;
     }
     
-    // Méthode 2: Utiliser React Router
-    if (navigate) {
-      navigate('/dashboard');
-      return;
-    }
-    
-    // Méthode 3: Redirection standard
+    // Méthode 2: Redirection standard
     window.location.href = '/dashboard';
   };
 
