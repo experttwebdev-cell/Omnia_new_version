@@ -648,4 +648,4 @@ export function LoginPage({ onSignUp, onBack, onLoginSuccess }: LoginPageProps) 
       `}</style>
     </div>
   );
-}
+} 
