@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ShoppingBag, 
   Mail, 
@@ -15,10 +15,12 @@ import {
   Loader
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/authContext';
 
 interface LoginPageProps {
   onSignUp: () => void;
   onBack: () => void;
+  onLoginSuccess?: () => void;
 }
 
 // Forgot Password Modal Component
@@ -238,7 +240,8 @@ function ForgotPasswordModal({
   );
 }
 
-export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
+export function LoginPage({ onSignUp, onBack, onLoginSuccess }: LoginPageProps) {
+  const { user, signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -246,6 +249,25 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      console.log('✅ Utilisateur déjà connecté, redirection vers le dashboard');
+      redirectToDashboard();
+    }
+  }, [user]);
+
+  const redirectToDashboard = () => {
+    console.log('🔄 Redirection vers le dashboard...');
+    
+    if (onLoginSuccess) {
+      onLoginSuccess();
+      return;
+    }
+    
+    window.location.href = '/dashboard';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,38 +286,68 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      console.log('🚀 Tentative de connexion...');
 
-      if (error) {
-        console.error('Erreur auth:', error);
+      const { data, error: signInError } = await signIn(email, password);
+
+      if (signInError) {
+        console.error('❌ Erreur de connexion:', signInError);
         
-        let errorMessage = error.message || 'Email ou mot de passe incorrect';
+        let errorMessage = signInError.message || 'Email ou mot de passe incorrect';
         
         // Messages d'erreur plus précis
-        if (error.message.includes('Invalid login credentials')) {
+        if (signInError.message.includes('Invalid login credentials')) {
           errorMessage = 'Email ou mot de passe incorrect';
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (signInError.message.includes('Email not confirmed')) {
           errorMessage = 'Veuillez confirmer votre email avant de vous connecter';
-        } else if (error.message.includes('Failed to fetch')) {
+        } else if (signInError.message.includes('Failed to fetch')) {
           errorMessage = 'Erreur de connexion au serveur. Vérifiez votre connexion internet.';
         }
         
         setError(errorMessage);
       } else if (data.user) {
-        console.log('Login successful:', data.user);
+        console.log('✅ Connexion réussie! Redirection...');
         
-        // Redirection vers le dashboard
-        window.location.href = '/dashboard';
+        // Create or update user session data
+        try {
+          const { error: sessionError } = await supabase
+            .from('user_sessions')
+            .upsert({
+              user_id: data.user.id,
+              last_login: new Date().toISOString(),
+              login_count: 1, // This would be incremented in a real implementation
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id'
+            });
+
+          if (sessionError) {
+            console.warn('⚠️ Could not update session data:', sessionError);
+          }
+        } catch (sessionErr) {
+          console.warn('⚠️ Session update error:', sessionErr);
+        }
+
+        // Immediate redirection
+        redirectToDashboard();
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('💥 Erreur lors de la connexion:', err);
       setError('Une erreur inattendue est survenue');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle demo login for testing
+  const handleDemoLogin = async () => {
+    setEmail('demo@omnia-ai.com');
+    setPassword('demo123');
+    
+    // Auto-submit after a short delay to show the filled fields
+    setTimeout(() => {
+      handleSubmit(new Event('submit') as any);
+    }, 500);
   };
 
   return (
@@ -344,6 +396,23 @@ export function LoginPage({ onSignUp, onBack }: LoginPageProps) {
               <p className="text-blue-700 text-xs">Vos données sont protégées par un chiffrement de niveau bancaire</p>
             </div>
           </div>
+
+          {/* Demo Login Button (for development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6">
+              <button
+                onClick={handleDemoLogin}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg transform hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+              >
+                <Zap className="w-4 h-4" />
+                Connexion Démo (Développement)
+              </button>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                Compte de test pré-rempli
+              </p>
+            </div>
+          )}
 
           {/* Message d'erreur */}
           {error && (
