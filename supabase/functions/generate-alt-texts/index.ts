@@ -1,1032 +1,537 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase, getEnvVar } from '../lib/supabase';
-import { 
-  Search, RefreshCw, Image as ImageIcon, Sparkles, Upload, 
-  Loader2, Package, CheckCircle, Clock, Check, Grid3x3, List,
-  Filter, Download, Upload as UploadIcon, Settings,
-  Eye, Edit3, Trash2, ZoomIn, ExternalLink
-} from 'lucide-react';
-import type { Database } from '../lib/database.types';
-import { ProgressModal } from './ProgressModal';
-import { ConfirmDialog } from './ConfirmDialog';
-import { useNotifications, NotificationSystem } from './NotificationSystem';
-import { ImagePreviewModal } from './ImagePreviewModal';
-import { BulkActions } from './BulkActions';
-import { ImageFilters } from './ImageFilters';
-import { ExportModal } from './ExportModal';
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-type Product = Database['public']['Tables']['shopify_products']['Row'];
-type ProductImage = Database['public']['Tables']['product_images']['Row'];
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey"
+};
 
-interface ProductWithImages extends Product {
-  images: ProductImage[];
+interface Product {
+  title: string;
+  description?: string;
+  product_type?: string;
+  category?: string;
+  sub_category?: string;
+  ai_color?: string;
+  ai_material?: string;
+  style?: string;
+  ai_texture?: string;
+  ai_pattern?: string;
+  ai_finish?: string;
+  ai_shape?: string;
+  ai_design_elements?: string;
+  functionality?: string;
+  characteristics?: string;
+  ai_vision_analysis?: string;
+  tags?: string[];
+  vendor?: string;
 }
 
-type AltImageTab = 'all' | 'needs-alt' | 'has-alt' | 'to-sync';
-type SortField = 'product_title' | 'position' | 'alt_text' | 'updated_at';
-type SortOrder = 'asc' | 'desc';
+interface Image {
+  id: string;
+  product_id: string;
+  src: string;
+  position: number;
+  alt_text?: string;
+}
 
-interface FilterState {
-  vendors: string[];
-  categories: string[];
-  shops: string[];
-  dateRange: {
-    start: Date | null;
-    end: Date | null;
+interface AltTextResult {
+  success: boolean;
+  message: string;
+  data?: {
+    image_id: string;
+    alt_text: string;
+    confidence_score?: number;
+    generated_from?: string;
   };
+  skipped?: boolean;
+  error?: string;
 }
 
-export function SeoAltImage() {
-  // State management
-  const [products, setProducts] = useState<ProductWithImages[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<AltImageTab>('all');
-  const [quickStats, setQuickStats] = useState<any>(null);
-  const [generatingSelected, setGeneratingSelected] = useState(false);
-  const [syncingSelected, setSyncingSelected] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0, currentItem: '' });
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'generate' | 'sync' | 'delete' | null>(null);
-  const [isProcessingComplete, setIsProcessingComplete] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortField, setSortField] = useState<SortField>('updated_at');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [filters, setFilters] = useState<FilterState>({
-    vendors: [],
-    categories: [],
-    shops: [],
-    dateRange: { start: null, end: null }
-  });
-  const [showFilters, setShowFilters] = useState(false);
-  const [previewImage, setPreviewImage] = useState<ProductImage | null>(null);
-  const [editingAltText, setEditingAltText] = useState<{ id: string; text: string } | null>(null);
-  const [showExportModal, setShowExportModal] = useState(false);
+class AltTextGenerator {
+  private supabaseClient;
+  private deepseekApiKey;
 
-  const { notifications, addNotification, dismissNotification } = useNotifications();
-
-  const IMAGES_PER_PAGE = 50;
-
-  // Memoized data processing
-  const { allImages, filteredImages, availableFilters } = useMemo(() => {
-    let images = products.flatMap(p =>
-      p.images.map(img => ({
-        ...img,
-        productTitle: p.title,
-        productId: p.id,
-        productVendor: p.vendor,
-        productCategory: p.category,
-        shopName: p.shop_name,
-        product: p
-      }))
+  constructor() {
+    this.supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+    this.deepseekApiKey = Deno.env.get("DEEPSEEK_API_KEY");
+  }
 
-    // Apply tab filters
-    if (activeTab === 'needs-alt') {
-      images = images.filter(img => !img.alt_text || img.alt_text.trim() === '');
-    } else if (activeTab === 'has-alt') {
-      images = images.filter(img => img.alt_text && img.alt_text.trim() !== '');
-    } else if (activeTab === 'to-sync') {
-      images = images.filter(img => img.alt_text && img.alt_text.trim() !== '');
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      images = images.filter(img => 
-        img.productTitle.toLowerCase().includes(term) ||
-        img.alt_text?.toLowerCase().includes(term) ||
-        img.productVendor?.toLowerCase().includes(term)
-      );
-    }
-
-    // Apply custom filters
-    if (filters.vendors.length > 0) {
-      images = images.filter(img => filters.vendors.includes(img.productVendor || ''));
-    }
-    if (filters.categories.length > 0) {
-      images = images.filter(img => filters.categories.includes(img.productCategory || ''));
-    }
-    if (filters.shops.length > 0) {
-      images = images.filter(img => filters.shops.includes(img.shopName || ''));
-    }
-    if (filters.dateRange.start || filters.dateRange.end) {
-      images = images.filter(img => {
-        const imgDate = new Date(img.updated_at || img.created_at);
-        if (filters.dateRange.start && imgDate < filters.dateRange.start) return false;
-        if (filters.dateRange.end && imgDate > filters.dateRange.end) return false;
-        return true;
-      });
-    }
-
-    // Sort images
-    images.sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
-
-      if (sortField === 'product_title') {
-        aValue = a.productTitle;
-        bValue = b.productTitle;
+  async generateAltText(imageId: string): Promise<AltTextResult> {
+    try {
+      // Validate API key
+      if (!this.deepseekApiKey) {
+        throw new Error("DeepSeek API key not configured");
       }
 
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      // Fetch image data
+      const image = await this.getImageData(imageId);
+      if (!image) {
+        throw new Error("Image not found");
+      }
+
+      // Check if image already has ALT text
+      if (image.alt_text && image.alt_text.trim() !== "") {
+        return {
+          success: true,
+          skipped: true,
+          message: "Image already has ALT text"
+        };
+      }
+
+      // Fetch product data
+      const product = await this.getProductData(image.product_id);
+      if (!product) {
+        throw new Error("Product not found for this image");
+      }
+
+      console.log(`Generating ALT text for image ${image.position} of product: ${product.title}`);
+
+      // Enrich product data if needed
+      const enrichedProduct = await this.enrichProductIfNeeded(image.product_id, product);
+
+      // Generate ALT text using AI
+      const altText = await this.generateWithAI(image, enrichedProduct);
+
+      // Save ALT text to database
+      await this.saveAltText(imageId, altText);
+
+      console.log(`✅ ALT text generated for image ${imageId}: ${altText}`);
+
+      return {
+        success: true,
+        message: "ALT text generated successfully",
+        data: {
+          image_id: imageId,
+          alt_text: altText,
+          confidence_score: this.calculateConfidenceScore(enrichedProduct),
+          generated_from: "ai_vision_analysis"
+        }
+      };
+
+    } catch (error) {
+      console.error("Error generating ALT text:", error);
+      throw error;
+    }
+  }
+
+  private async getImageData(imageId: string): Promise<Image | null> {
+    const { data: image, error } = await this.supabaseClient
+      .from("product_images")
+      .select("id, product_id, src, position, alt_text")
+      .eq("id", imageId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching image:", error);
+      throw error;
+    }
+
+    return image;
+  }
+
+  private async getProductData(productId: string): Promise<Product | null> {
+    const { data: product, error } = await this.supabaseClient
+      .from("shopify_products")
+      .select(`
+        title,
+        description,
+        product_type,
+        category,
+        sub_category,
+        ai_color,
+        ai_material,
+        style,
+        ai_texture,
+        ai_pattern,
+        ai_finish,
+        ai_shape,
+        ai_design_elements,
+        functionality,
+        characteristics,
+        ai_vision_analysis,
+        tags,
+        vendor
+      `)
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching product:", error);
+      throw error;
+    }
+
+    return product;
+  }
+
+  private async enrichProductIfNeeded(productId: string, product: Product): Promise<Product> {
+    const hasEnrichmentData = 
+      product.ai_color || 
+      product.ai_material || 
+      product.style || 
+      product.functionality || 
+      product.characteristics || 
+      product.ai_vision_analysis;
+
+    if (!hasEnrichmentData) {
+      console.log(`⚠️ Product ${product.title} has no AI enrichment data. Triggering enrichment...`);
+      
+      try {
+        const enrichUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/enrich-product-with-ai`;
+        const enrichResponse = await fetch(enrichUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            productId: productId
+          })
+        });
+
+        if (enrichResponse.ok) {
+          console.log(`✅ Product enriched successfully`);
+          const enrichedProduct = await this.getProductData(productId);
+          if (enrichedProduct) {
+            return enrichedProduct;
+          }
+        } else {
+          console.log(`⚠️ Enrichment failed, continuing with available data`);
+        }
+      } catch (enrichError) {
+        console.log(`⚠️ Enrichment error:`, enrichError);
+      }
+    }
+
+    return product;
+  }
+
+  private async generateWithAI(image: Image, product: Product): Promise<string> {
+    const prompt = this.buildPrompt(image, product);
+    
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.deepseekApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content: `Tu es un expert en accessibilité web et SEO pour e-commerce. 
+            Tu génères des textes ALT descriptifs, naturels et optimisés en français.
+            Règles strictes:
+            - Maximum 125 caractères
+            - Commence par le type de produit
+            - Utilise un langage naturel et descriptif
+            - Pas de marketing, uniquement des faits
+            - INTERDIT: "Image de", "Photo de", "Produit", "JSON", "{", "}", guillemets
+            Réponds UNIQUEMENT avec le texte ALT final.`
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.3,
+        top_p: 0.9
+      })
     });
 
-    // Extract available filter options
-    const vendors = [...new Set(products.map(p => p.vendor).filter(Boolean))];
-    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
-    const shops = [...new Set(products.map(p => p.shop_name).filter(Boolean))];
-
-    return {
-      allImages: images,
-      filteredImages: images,
-      availableFilters: { vendors, categories, shops }
-    };
-  }, [products, activeTab, searchTerm, filters, sortField, sortOrder]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredImages.length / IMAGES_PER_PAGE);
-  const startIndex = (currentPage - 1) * IMAGES_PER_PAGE;
-  const endIndex = startIndex + IMAGES_PER_PAGE;
-  const paginatedImages = filteredImages.slice(startIndex, endIndex);
-
-  // Data fetching
-  const fetchQuickStats = async () => {
-    try {
-      const { data, error: statsError } = await supabase
-        .from('seo_tabs_aggregate_stats')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (!statsError && data) {
-        setQuickStats(data);
-      }
-    } catch (err) {
-      console.error('Error fetching quick stats:', err);
-    }
-  };
-
-  const fetchProductsWithImages = async () => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const { data: productsData, error: productsError } = await supabase
-        .from('shopify_products')
-        .select('*')
-        .order('imported_at', { ascending: false });
-
-      if (productsError) throw productsError;
-
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('product_images')
-        .select('*')
-        .order('position', { ascending: true });
-
-      if (imagesError) throw imagesError;
-
-      const productMap = new Map<string, ProductWithImages>();
-      (productsData || []).forEach((prod) => {
-        productMap.set(prod.id, { ...prod, images: [] } as ProductWithImages);
-      });
-
-      (imagesData || []).forEach((img) => {
-        const product = productMap.get(img.product_id);
-        if (product) {
-          product.images.push(img);
-        }
-      });
-
-      setProducts(Array.from(productMap.values()).filter(p => p.images.length > 0));
-      await fetchQuickStats();
-    } catch (err) {
-      console.error('Error fetching products with images:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProductsWithImages();
-  }, []);
-
-  // Utility functions
-  const refreshCache = async () => {
-    try {
-      const refreshUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/refresh-dashboard-cache`;
-      await fetch(refreshUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-    } catch (err) {
-      console.error('Error refreshing cache:', err);
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectedImages.size === paginatedImages.length) {
-      setSelectedImages(new Set());
-    } else {
-      setSelectedImages(new Set(paginatedImages.map(img => img.id)));
-    }
-  };
-
-  const handleSelectImage = (imageId: string) => {
-    const newSelected = new Set(selectedImages);
-    if (newSelected.has(imageId)) {
-      newSelected.delete(imageId);
-    } else {
-      newSelected.add(imageId);
-    }
-    setSelectedImages(newSelected);
-  };
-
-  // ALT Text Operations
-  const handleGenerateForSelected = () => {
-    if (selectedImages.size === 0) {
-      addNotification({
-        type: 'info',
-        title: 'No Selection',
-        message: 'Please select images to generate ALT text',
-        duration: 3000
-      });
-      return;
-    }
-    setConfirmAction('generate');
-    setShowConfirm(true);
-  };
-
-  const executeGenerateForSelected = async () => {
-    setShowConfirm(false);
-    const imagesToGenerate = filteredImages.filter(img =>
-      selectedImages.has(img.id) && (!img.alt_text || img.alt_text.trim() === '')
-    );
-
-    if (imagesToGenerate.length === 0) {
-      addNotification({
-        type: 'info',
-        title: 'No Action Needed',
-        message: 'Selected images already have ALT text',
-        duration: 3000
-      });
-      return;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`DeepSeek API error: ${response.statusText} - ${errorText}`);
     }
 
-    setGeneratingSelected(true);
-    setIsProcessingComplete(false);
-    setProgress({ current: 0, total: imagesToGenerate.length, currentItem: '' });
+    const data = await response.json();
+    let altText = data.choices[0].message.content.trim();
 
-    let successCount = 0;
-    let errorCount = 0;
+    // Clean and validate the response
+    altText = this.cleanAltText(altText, product);
 
-    for (let i = 0; i < imagesToGenerate.length; i++) {
-      const image = imagesToGenerate[i];
-      setProgress({
-        current: i + 1,
-        total: imagesToGenerate.length,
-        currentItem: `${image.productTitle} - Image ${image.position}`
-      });
-
-      try {
-        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/generate-alt-texts`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageId: image.id }),
-        });
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          errorCount++;
-        }
-      } catch (err) {
-        errorCount++;
-        console.error(`Error generating ALT text for image ${image.id}:`, err);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    setIsProcessingComplete(true);
-    await handleProcessComplete(successCount, errorCount, 'generate');
-  };
-
-  // Sync Operations
-  const handleSyncSelected = () => {
-    const imagesToSync = filteredImages.filter(img =>
-      selectedImages.has(img.id) && img.alt_text && img.alt_text.trim() !== ''
-    );
-
-    if (imagesToSync.length === 0) {
-      addNotification({
-        type: 'info',
-        title: 'No Images to Sync',
-        message: 'Selected images do not have ALT text to sync',
-        duration: 3000
-      });
-      return;
-    }
-
-    setConfirmAction('sync');
-    setShowConfirm(true);
-  };
-
-  const executeSyncSelected = async () => {
-    setShowConfirm(false);
-    const imagesToSync = filteredImages.filter(img =>
-      selectedImages.has(img.id) && img.alt_text && img.alt_text.trim() !== ''
-    );
-
-    setSyncingSelected(true);
-    setIsProcessingComplete(false);
-    setProgress({ current: 0, total: imagesToSync.length, currentItem: '' });
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (let i = 0; i < imagesToSync.length; i++) {
-      const image = imagesToSync[i];
-      setProgress({
-        current: i + 1,
-        total: imagesToSync.length,
-        currentItem: `${image.productTitle} - Image ${image.position}`
-      });
-
-      try {
-        const apiUrl = `${getEnvVar('VITE_SUPABASE_URL')}/functions/v1/sync-seo-to-shopify`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${getEnvVar('VITE_SUPABASE_ANON_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageId: image.id, syncAltText: true }),
-        });
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          errorCount++;
-        }
-      } catch (err) {
-        errorCount++;
-        console.error(`Error syncing image ${image.id}:`, err);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    setIsProcessingComplete(true);
-    await handleProcessComplete(successCount, errorCount, 'sync');
-  };
-
-  const handleProcessComplete = async (successCount: number, errorCount: number, action: 'generate' | 'sync') => {
-    setTimeout(async () => {
-      setGeneratingSelected(false);
-      setSyncingSelected(false);
-      setProgress({ current: 0, total: 0, currentItem: '' });
-      setSelectedImages(new Set());
-
-      await refreshCache();
-      await fetchProductsWithImages();
-
-      addNotification({
-        type: successCount > 0 ? 'success' : 'error',
-        title: action === 'generate' ? 'ALT Text Generation Complete' : 'Shopify Sync Complete',
-        message: `Successfully processed ${successCount} images${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
-        duration: 5000
-      });
-    }, 2000);
-  };
-
-  // Manual ALT Text Editing
-  const handleEditAltText = async (imageId: string, newAltText: string) => {
-    try {
-      const { error } = await supabase
-        .from('product_images')
-        .update({ alt_text: newAltText, updated_at: new Date().toISOString() })
-        .eq('id', imageId);
-
-      if (error) throw error;
-
-      addNotification({
-        type: 'success',
-        title: 'ALT Text Updated',
-        message: 'ALT text has been updated successfully',
-        duration: 3000
-      });
-
-      setEditingAltText(null);
-      await fetchProductsWithImages();
-    } catch (err) {
-      addNotification({
-        type: 'error',
-        title: 'Update Failed',
-        message: 'Failed to update ALT text',
-        duration: 5000
-      });
-    }
-  };
-
-  // Enhanced loading state
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">ALT Image</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Génération et gestion des textes alternatifs
-            </p>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm border border-green-100 p-12 text-center">
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-400 rounded-2xl opacity-20 animate-pulse"></div>
-            <div className="absolute inset-2 border-4 border-green-100 rounded-2xl"></div>
-            <div className="absolute inset-2 border-4 border-t-green-500 border-r-emerald-500 rounded-2xl animate-spin" style={{animationDuration: '3s'}}></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                <ImageIcon className="w-10 h-10 text-green-600 animate-pulse" />
-                <Sparkles className="w-4 h-4 text-emerald-500 absolute -top-1 -right-1 animate-ping" />
-              </div>
-            </div>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Chargement des images...
-          </h3>
-          <p className="text-gray-600 text-sm">
-            Analyse des textes alternatifs
-          </p>
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-          </div>
-        </div>
-      </div>
-    );
+    return altText;
   }
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">{error}</p>
-      </div>
-    );
+  private buildPrompt(image: Image, product: Product): string {
+    const imageContext = this.getImageContext(image.position);
+    const productType = this.determineProductType(product);
+    const colorInfo = this.getColorInformation(product);
+    const materialInfo = this.getMaterialInformation(product);
+    const styleInfo = this.getStyleInformation(product);
+    const functionalityInfo = this.getFunctionalityInformation(product);
+
+    return `
+Génère un texte ALT optimisé pour cette image de produit e-commerce.
+
+CONTEXTE IMAGE:
+${imageContext}
+
+INFORMATIONS PRODUIT:
+• Type: ${productType}
+• Titre: ${product.title}
+• Catégorie: ${product.category || "Non spécifiée"}
+• Sous-catégorie: ${product.sub_category || "Non spécifiée"}
+• Vendeur: ${product.vendor || "Non spécifié"}
+
+CARACTÉRISTIQUES DÉTECTÉES:
+• Couleur: ${colorInfo}
+• Matière: ${materialInfo}
+• Style: ${styleInfo}
+• Fonctionnalité: ${functionalityInfo}
+• Texture: ${product.ai_texture || "Non spécifiée"}
+• Motif: ${product.ai_pattern || "Non spécifié"}
+• Finition: ${product.ai_finish || "Non spécifiée"}
+• Forme: ${product.ai_shape || "Non spécifiée"}
+• Éléments design: ${product.ai_design_elements || "Non spécifiés"}
+
+ANALYSE VISION IA:
+${product.ai_vision_analysis || "Aucune analyse visuelle disponible"}
+
+DESCRIPTION:
+${product.description ? product.description.substring(0, 400) : "Aucune description disponible"}
+
+ÉTIQUETES: ${product.tags ? product.tags.join(', ') : "Aucune étiquette"}
+
+CONSIGNES STRICTES:
+- Longueur: 125 caractères maximum
+- Format: Commence par le type de produit
+- Style: Naturel, descriptif, factuel
+- Langue: Français uniquement
+- INTERDIT: "Image de", "Photo de", "Produit", marketing, JSON, guillemets
+
+Exemples de bons textes ALT:
+"Canapé convertible tissu gris anthracite avec rangement intégré"
+"Table basse bois chêne naturel pieds métal noir style industriel"
+"Chaise design cuir noir pattes métalliques chromées contemporaine"
+
+Génère UNIQUEMENT le texte ALT final:`;
   }
 
-  const totalImages = quickStats?.total_images || allImages.length;
-  const imagesWithAlt = quickStats?.images_with_alt || allImages.filter(img => img.alt_text && img.alt_text.trim() !== '').length;
-  const imagesNeedingAlt = quickStats?.images_needing_alt || allImages.filter(img => !img.alt_text || img.alt_text.trim() === '').length;
+  private getImageContext(position: number): string {
+    switch (position) {
+      case 1:
+        return "Image principale - Vue d'ensemble du produit";
+      case 2:
+        return "Vue secondaire - Détail ou angle différent";
+      case 3:
+        return "Vue détaillée - Gros plan sur caractéristiques";
+      case 4:
+        return "Vue contextuelle - Produit en situation d'usage";
+      default:
+        return `Vue supplémentaire n°${position} - Angle ou détail spécifique`;
+    }
+  }
 
-  const tabs = [
-    { id: 'all' as AltImageTab, label: 'Toutes les images', count: totalImages, color: 'gray' },
-    { id: 'needs-alt' as AltImageTab, label: 'Sans ALT text', count: imagesNeedingAlt, color: 'orange' },
-    { id: 'has-alt' as AltImageTab, label: 'Avec ALT text', count: imagesWithAlt, color: 'green' },
-    { id: 'to-sync' as AltImageTab, label: 'À synchroniser', count: imagesWithAlt, color: 'blue' }
-  ];
-
-  return (
-    <>
-      <NotificationSystem notifications={notifications} onDismiss={dismissNotification} />
-      <ImagePreviewModal 
-        image={previewImage} 
-        onClose={() => setPreviewImage(null)}
-        onEdit={(image) => setEditingAltText({ id: image.id, text: image.alt_text || '' })}
-      />
-      <ExportModal 
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        images={filteredImages}
-      />
-
-      <div className="animate-fadeIn space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <ImageIcon className="w-7 h-7 text-blue-600" />
-              ALT Image Optimization
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Manage and optimize ALT text for {totalImages} images across {products.length} products
-            </p>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button
-              onClick={fetchProductsWithImages}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`bg-white border rounded-lg p-4 cursor-pointer transition hover:shadow-md ${
-                activeTab === tab.id ? `border-${tab.color}-500 ring-2 ring-${tab.color}-100` : 'border-gray-200'
-              }`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{tab.label}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{tab.count}</p>
-                </div>
-                <div className={`w-3 h-3 rounded-full bg-${tab.color}-500`}></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Bulk Actions */}
-        <BulkActions
-          selectedCount={selectedImages.size}
-          onGenerate={handleGenerateForSelected}
-          onSync={handleSyncSelected}
-          onClearSelection={() => setSelectedImages(new Set())}
-          isGenerating={generatingSelected}
-          isSyncing={syncingSelected}
-          totalImages={filteredImages.length}
-        />
-
-        {/* Controls Bar */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            {/* Search and View Controls */}
-            <div className="flex flex-1 items-center gap-4 w-full lg:w-auto">
-              <div className="flex-1 lg:flex-none lg:w-80 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search products, ALT text, vendors..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition ${
-                    showFilters ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <Filter className="w-4 h-4" />
-                  Filters
-                  {Object.values(filters).some(filter => 
-                    Array.isArray(filter) ? filter.length > 0 : filter.start || filter.end
-                  ) && (
-                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                  )}
-                </button>
-
-                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 transition ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    <Grid3x3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 transition ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Sort Controls */}
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">Sort by:</span>
-              <select
-                value={sortField}
-                onChange={(e) => setSortField(e.target.value as SortField)}
-                className="border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="product_title">Product Name</option>
-                <option value="position">Position</option>
-                <option value="alt_text">ALT Text</option>
-                <option value="updated_at">Last Updated</option>
-              </select>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                {sortOrder === 'asc' ? '↑' : '↓'}
-              </button>
-            </div>
-          </div>
-
-          {/* Filters Panel */}
-          {showFilters && (
-            <ImageFilters
-              filters={filters}
-              availableFilters={availableFilters}
-              onChange={setFilters}
-              onClear={() => setFilters({ vendors: [], categories: [], shops: [], dateRange: { start: null, end: null } })}
-            />
-          )}
-        </div>
-
-        {/* Images Grid/List */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedImages.size === paginatedImages.length && paginatedImages.length > 0}
-                  onChange={handleSelectAll}
-                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {selectedImages.size > 0 
-                    ? `${selectedImages.size} selected` 
-                    : `Select All (${paginatedImages.length} on page)`
-                  }
-                </span>
-              </div>
-              <span className="text-sm text-gray-600">
-                Showing {startIndex + 1} - {Math.min(endIndex, filteredImages.length)} of {filteredImages.length} images
-              </span>
-            </div>
-          </div>
-
-          {/* Images Content */}
-          {viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 p-4">
-              {paginatedImages.map((image) => (
-                <ImageGridCard
-                  key={image.id}
-                  image={image}
-                  isSelected={selectedImages.has(image.id)}
-                  onSelect={handleSelectImage}
-                  onPreview={setPreviewImage}
-                  onEdit={setEditingAltText}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {paginatedImages.map((image) => (
-                <ImageListItem
-                  key={image.id}
-                  image={image}
-                  isSelected={selectedImages.has(image.id)}
-                  onSelect={handleSelectImage}
-                  onPreview={setPreviewImage}
-                  onEdit={setEditingAltText}
-                  isEditing={editingAltText?.id === image.id}
-                  onSaveEdit={handleEditAltText}
-                  onCancelEdit={() => setEditingAltText(null)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {filteredImages.length === 0 && (
-            <div className="text-center py-12 bg-gray-50">
-              <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">No images found matching your criteria</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Try adjusting your search or filters
-              </p>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-              <div className="text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modals */}
-      <ConfirmDialog
-        isOpen={showConfirm}
-        title={confirmAction === 'generate' ? 'Generate ALT Text?' : 'Sync to Shopify?'}
-        message={
-          confirmAction === 'generate'
-            ? `Generate ALT text for ${selectedImages.size} selected images using AI?`
-            : `Sync ALT text for ${selectedImages.size} selected images to Shopify?`
-        }
-        confirmText="Confirm"
-        cancelText="Cancel"
-        type={confirmAction === 'generate' ? 'info' : 'warning'}
-        onConfirm={() => {
-          if (confirmAction === 'generate') {
-            executeGenerateForSelected();
-          } else if (confirmAction === 'sync') {
-            executeSyncSelected();
-          }
-        }}
-        onCancel={() => {
-          setShowConfirm(false);
-          setConfirmAction(null);
-        }}
-      />
-
-      <ProgressModal
-        isOpen={generatingSelected || syncingSelected}
-        title={generatingSelected ? 'Generating ALT Text' : 'Syncing to Shopify'}
-        current={progress.current}
-        total={progress.total}
-        currentItem={progress.currentItem}
-        itemType="image"
-        isComplete={isProcessingComplete}
-        onClose={() => {
-          if (isProcessingComplete) {
-            setGeneratingSelected(false);
-            setSyncingSelected(false);
-            setIsProcessingComplete(false);
-          }
-        }}
-      />
-    </>
-  );
-}
-
-// Sub-components for better organization
-interface ImageCardProps {
-  image: any;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-  onPreview: (image: any) => void;
-  onEdit: (edit: { id: string; text: string }) => void;
-}
-
-const ImageGridCard: React.FC<ImageCardProps> = ({ image, isSelected, onSelect, onPreview, onEdit }) => (
-  <div
-    className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-      isSelected
-        ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-100'
-        : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-    }`}
-    onClick={() => onSelect(image.id)}
-  >
-    <div className="aspect-square bg-gray-50 relative group">
-      <img
-        src={image.src}
-        alt={image.alt_text || `Image ${image.position}`}
-        className="w-full h-full object-cover"
-      />
-      
-      {/* Selection Overlay */}
-      {isSelected && (
-        <div className="absolute inset-0 bg-blue-600 bg-opacity-20 flex items-center justify-center">
-          <div className="bg-blue-600 rounded-full p-2">
-            <Check className="w-6 h-6 text-white" />
-          </div>
-        </div>
-      )}
-
-      {/* Action Overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-        <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview(image);
-            }}
-            className="p-2 bg-white rounded-lg shadow-lg hover:bg-gray-100 transition"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          {image.alt_text && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit({ id: image.id, text: image.alt_text });
-              }}
-              className="p-2 bg-white rounded-lg shadow-lg hover:bg-gray-100 transition"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Badges */}
-      <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium">
-        #{image.position}
-      </div>
-      {image.alt_text && image.alt_text.trim() !== '' ? (
-        <div className="absolute bottom-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-          <CheckCircle className="w-3 h-3" />
-          ALT
-        </div>
-      ) : (
-        <div className="absolute bottom-2 left-2 bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          No ALT
-        </div>
-      )}
-    </div>
+  private determineProductType(product: Product): string {
+    if (product.product_type) return product.product_type;
+    if (product.category) return product.category;
     
-    <div className="p-2 bg-white">
-      <p className="text-xs text-gray-700 font-medium truncate" title={image.productTitle}>
-        {image.productTitle}
-      </p>
-      {image.alt_text && (
-        <p className="text-xs text-gray-500 truncate mt-1" title={image.alt_text}>
-          {image.alt_text}
-        </p>
-      )}
-      <div className="flex justify-between items-center mt-1">
-        <span className="text-xs text-gray-400">{image.productVendor}</span>
-        <span className="text-xs text-gray-400">{image.shopName}</span>
-      </div>
-    </div>
-  </div>
-);
+    // Fallback: extract from title
+    const commonTypes = ['canapé', 'table', 'chaise', 'fauteuil', 'meuble', 'lampe', 'tabouret', 'bureau', 'armoire', 'étagère'];
+    const titleLower = product.title.toLowerCase();
+    const foundType = commonTypes.find(type => titleLower.includes(type));
+    
+    return foundType ? foundType.charAt(0).toUpperCase() + foundType.slice(1) : "Produit";
+  }
 
-interface ImageListItemProps extends ImageCardProps {
-  isEditing: boolean;
-  onSaveEdit: (id: string, text: string) => void;
-  onCancelEdit: () => void;
+  private getColorInformation(product: Product): string {
+    if (product.ai_color) return product.ai_color;
+    
+    // Extract color from title using common color names
+    const colors = ['blanc', 'noir', 'gris', 'bleu', 'rouge', 'vert', 'jaune', 'marron', 'beige', 'taupe', 'argent', 'or'];
+    const titleLower = product.title.toLowerCase();
+    const foundColor = colors.find(color => titleLower.includes(color));
+    
+    return foundColor || "À déterminer";
+  }
+
+  private getMaterialInformation(product: Product): string {
+    if (product.ai_material) return product.ai_material;
+    
+    // Extract material from title
+    const materials = ['bois', 'cuir', 'tissu', 'métal', 'verre', 'plastic', 'rotin', 'osier', 'velours', 'lin'];
+    const titleLower = product.title.toLowerCase();
+    const foundMaterial = materials.find(material => titleLower.includes(material));
+    
+    return foundMaterial || "À déterminer";
+  }
+
+  private getStyleInformation(product: Product): string {
+    if (product.style) return product.style;
+    
+    const styles = ['moderne', 'scandinave', 'industriel', 'contemporain', 'classique', 'rustique', 'design', 'vintage'];
+    const titleLower = product.title.toLowerCase();
+    const foundStyle = styles.find(style => titleLower.includes(style));
+    
+    return foundStyle || "À déterminer";
+  }
+
+  private getFunctionalityInformation(product: Product): string {
+    if (product.functionality) return product.functionality;
+    
+    const functionalities = ['convertible', 'extensible', 'empilable', 'pliant', 'ajustable', 'rotatif', 'oscillant', 'avec rangement'];
+    const titleLower = product.title.toLowerCase();
+    const foundFunctionality = functionalities.find(func => titleLower.includes(func));
+    
+    return foundFunctionality || "Standard";
+  }
+
+  private cleanAltText(altText: string, product: Product): string {
+    // Remove JSON artifacts
+    let cleaned = altText.replace(/^["']|["']$/g, '')
+      .replace(/^\{[\s\S]*"alt_text":\s*["']?/i, '')
+      .replace(/["']?\s*\}$/i, '')
+      .replace(/^(Image de|Photo de|Produit|Image|Photo)[\s:]+/i, '')
+      .replace(/^-\s*/i, '')
+      .trim();
+
+    // Remove any markdown formatting
+    cleaned = cleaned.replace(/[*_`#]/g, '');
+
+    // Ensure it starts with product type
+    const productType = this.determineProductType(product);
+    if (!cleaned.toLowerCase().startsWith(productType.toLowerCase())) {
+      cleaned = `${productType} ${cleaned}`;
+    }
+
+    // Truncate if too long
+    if (cleaned.length > 125) {
+      const lastSpace = cleaned.substring(0, 122).lastIndexOf(' ');
+      cleaned = cleaned.substring(0, lastSpace > 80 ? lastSpace : 122) + "...";
+    }
+
+    // Fallback if empty or too short
+    if (!cleaned || cleaned.length < 10) {
+      const fallbackParts = [
+        productType,
+        this.getColorInformation(product),
+        this.getMaterialInformation(product)
+      ].filter(part => part && part !== "À déterminer");
+      
+      cleaned = fallbackParts.join(' ').substring(0, 125);
+    }
+
+    return cleaned;
+  }
+
+  private calculateConfidenceScore(product: Product): number {
+    let score = 0;
+    let totalFactors = 0;
+
+    if (product.ai_color) { score += 20; totalFactors++; }
+    if (product.ai_material) { score += 20; totalFactors++; }
+    if (product.style) { score += 15; totalFactors++; }
+    if (product.functionality) { score += 15; totalFactors++; }
+    if (product.ai_vision_analysis) { score += 30; totalFactors++; }
+    if (product.description && product.description.length > 50) { score += 10; totalFactors++; }
+
+    return totalFactors > 0 ? Math.min(100, score) : 50; // Default confidence if no data
+  }
+
+  private async saveAltText(imageId: string, altText: string): Promise<void> {
+    const { error } = await this.supabaseClient
+      .from("product_images")
+      .update({
+        alt_text: altText,
+        updated_at: new Date().toISOString(),
+        alt_text_generated_at: new Date().toISOString()
+      })
+      .eq("id", imageId);
+
+    if (error) {
+      console.error("Error saving ALT text:", error);
+      throw error;
+    }
+  }
 }
 
-const ImageListItem: React.FC<ImageListItemProps> = ({
-  image,
-  isSelected,
-  onSelect,
-  onPreview,
-  onEdit,
-  isEditing,
-  onSaveEdit,
-  onCancelEdit
-}) => {
-  const [editText, setEditText] = useState(image.alt_text || '');
+// Main request handler
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders
+    });
+  }
 
-  const handleSave = () => {
-    if (editText.trim() !== image.alt_text) {
-      onSaveEdit(image.id, editText.trim());
+  try {
+    const generator = new AltTextGenerator();
+    
+    // Support both single and batch processing
+    const requestData = await req.json();
+    
+    if (Array.isArray(requestData.imageIds)) {
+      // Batch processing
+      const results = [];
+      for (const imageId of requestData.imageIds) {
+        try {
+          const result = await generator.generateAltText(imageId);
+          results.push(result);
+        } catch (error) {
+          results.push({
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+            image_id: imageId
+          });
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        batch_complete: true,
+        results: results
+      }), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      });
+      
     } else {
-      onCancelEdit();
+      // Single image processing
+      const { imageId } = requestData;
+      
+      if (!imageId) {
+        return new Response(JSON.stringify({
+          error: "Image ID is required"
+        }), {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      const result = await generator.generateAltText(imageId);
+      
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : (result.skipped ? 200 : 500),
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
+      });
     }
-  };
-
-  return (
-    <div
-      className={`flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer transition ${
-        isSelected ? 'bg-blue-50' : ''
-      }`}
-      onClick={() => onSelect(image.id)}
-    >
-      <input
-        type="checkbox"
-        checked={isSelected}
-        onChange={() => onSelect(image.id)}
-        onClick={(e) => e.stopPropagation()}
-        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-      />
-      
-      <div 
-        className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in"
-        onClick={(e) => {
-          e.stopPropagation();
-          onPreview(image);
-        }}
-      >
-        <img
-          src={image.src}
-          alt={image.alt_text || `Image ${image.position}`}
-          className="w-full h-full object-cover hover:scale-105 transition-transform"
-        />
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <h4 className="font-medium text-gray-900 truncate">
-            {image.productTitle}
-          </h4>
-          <span className="text-xs text-gray-500 flex-shrink-0">
-            Position #{image.position}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2 mb-2">
-          {image.productVendor && (
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {image.productVendor}
-            </span>
-          )}
-          {image.shopName && (
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {image.shopName}
-            </span>
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="text"
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Enter ALT text..."
-              autoFocus
-            />
-            <button
-              onClick={handleSave}
-              className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
-            >
-              Save
-            </button>
-            <button
-              onClick={onCancelEdit}
-              className="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : image.alt_text && image.alt_text.trim() !== '' ? (
-          <p className="text-sm text-gray-600 line-clamp-2">{image.alt_text}</p>
-        ) : (
-          <p className="text-sm text-gray-400 italic">No ALT text</p>
-        )}
-      </div>
-      
-      <div className="flex-shrink-0 flex items-center gap-2">
-        {!isEditing && image.alt_text && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit({ id: image.id, text: image.alt_text });
-            }}
-            className="p-2 text-gray-400 hover:text-gray-600 transition"
-          >
-            <Edit3 className="w-4 h-4" />
-          </button>
-        )}
-        
-        {image.alt_text && image.alt_text.trim() !== '' ? (
-          <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-            <CheckCircle className="w-3 h-3" />
-            Has ALT
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-            <Clock className="w-3 h-3" />
-            Needs ALT
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
+    
+  } catch (error) {
+    console.error("Error in ALT text generation function:", error);
+    
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : "An unknown error occurred"
+    }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
+    });
+  }
+});
