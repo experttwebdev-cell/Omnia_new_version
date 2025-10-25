@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { LoginPage } from './components/LoginPage';
 import { SignUpPage } from './components/SignUpPage';
 import { EmailVerification } from './components/EmailVerification';
-import { SubscriptionManagement } from './components/SubscriptionManagement';
 import { supabase } from './lib/supabase';
 import {
   Check,
@@ -21,47 +20,23 @@ import {
   Tag,
   Image,
   Lightbulb,
-  BookOpen,
   TrendingUp,
-  Package,
-  Globe,
-  Mail,
-  Phone,
-  MapPin,
-  Github,
-  Twitter,
-  Linkedin,
-  Eye,
   Target,
-  Palette,
   Languages,
   ShoppingCart,
   Cpu,
   Star,
-  Quote,
   Clock,
   Users,
-  Cloud,
-  Lock,
-  RefreshCw,
-  Download,
-  Upload,
   Database,
   Server,
-  HelpCircle,
+  RefreshCw,
   Play,
-  Award,
   Rocket,
   ChevronDown,
   ChevronUp,
   CreditCard,
-  Settings,
-  User,
-  LogOut,
-  Bell,
-  Calendar,
-  Receipt,
-  DownloadCloud
+  LogOut
 } from 'lucide-react';
 
 // Mock data for plans
@@ -173,19 +148,6 @@ interface Plan {
   recommended?: boolean;
 }
 
-interface UserSubscription {
-  id: string;
-  status: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'incomplete';
-  current_period_start: number;
-  current_period_end: number;
-  cancel_at_period_end: boolean;
-  plan: Plan;
-  billing_cycle: 'monthly' | 'yearly';
-  next_payment_date?: string;
-  amount: number;
-  currency: string;
-}
-
 interface PricingLandingPageProps {
   onSignUp: (planId: string) => void;
   onLogin: () => void;
@@ -195,13 +157,8 @@ interface PricingLandingPageProps {
 // Enhanced Pricing Landing Page Component
 export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: PricingLandingPageProps) {
   const { user, subscription, loading: authLoading } = useAuth();
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [activeFeatureTab, setActiveFeatureTab] = useState('all');
-  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
   // Redirect to dashboard if user is already authenticated
   useEffect(() => {
@@ -210,69 +167,6 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
       window.location.href = '/dashboard';
     }
   }, [user, authLoading]);
-
-  useEffect(() => {
-    // Simulate loading plans
-    setLoading(true);
-    const timer = setTimeout(() => {
-      setPlans(mockPlans);
-      setLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  const getPlanIcon = (planId: string) => {
-    switch (planId) {
-      case 'starter':
-        return <Rocket className="w-8 h-8" />;
-      case 'professional':
-        return <Zap className="w-8 h-8" />;
-      case 'enterprise':
-        return <Crown className="w-8 h-8" />;
-      default:
-        return <ShoppingBag className="w-8 h-8" />;
-    }
-  };
-
-  const getPlanColor = (planId: string) => {
-    switch (planId) {
-      case 'starter':
-        return {
-          gradient: 'from-blue-500 to-cyan-500',
-          light: 'from-blue-50 to-cyan-50',
-          border: 'border-blue-200',
-          text: 'text-blue-600'
-        };
-      case 'professional':
-        return {
-          gradient: 'from-purple-500 to-pink-500',
-          light: 'from-purple-50 to-pink-50',
-          border: 'border-purple-200',
-          text: 'text-purple-600'
-        };
-      case 'enterprise':
-        return {
-          gradient: 'from-violet-600 to-purple-600',
-          light: 'from-violet-50 to-purple-50',
-          border: 'border-violet-200',
-          text: 'text-violet-600'
-        };
-      default:
-        return {
-          gradient: 'from-gray-500 to-gray-700',
-          light: 'from-gray-50 to-gray-100',
-          border: 'border-gray-200',
-          text: 'text-gray-600'
-        };
-    }
-  };
-
-  const formatLimit = (value: number) => {
-    if (value === -1) return 'Illimité';
-    if (value === 0) return 'Non inclus';
-    return value.toLocaleString('fr-FR');
-  };
 
   // Enhanced features with categories
   const featureCategories = [
@@ -446,45 +340,6 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
     ? allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab)
     : allFeatures.filter(feature => activeFeatureTab === 'all' || feature.category === activeFeatureTab).slice(0, 6);
 
-  // Plan comparison data
-  const planComparison = [
-    { feature: 'Produits maximum', key: 'max_products', tooltip: 'Nombre maximum de produits dans votre catalogue' },
-    { feature: 'Optimisations IA/mois', key: 'max_optimizations_monthly', tooltip: 'Nombre d\'optimisations IA par mois' },
-    { feature: 'Articles blog/mois', key: 'max_articles_monthly', tooltip: 'Nombre d\'articles de blog générés par mois' },
-    { feature: 'Réponses chat/mois', key: 'max_chat_responses_monthly', tooltip: 'Nombre de réponses du chat IA par mois' },
-    { feature: 'Campagnes marketing', key: 'max_campaigns', tooltip: 'Nombre de campagnes marketing simultanées' },
-    { feature: 'Support par chat 24/7', key: 'support_chat', tooltip: 'Support client disponible 24h/24 et 7j/7' },
-    { feature: 'Support téléphonique', key: 'support_phone', tooltip: 'Support téléphonique prioritaire' },
-    { feature: 'Manager dédié', key: 'dedicated_manager', tooltip: 'Account manager dédié à votre entreprise' },
-    { feature: 'Formation personnalisée', key: 'custom_training', tooltip: 'Sessions de formation adaptées à vos besoins' },
-    { feature: 'SLA 99.9%', key: 'sla', tooltip: 'Garantie de disponibilité du service' },
-    { feature: 'Export de données', key: 'data_export', tooltip: 'Export complet de vos données' },
-    { feature: 'API complète', key: 'full_api', tooltip: 'Accès à l\'API complète de la plateforme' }
-  ];
-
-  const faqs = [
-    {
-      question: "Comment fonctionne l'essai gratuit de 14 jours ?",
-      answer: "L'essai gratuit vous donne accès à toutes les fonctionnalités du plan choisi pendant 14 jours. Aucune carte bancaire n'est requise pour commencer. Vous pouvez annuler à tout moment pendant la période d'essai."
-    },
-    {
-      question: "Puis-je changer de plan à tout moment ?",
-      answer: "Oui, vous pouvez passer à un plan supérieur à tout moment. Le changement vers un plan inférieur est possible à la fin de votre cycle de facturation actuel."
-    },
-    {
-      question: "Quelles plateformes e-commerce sont compatibles ?",
-      answer: "Omnia AI s'intègre avec Shopify, WooCommerce, PrestaShop, Magento et toutes les plateformes compatibles avec notre API REST. Nous proposons également des connecteurs personnalisés pour les besoins spécifiques."
-    },
-    {
-      question: "Comment fonctionne l'optimisation IA des produits ?",
-      answer: "Notre IA analyse vos produits existants, les descriptions, images et métadonnées. Elle génère automatiquement des descriptions optimisées, des balises SEO, des attributs manquants et suggère des améliorations basées sur les meilleures pratiques."
-    },
-    {
-      question: "Quel est le temps d'intégration moyen ?",
-      answer: "La plupart de nos clients sont opérationnels en moins de 30 minutes. L'installation se fait en 3 étapes simples : connexion à votre boutique, configuration des préférences et lancement de l'optimisation automatique."
-    }
-  ];
-
   // Enhanced Header with User Menu
   const UserMenu = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -521,7 +376,7 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
           <div className="hidden md:block text-left">
             <div className="text-sm font-medium text-gray-900">{user.email}</div>
             <div className="text-xs text-gray-500">
-              {subscription ? `${subscription.plan.name} • ` : 'Free Trial • '}
+              {subscription?.plan?.name ? `${subscription.plan.name} • ` : 'Free Trial • '}
               <span className={`${
                 subscription?.status === 'active' ? 'text-green-600' : 'text-orange-600'
               }`}>
@@ -537,7 +392,7 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
             <div className="px-4 py-3 border-b border-gray-100">
               <div className="text-sm font-medium text-gray-900">{user.email}</div>
               <div className="text-xs text-gray-500 mt-1">
-                {subscription ? `Plan ${subscription.plan.name}` : 'Essai gratuit'}
+                {subscription?.plan?.name ? `Plan ${subscription.plan.name}` : 'Essai gratuit'}
               </div>
             </div>
             
@@ -857,9 +712,54 @@ export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: 
         </div>
       </section>
 
-      {/* Rest of the PricingLandingPage component remains the same */}
-      {/* ... (Pricing Section, FAQ Section, CTA Section, Footer) */}
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-bold text-white mb-6">
+            Prêt à Transformer Votre E-Commerce ?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8">
+            Rejoignez des centaines de boutiques qui optimisent leurs catalogues avec l'IA
+          </p>
+          {!user ? (
+            <button
+              onClick={() => onSignUp('professional')}
+              className="px-8 py-4 bg-white text-purple-600 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all duration-300 shadow-2xl hover:scale-105"
+            >
+              Commencer Gratuitement
+              <ArrowRight className="inline-block ml-2 w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => window.location.href = '/dashboard'}
+              className="px-8 py-4 bg-white text-purple-600 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all duration-300 shadow-2xl hover:scale-105"
+            >
+              Accéder au Dashboard
+              <ArrowRight className="inline-block ml-2 w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </section>
 
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="p-2 rounded-xl shadow-lg" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                <ShoppingBag className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold">Omnia AI</span>
+            </div>
+            <p className="text-gray-400 mb-4">
+              Optimisez votre catalogue produits avec l'intelligence artificielle
+            </p>
+            <p className="text-gray-500 text-sm">
+              © 2025 Omnia AI. Tous droits réservés.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -908,8 +808,9 @@ function SubscriptionManagementPage({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('fr-FR');
+  const formatDate = (timestamp: number | string) => {
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : new Date(timestamp * 1000);
+    return date.toLocaleDateString('fr-FR');
   };
 
   return (
@@ -987,10 +888,10 @@ function SubscriptionManagementPage({ onBack }: { onBack: () => void }) {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Plan {subscription?.plan.name || 'Essai'}
+                        Plan {subscription?.plan?.name || 'Essai'}
                       </h3>
                       <p className="text-gray-600 mb-4">
-                        {subscription ? (
+                        {subscription && subscription.current_period_end ? (
                           <>
                             Prochain paiement: {formatDate(subscription.current_period_end)} • 
                             <span className={`ml-2 ${
@@ -1006,7 +907,7 @@ function SubscriptionManagementPage({ onBack }: { onBack: () => void }) {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-900">
-                        {subscription ? `${subscription.amount}€` : '0€'}
+                        {subscription?.amount ? `${subscription.amount}€` : '0€'}
                       </div>
                       <div className="text-gray-600">
                         {subscription?.billing_cycle === 'yearly' ? 'par an' : 'par mois'}
