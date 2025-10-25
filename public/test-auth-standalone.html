@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth - OmnIA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button[type="submit"]:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .session-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .session-info p {
+            margin: 8px 0;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 OmnIA Authentication</h1>
+
+        <div id="sessionInfo"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('login')">Connexion</button>
+            <button class="tab" onclick="showTab('signup')">Inscription</button>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" required placeholder="votre@email.com">
+            </div>
+
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="loginPassword" required placeholder="••••••">
+            </div>
+
+            <button type="submit">Se connecter</button>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signupForm" class="hidden">
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="signupName" required placeholder="Jean Dupont">
+            </div>
+
+            <div class="form-group">
+                <label>Entreprise</label>
+                <input type="text" id="signupCompany" required placeholder="Ma Boutique">
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="signupEmail" required placeholder="votre@email.com">
+            </div>
+
+            <div class="form-group">
+                <label>Mot de passe (min. 6 caractères)</label>
+                <input type="password" id="signupPassword" required placeholder="••••••">
+            </div>
+
+            <button type="submit">Créer mon compte</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        // These values are hardcoded from your .env file
+        const supabaseUrl = 'https://ufdhzgqrubbnornjdvgv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmZGh6Z3FydWJibm9ybmpkdmd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjAwMzksImV4cCI6MjA3NTk5NjAzOX0.Xqfe56k9FU-85RBv9h1cxq1UvLU1tUsg24MAdzCqZms';
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        function showMessage(message, type = 'error') {
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+        }
+
+        function showTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const signupForm = document.getElementById('signupForm');
+            const tabs = document.querySelectorAll('.tab');
+
+            tabs.forEach(t => t.classList.remove('active'));
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                tabs[0].classList.add('active');
+            } else {
+                signupForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                tabs[1].classList.add('active');
+            }
+
+            document.getElementById('message').innerHTML = '';
+        }
+
+        window.showTab = showTab;
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            const sessionInfo = document.getElementById('sessionInfo');
+
+            if (session) {
+                const { data: seller } = await supabase
+                    .from('sellers')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+
+                sessionInfo.innerHTML = `
+                    <div class="session-info">
+                        <h3>✅ Connecté</h3>
+                        <p><strong>Email:</strong> ${session.user.email}</p>
+                        ${seller ? `<p><strong>Entreprise:</strong> ${seller.company_name || 'N/A'}</p>` : ''}
+                        <button class="logout-btn" onclick="logout()">Se déconnecter</button>
+                        <button class="logout-btn" style="background: #28a745; margin-left: 10px;" onclick="window.location.href='/'">
+                            Aller au Dashboard
+                        </button>
+                    </div>
+                `;
+            } else {
+                sessionInfo.innerHTML = '';
+            }
+        }
+
+        window.logout = async function() {
+            await supabase.auth.signOut();
+            await checkSession();
+            showMessage('Déconnecté avec succès', 'success');
+        };
+
+        // Login Handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const btn = e.target.querySelector('button');
+
+            btn.disabled = true;
+            btn.textContent = 'Connexion...';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                showMessage('✅ Connexion réussie! Redirection...', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+
+            } catch (err) {
+                let message = err.message;
+                if (message.includes('Invalid login credentials')) {
+                    message = 'Email ou mot de passe incorrect';
+                }
+                showMessage(message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        });
+
+        // Signup Handler
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('signupName').value;
+            const company = document.getElementById('signupCompany').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const btn = e.target.querySelector('button');
+
+            if (password.length < 6) {
+                showMessage('Le mot de passe doit contenir au moins 6 caractères', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Création...';
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: name,
+                            company_name: company,
+                            plan_id: 'professional'
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                showMessage('⏳ Compte créé! Vérification...', 'success');
+
+                // Wait for trigger to create seller
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Auto-login
+                const { error: loginError } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (loginError) throw loginError;
+
+                showMessage('✅ Compte créé et connecté! Redirection...', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+
+            } catch (err) {
+                let message = err.message;
+                if (message.includes('already registered')) {
+                    message = 'Cet email est déjà utilisé';
+                }
+                showMessage(message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Créer mon compte';
+            }
+        });
+
+        // Check session on load
+        checkSession();
+
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            checkSession();
+        });
+    </script>
+</body>
+</html>
