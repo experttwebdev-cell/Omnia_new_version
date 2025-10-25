@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        input, button {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            width: 100%;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Authentication System Test</h1>
+
+    <div class="container">
+        <h2>Test Signup</h2>
+        <div id="signupStatus"></div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="signupEmail" placeholder="test@example.com" value="test@example.com">
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="signupPassword" placeholder="Password123" value="Password123">
+        </div>
+        <button id="signupBtn">Test Signup</button>
+    </div>
+
+    <div class="container">
+        <h2>Test Login</h2>
+        <div id="loginStatus"></div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="loginEmail" placeholder="test@example.com" value="test@example.com">
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input type="password" id="loginPassword" placeholder="Password123" value="Password123">
+        </div>
+        <button id="loginBtn">Test Login</button>
+    </div>
+
+    <div class="container">
+        <h2>Current Session</h2>
+        <div id="sessionStatus"></div>
+        <button id="checkSessionBtn">Check Session</button>
+        <button id="signOutBtn" style="background: #dc3545; margin-top: 10px;">Sign Out</button>
+    </div>
+
+    <div class="container">
+        <h2>Database Check</h2>
+        <div id="dbStatus"></div>
+        <button id="checkDbBtn">Check Database Connection</button>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        function showStatus(elementId, type, message, data = null) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `
+                <div class="status ${type}">
+                    <strong>${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'}</strong>
+                    ${message}
+                    ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+        }
+
+        // Test Signup
+        document.getElementById('signupBtn').addEventListener('click', async () => {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            if (!email || !password) {
+                showStatus('signupStatus', 'error', 'Please fill in all fields');
+                return;
+            }
+
+            const btn = document.getElementById('signupBtn');
+            btn.disabled = true;
+            btn.textContent = 'Signing up...';
+
+            try {
+                showStatus('signupStatus', 'info', 'Creating account...');
+
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            plan_id: 'professional'
+                        }
+                    }
+                });
+
+                if (error) {
+                    showStatus('signupStatus', 'error', `Signup failed: ${error.message}`, error);
+                } else {
+                    showStatus('signupStatus', 'success', 'Account created successfully!', {
+                        user_id: data.user?.id,
+                        email: data.user?.email,
+                        confirmed: data.user?.confirmed_at ? 'Yes' : 'No (check email)'
+                    });
+
+                    // Check if seller was created
+                    setTimeout(async () => {
+                        const { data: sellerData, error: sellerError } = await supabase
+                            .from('sellers')
+                            .select('*')
+                            .eq('user_id', data.user?.id)
+                            .maybeSingle();
+
+                        if (sellerData) {
+                            showStatus('signupStatus', 'success',
+                                'Account and seller profile created successfully!',
+                                { user: data.user?.email, seller: sellerData });
+                        } else if (sellerError) {
+                            showStatus('signupStatus', 'warning',
+                                'Account created but seller profile not found yet. Trigger may still be processing.',
+                                { error: sellerError.message });
+                        }
+                    }, 2000);
+                }
+            } catch (err) {
+                showStatus('signupStatus', 'error', `Error: ${err.message}`, err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Signup';
+            }
+        });
+
+        // Test Login
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showStatus('loginStatus', 'error', 'Please fill in all fields');
+                return;
+            }
+
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+
+            try {
+                showStatus('loginStatus', 'info', 'Logging in...');
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) {
+                    showStatus('loginStatus', 'error', `Login failed: ${error.message}`, error);
+                } else {
+                    // Check seller data
+                    const { data: sellerData } = await supabase
+                        .from('sellers')
+                        .select('*')
+                        .eq('user_id', data.user.id)
+                        .maybeSingle();
+
+                    showStatus('loginStatus', 'success', 'Login successful!', {
+                        user: data.user?.email,
+                        session_expires: new Date(data.session?.expires_at * 1000).toLocaleString(),
+                        seller_profile: sellerData ? 'Found' : 'Not found'
+                    });
+                }
+            } catch (err) {
+                showStatus('loginStatus', 'error', `Error: ${err.message}`, err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Test Login';
+            }
+        });
+
+        // Check Session
+        document.getElementById('checkSessionBtn').addEventListener('click', async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    showStatus('sessionStatus', 'error', 'Error checking session', error);
+                } else if (session) {
+                    const { data: sellerData } = await supabase
+                        .from('sellers')
+                        .select('*')
+                        .eq('user_id', session.user.id)
+                        .maybeSingle();
+
+                    showStatus('sessionStatus', 'success', 'Active session found', {
+                        email: session.user.email,
+                        expires: new Date(session.expires_at * 1000).toLocaleString(),
+                        seller: sellerData
+                    });
+                } else {
+                    showStatus('sessionStatus', 'info', 'No active session');
+                }
+            } catch (err) {
+                showStatus('sessionStatus', 'error', `Error: ${err.message}`, err);
+            }
+        });
+
+        // Sign Out
+        document.getElementById('signOutBtn').addEventListener('click', async () => {
+            try {
+                await supabase.auth.signOut();
+                showStatus('sessionStatus', 'success', 'Signed out successfully');
+            } catch (err) {
+                showStatus('sessionStatus', 'error', `Error signing out: ${err.message}`, err);
+            }
+        });
+
+        // Check Database
+        document.getElementById('checkDbBtn').addEventListener('click', async () => {
+            try {
+                showStatus('dbStatus', 'info', 'Checking database...');
+
+                // Check subscription plans
+                const { data: plans, error: plansError } = await supabase
+                    .from('subscription_plans')
+                    .select('id, name, price_monthly')
+                    .limit(3);
+
+                if (plansError) {
+                    showStatus('dbStatus', 'error', 'Database connection failed', plansError);
+                    return;
+                }
+
+                // Check sellers table
+                const { data: sellers, error: sellersError } = await supabase
+                    .from('sellers')
+                    .select('id, email')
+                    .limit(5);
+
+                showStatus('dbStatus', 'success', 'Database connection successful', {
+                    subscription_plans: plans?.length || 0,
+                    sellers: sellers?.length || 0,
+                    sample_plans: plans,
+                    sample_sellers: sellers
+                });
+            } catch (err) {
+                showStatus('dbStatus', 'error', `Error: ${err.message}`, err);
+            }
+        });
+
+        // Auto-check session on load
+        document.getElementById('checkSessionBtn').click();
+        document.getElementById('checkDbBtn').click();
+    </script>
+</body>
+</html>

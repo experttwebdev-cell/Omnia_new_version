@@ -2,7 +2,24 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
-interface Plan {
+interface Seller {
+  id: string;
+  user_id: string | null;
+  email: string;
+  company_name?: string | null;
+  full_name?: string | null;
+  role: string;
+  status: string;
+  trial_ends_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  stripe_customer_id?: string | null;
+  email_verified?: boolean;
+  subscription_status: string;
+  current_plan_id?: string | null;
+}
+
+interface SubscriptionPlan {
   id: string;
   name: string;
   price_monthly: number;
@@ -22,39 +39,32 @@ interface Plan {
 
 interface Subscription {
   id: string;
-  user_id: string;
+  seller_id: string;
   plan_id: string;
   status: string;
-  billing_cycle: string;
-  amount: number;
-  current_period_start: number;
-  current_period_end: number;
-  stripe_subscription_id: string | null;
-  plan?: Plan;
-}
-
-interface Seller {
-  id: string;
-  email: string;
-  created_at: string;
-  subscription_plan_id: string | null;
+  current_period_start?: string;
+  current_period_end?: string;
+  cancel_at_period_end?: boolean;
+  stripe_subscription_id?: string | null;
+  billing_period?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   seller: Seller | null;
-  subscription: Subscription | null;
+  subscription: (Subscription & { plan?: SubscriptionPlan }) | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, planId?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  refreshSeller: () => Promise<void>;
   createCheckoutSession: (planId: string, billingPeriod: 'monthly' | 'yearly') => Promise<{ error: any; sessionUrl?: string }>;
   updateSubscription: (newPlanId: string) => Promise<{ error: any }>;
   cancelSubscription: () => Promise<{ error: any }>;
-  resumeSubscription: () => Promise<{ error: any }>;
-  updatePaymentMethod: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,15 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [seller, setSeller] = useState<Seller | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [subscription, setSubscription] = useState<(Subscription & { plan?: SubscriptionPlan }) | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchSeller = async (userId: string) => {
     try {
       const { data: sellerData, error: sellerError } = await supabase
-        .from('user_accounts')
+        .from('sellers')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (sellerError) {
@@ -87,15 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const fetchSubscription = async (userId: string) => {
+  const fetchSubscription = async (sellerId: string) => {
     try {
       const { data: subData, error: subError } = await supabase
-        .from('user_subscriptions')
+        .from('subscriptions')
         .select(`
           *,
           plan:subscription_plans(*)
         `)
-        .eq('user_id', userId)
+        .eq('seller_id', sellerId)
+        .in('status', ['active', 'trial'])
         .maybeSingle();
 
       if (subError) {
@@ -106,17 +117,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (subData) {
         setSubscription({
           ...subData,
-          plan: subData.plan as Plan
-        });
+          plan: Array.isArray(subData.plan) ? subData.plan[0] : subData.plan
+        } as Subscription & { plan?: SubscriptionPlan });
       }
     } catch (error) {
       console.error('Error in fetchSubscription:', error);
     }
   };
 
-  const refreshSubscription = async () => {
+  const refreshSeller = async () => {
     if (user) {
-      await fetchSubscription(user.id);
+      await fetchSeller(user.id);
+    }
+  };
+
+  const refreshSubscription = async () => {
+    if (seller) {
+      await fetchSubscription(seller.id);
     }
   };
 
@@ -129,10 +146,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(initialSession?.user ?? null);
 
         if (initialSession?.user) {
-          await Promise.all([
-            fetchSeller(initialSession.user.id),
-            fetchSubscription(initialSession.user.id)
-          ]);
+          const { data: sellerData } = await supabase
+            .from('sellers')
+            .select('*')
+            .eq('user_id', initialSession.user.id)
+            .maybeSingle();
+
+          if (sellerData) {
+            setSeller(sellerData as Seller);
+            await fetchSubscription(sellerData.id);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -151,10 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          await Promise.all([
-            fetchSeller(currentSession.user.id),
-            fetchSubscription(currentSession.user.id)
-          ]);
+          const { data: sellerData } = await supabase
+            .from('sellers')
+            .select('*')
+            .eq('user_id', currentSession.user.id)
+            .maybeSingle();
+
+          if (sellerData) {
+            setSeller(sellerData as Seller);
+            await fetchSubscription(sellerData.id);
+          }
         } else {
           setSeller(null);
           setSubscription(null);
@@ -252,16 +281,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
-  const resumeSubscription = async () => {
-    console.log('Resume subscription');
-    return { error: null };
-  };
-
-  const updatePaymentMethod = async () => {
-    console.log('Update payment method');
-    return { error: null };
-  };
-
   const value = {
     user,
     session,
@@ -272,11 +291,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     refreshSubscription,
+    refreshSeller,
     createCheckoutSession,
     updateSubscription,
     cancelSubscription,
-    resumeSubscription,
-    updatePaymentMethod,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
