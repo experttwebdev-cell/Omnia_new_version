@@ -5,13 +5,16 @@ import { supabase } from './supabase';
 interface Seller {
   id: string;
   user_id: string;
-  store_name: string;
-  shopify_store_url?: string;
-  shopify_access_token?: string;
-  openai_api_key?: string;
-  plan_id: string;
+  email: string;
+  company_name?: string;
+  full_name?: string;
+  role: string;
+  status: string;
   subscription_status: string;
+  current_plan_id?: string;
   trial_ends_at?: string;
+  stripe_customer_id?: string;
+  email_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error fetching seller:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.warn('No seller record found for user:', userId);
         return null;
       }
 

@@ -108,7 +108,46 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
   const loadPlans = async () => {
     try {
       console.log('🔍 Chargement des forfaits...');
-      setPlans(getDefaultPlans());
+
+      const { data: dbPlans, error: plansError } = await supabase
+        .from('subscription_plans')
+        .select('*')
+        .order('price_monthly', { ascending: true });
+
+      if (plansError) {
+        console.error('Erreur lors du chargement des forfaits:', plansError);
+        setPlans(getDefaultPlans());
+        return;
+      }
+
+      if (dbPlans && dbPlans.length > 0) {
+        const formattedPlans: Plan[] = dbPlans.map(plan => ({
+          id: plan.id,
+          name: plan.name,
+          price_monthly: Number(plan.price_monthly),
+          price_yearly: Number(plan.price_monthly) * 10,
+          max_products: plan.max_products,
+          max_optimizations_monthly: plan.max_optimizations_monthly,
+          max_articles_monthly: plan.max_articles_monthly,
+          max_campaigns: plan.max_campaigns,
+          max_chat_responses_monthly: plan.max_chat_responses_monthly,
+          features: plan.features || {},
+          stripe_price_id: plan.stripe_price_id_monthly,
+          stripe_price_id_yearly: plan.stripe_price_id_yearly,
+          description: plan.id === 'starter' ? 'Parfait pour les petites boutiques qui débutent avec l\'IA' :
+                       plan.id === 'professional' ? 'Idéal pour les e-commerces en croissance' :
+                       'Solution complète pour les grandes entreprises',
+          popular: plan.id === 'professional',
+          best_value: plan.id === 'professional',
+          recommended: plan.id === 'starter',
+          trial_days: 14
+        }));
+        setPlans(formattedPlans);
+        console.log('✅ Forfaits chargés depuis la base de données:', formattedPlans.length);
+      } else {
+        console.warn('Aucun forfait trouvé en base, utilisation des forfaits par défaut');
+        setPlans(getDefaultPlans());
+      }
     } catch (error) {
       console.error('💥 Erreur critique lors du chargement des forfaits:', error);
       setPlans(getDefaultPlans());
@@ -325,27 +364,10 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
       }
 
       console.log('✅ Compte utilisateur créé avec succès:', authData.user.id);
+      console.log('✅ Le trigger de la base de données va créer automatiquement le profil seller');
 
-      // Create seller profile
-      const { error: sellerError } = await supabase
-        .from('sellers')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          company_name: companyName,
-          status: 'trial',
-          subscription_status: 'inactive',
-          current_plan_id: selectedPlanId,
-          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (sellerError) {
-        console.error('⚠️ Erreur lors de la création du profil seller:', sellerError);
-        // Continue anyway as the user account was created successfully
-      }
+      // Wait a moment for the database trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       console.log('✅ Inscription réussie! Redirection...');
       
