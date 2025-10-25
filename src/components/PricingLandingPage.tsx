@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Check,
   Sparkles,
@@ -161,8 +160,13 @@ interface Plan {
   extra_features?: string;
 }
 
-export function PricingLandingPage() {
-  const navigate = useNavigate();
+interface PricingLandingPageProps {
+  onSignUp?: (planId: string) => void;
+  onLogin?: () => void;
+  onManageSubscription?: () => void;
+}
+
+export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: PricingLandingPageProps = {}) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -172,11 +176,11 @@ export function PricingLandingPage() {
   const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
 
   const handleLogin = () => {
-    navigate('/login');
+    onLogin?.();
   };
 
   const handleSignUp = (planId: string = 'professional') => {
-    navigate(`/signup/${planId}`);
+    onSignUp?.(planId);
   };
 
   useEffect(() => {
