@@ -296,9 +296,7 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
             company_name: companyName,
             plan_id: selectedPlanId,
             billing_cycle: billingCycle
-          },
-          // Auto confirm to skip email verification for immediate access
-          autoConfirm: true
+          }
         }
       });
 
@@ -326,35 +324,45 @@ export function SignUpPage({ planId: initialPlanId, onLogin, onBack, onSignupSuc
 
       console.log('✅ Compte utilisateur créé avec succès:', authData.user.id);
 
-      // Create seller profile
-      const { error: sellerError } = await supabase
-        .from('sellers')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName,
-          company_name: companyName,
-          status: 'trial',
-          subscription_status: 'inactive',
-          current_plan_id: selectedPlanId,
-          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      // Wait for the database trigger to create the seller profile
+      console.log('⏳ Attente de la création du profil seller par le trigger...');
 
-      if (sellerError) {
-        console.error('⚠️ Erreur lors de la création du profil seller:', sellerError);
-        // Continue anyway as the user account was created successfully
+      // Wait a bit for the trigger to execute
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Verify seller was created by trigger
+      const { data: sellerData, error: sellerCheckError } = await supabase
+        .from('sellers')
+        .select('id, email, subscription_status')
+        .eq('user_id', authData.user.id)
+        .maybeSingle();
+
+      if (sellerCheckError) {
+        console.error('⚠️ Erreur lors de la vérification du profil seller:', sellerCheckError);
+      } else if (sellerData) {
+        console.log('✅ Profil seller créé par le trigger:', sellerData);
+      } else {
+        console.warn('⚠️ Profil seller non trouvé, mais on continue...');
       }
 
       console.log('✅ Inscription réussie! Redirection...');
-      
+
       setSuccess(true);
-      
-      // Immediate redirection without delay
-      setTimeout(() => {
+
+      // Auto-login and redirect
+      setTimeout(async () => {
+        console.log('🔐 Connexion automatique...');
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (signInError) {
+          console.error('⚠️ Erreur de connexion automatique:', signInError);
+        }
+
         redirectToDashboard();
-      }, 500); // Very short delay for better UX
+      }, 500);
 
     } catch (err) {
       console.error('💥 Erreur lors de l\'inscription:', err);

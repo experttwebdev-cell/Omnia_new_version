@@ -307,26 +307,6 @@ export function LoginPage({ onSignUp, onBack, onLoginSuccess }: LoginPageProps) 
         setError(errorMessage);
       } else if (data.user) {
         console.log('✅ Connexion réussie! Redirection...');
-        
-        // Create or update user session data
-        try {
-          const { error: sessionError } = await supabase
-            .from('user_sessions')
-            .upsert({
-              user_id: data.user.id,
-              last_login: new Date().toISOString(),
-              login_count: 1, // This would be incremented in a real implementation
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'user_id'
-            });
-
-          if (sessionError) {
-            console.warn('⚠️ Could not update session data:', sessionError);
-          }
-        } catch (sessionErr) {
-          console.warn('⚠️ Session update error:', sessionErr);
-        }
 
         // Immediate redirection
         redirectToDashboard();

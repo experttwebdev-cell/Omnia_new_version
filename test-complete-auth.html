@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentification Complet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .session-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .session-info h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            margin-top: 10px;
+        }
+
+        .logout-btn:hover:not(:disabled) {
+            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Test Authentification</h1>
+
+        <!-- Session Status -->
+        <div class="card">
+            <h2>Session Actuelle</h2>
+            <div id="sessionInfo"></div>
+        </div>
+
+        <!-- Signup Form -->
+        <div class="card">
+            <h2>✨ Inscription</h2>
+            <div id="signupStatus"></div>
+
+            <form id="signupForm">
+                <div class="form-group">
+                    <label>Nom complet</label>
+                    <input type="text" id="signupFullName" placeholder="Jean Dupont" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Entreprise</label>
+                    <input type="text" id="signupCompany" placeholder="Ma Boutique" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" placeholder="email@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Mot de passe (min. 6 caractères)</label>
+                    <input type="password" id="signupPassword" placeholder="••••••" required>
+                </div>
+
+                <button type="submit" id="signupBtn">
+                    S'inscrire
+                </button>
+            </form>
+        </div>
+
+        <!-- Login Form -->
+        <div class="card">
+            <h2>🔑 Connexion</h2>
+            <div id="loginStatus"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="email@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="loginPassword" placeholder="••••••" required>
+                </div>
+
+                <button type="submit" id="loginBtn">
+                    Se connecter
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        function showStatus(elementId, type, message, data = null) {
+            const element = document.getElementById(elementId);
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+
+            element.innerHTML = `
+                <div class="status ${type}">
+                    <strong>${icons[type]}</strong> ${message}
+                    ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+        }
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            const sessionInfo = document.getElementById('sessionInfo');
+
+            if (session) {
+                const { data: seller } = await supabase
+                    .from('sellers')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+
+                sessionInfo.innerHTML = `
+                    <div class="session-info">
+                        <h3>Connecté</h3>
+                        <p><strong>Email:</strong> ${session.user.email}</p>
+                        <p><strong>User ID:</strong> ${session.user.id}</p>
+                        ${seller ? `
+                            <p><strong>Seller ID:</strong> ${seller.id}</p>
+                            <p><strong>Entreprise:</strong> ${seller.company_name || 'N/A'}</p>
+                            <p><strong>Status:</strong> ${seller.subscription_status}</p>
+                        ` : '<p class="warning">⚠️ Profil seller non trouvé</p>'}
+                        <button class="logout-btn" onclick="logout()">Se déconnecter</button>
+                    </div>
+                `;
+            } else {
+                sessionInfo.innerHTML = '<div class="info">Aucune session active</div>';
+            }
+        }
+
+        // Signup Handler
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const fullName = document.getElementById('signupFullName').value;
+            const company = document.getElementById('signupCompany').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const btn = document.getElementById('signupBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Inscription en cours...';
+
+            try {
+                showStatus('signupStatus', 'info', 'Création du compte...');
+
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: fullName,
+                            company_name: company,
+                            plan_id: 'professional'
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                showStatus('signupStatus', 'info', 'Vérification du profil seller...');
+
+                // Wait for trigger to create seller
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const { data: seller, error: sellerError } = await supabase
+                    .from('sellers')
+                    .select('*')
+                    .eq('user_id', data.user.id)
+                    .maybeSingle();
+
+                if (seller) {
+                    showStatus('signupStatus', 'success', 'Compte créé avec succès!', {
+                        user_id: data.user.id,
+                        email: data.user.email,
+                        seller_id: seller.id,
+                        company: seller.company_name
+                    });
+
+                    // Auto-login
+                    setTimeout(async () => {
+                        showStatus('signupStatus', 'info', 'Connexion automatique...');
+                        const { error: loginError } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+
+                        if (!loginError) {
+                            showStatus('signupStatus', 'success', '✅ Connecté! Redirection vers le dashboard...', null);
+                            setTimeout(() => {
+                                window.location.hash = '/dashboard';
+                                window.location.reload();
+                            }, 1500);
+                        }
+                    }, 1000);
+                } else {
+                    showStatus('signupStatus', 'warning', 'Compte créé mais profil seller non trouvé', {
+                        user_id: data.user.id,
+                        seller_error: sellerError?.message
+                    });
+                }
+
+                await checkSession();
+            } catch (err) {
+                showStatus('signupStatus', 'error', err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "S'inscrire";
+            }
+        });
+
+        // Login Handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Connexion...';
+
+            try {
+                showStatus('loginStatus', 'info', 'Connexion en cours...');
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                const { data: seller } = await supabase
+                    .from('sellers')
+                    .select('*')
+                    .eq('user_id', data.user.id)
+                    .maybeSingle();
+
+                showStatus('loginStatus', 'success', '✅ Connexion réussie! Redirection...', {
+                    email: data.user.email,
+                    seller_found: !!seller
+                });
+
+                await checkSession();
+
+                setTimeout(() => {
+                    window.location.hash = '/dashboard';
+                    window.location.reload();
+                }, 1500);
+
+            } catch (err) {
+                let message = err.message;
+                if (message.includes('Invalid login credentials')) {
+                    message = 'Email ou mot de passe incorrect';
+                }
+                showStatus('loginStatus', 'error', message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        });
+
+        // Logout Function
+        window.logout = async () => {
+            await supabase.auth.signOut();
+            await checkSession();
+            showStatus('signupStatus', 'info', 'Déconnecté');
+            showStatus('loginStatus', 'info', 'Déconnecté');
+        };
+
+        // Check session on load
+        checkSession();
+
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth event:', event, session);
+            checkSession();
+        });
+    </script>
+</body>
+</html>
