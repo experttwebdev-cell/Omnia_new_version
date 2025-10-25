@@ -161,12 +161,12 @@ interface Plan {
 }
 
 interface PricingLandingPageProps {
-  onSignUp?: (planId: string) => void;
-  onLogin?: () => void;
+  onSignUp: (planId: string) => void;
+  onLogin: () => void;
   onManageSubscription?: () => void;
 }
 
-export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: PricingLandingPageProps = {}) {
+export function PricingLandingPage({ onSignUp, onLogin, onManageSubscription }: PricingLandingPageProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'yearly'>('monthly');
